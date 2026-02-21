@@ -110,9 +110,23 @@ button {
 }
 
 .line-button {
-  width: 100%;
-  text-align: left;
+  width: auto;
+  text-align: center;
   background: #1f2937;
-  white-space: normal;
-  line-height: 1.4;
+  white-space: nowrap;
+  line-height: 1.2;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.line-header {
+  margin: 0 0 0.45rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.line-moves {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }

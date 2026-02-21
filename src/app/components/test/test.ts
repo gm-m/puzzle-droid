@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { Chess } from 'chess.js';
 import type { Key } from 'chessground/types';
-import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel';
+import { AnalysisPanelComponent, type LineMoveSelection } from '../analysis-panel/analysis-panel';
 import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
 import { EvalBarComponent } from '../eval-bar/eval-bar';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
@@ -121,11 +121,16 @@ export class Test implements OnInit, OnDestroy {
     this.analyzePosition();
   }
 
-  onLineSelected(line: EngineLine): void {
+  onLineSelected(selection: LineMoveSelection): void {
+    const lineMoves = selection.line.pv.slice(0, selection.moveIndex + 1);
+    if (lineMoves.length === 0) {
+      return;
+    }
+
     const branch = this.moveHistory().slice(0, this.moveCursor());
     const executedMoves: string[] = [];
 
-    for (const uci of line.pv) {
+    for (const uci of lineMoves) {
       const parsedMove = this.parseUciMove(uci);
       if (!parsedMove) {
         break;

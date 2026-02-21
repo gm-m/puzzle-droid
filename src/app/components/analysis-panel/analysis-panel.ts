@@ -2,6 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { EngineLine, EngineScore } from '../../models/engine.models';
 
+export interface LineMoveSelection {
+  line: EngineLine;
+  moveIndex: number;
+}
+
 @Component({
   selector: 'app-analysis-panel',
   imports: [CommonModule],
@@ -28,7 +33,7 @@ export class AnalysisPanelComponent {
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
   @Output() readonly previousMove = new EventEmitter<void>();
   @Output() readonly nextMove = new EventEmitter<void>();
-  @Output() readonly lineSelected = new EventEmitter<EngineLine>();
+  @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
 
   onDepthInput(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
@@ -44,12 +49,12 @@ export class AnalysisPanelComponent {
     }
   }
 
-  lineLabel(line: EngineLine): string {
-    return `${this.formatScore(line.score)} | d${line.depth} | ${line.pv.join(' ')}`;
+  lineHeader(line: EngineLine): string {
+    return `${this.formatScore(line.score)} | d${line.depth}`;
   }
 
-  selectLine(line: EngineLine): void {
-    this.lineSelected.emit(line);
+  selectLineMove(line: EngineLine, moveIndex: number): void {
+    this.lineSelected.emit({ line, moveIndex });
   }
 
   private formatScore(score: EngineScore): string {

@@ -40,9 +40,17 @@
     <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
     <ol *ngIf="lines.length > 0">
       <li *ngFor="let line of lines">
-        <button type="button" class="line-button" (click)="selectLine(line)">
-          {{ lineLabel(line) }}
-        </button>
+        <p class="line-header">{{ lineHeader(line) }}</p>
+        <div class="line-moves">
+          <button
+            *ngFor="let move of line.pv; let moveIndex = index"
+            type="button"
+            class="line-button"
+            (click)="selectLineMove(line, moveIndex)"
+          >
+            {{ move }}
+          </button>
+        </div>
       </li>
     </ol>
   </section>
