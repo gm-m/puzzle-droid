@@ -1,0 +1,14 @@
+@import 'chessground/assets/chessground.base.css';
+@import 'chessground/assets/chessground.brown.css';
+@import 'chessground/assets/chessground.cburnett.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f8fafc;
+  color: #111827;
+}
