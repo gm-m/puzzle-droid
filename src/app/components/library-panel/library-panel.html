@@ -1,0 +1,33 @@
+<section class="library-panel">
+  <header class="library-header">
+    <h1>Libreria PGN</h1>
+    <label class="upload-button">
+      Carica PGN
+      <input type="file" accept=".pgn,text/plain" multiple (change)="onFilesInput($event)" />
+    </label>
+  </header>
+
+  <p class="hint">Carica partite PGN. La modalità Puzzle è disponibile come preparazione UI (logica in arrivo).</p>
+
+  <div class="library-grid" *ngIf="items.length > 0; else emptyState">
+    <article class="game-card" *ngFor="let item of items">
+      <h2>{{ item.name }}</h2>
+      <p><strong>Evento:</strong> {{ item.event || '-' }}</p>
+      <p><strong>Bianco:</strong> {{ item.white || '-' }}</p>
+      <p><strong>Nero:</strong> {{ item.black || '-' }}</p>
+      <p><strong>Risultato:</strong> {{ item.result || '-' }}</p>
+
+      <label class="mode-select">
+        Modalità
+        <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
+          <option value="view">Visualizzazione</option>
+          <option value="puzzle">Puzzle (coming soon)</option>
+        </select>
+      </label>
+    </article>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty-state">Nessun PGN caricato.</div>
+  </ng-template>
+</section>

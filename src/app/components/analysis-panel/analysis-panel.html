@@ -24,6 +24,15 @@
     </button>
   </div>
 
+  <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
+    <label>
+      Posizione iniziale (FEN)
+      <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
+    </label>
+    <button type="submit">Applica FEN</button>
+    <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
+  </form>
+
   <div class="actions">
     <button type="button" (click)="analyze.emit()">Analyze</button>
     <button type="button" (click)="reset.emit()">Reset</button>

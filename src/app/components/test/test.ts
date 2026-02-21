@@ -1,19 +1,25 @@
+import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { Chess } from 'chess.js';
 import type { Key } from 'chessground/types';
 import { AnalysisPanelComponent, type LineMoveSelection } from '../analysis-panel/analysis-panel';
 import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
 import { EvalBarComponent } from '../eval-bar/eval-bar';
+import { LibraryPanelComponent, type LibraryModeChange } from '../library-panel/library-panel';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
+import type { PgnLibraryItem } from '../../models/library.models';
 import { StockfishService } from '../../services/stockfish.service';
 
 @Component({
   selector: 'app-test',
-  imports: [ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent],
+  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
 export class Test implements OnInit, OnDestroy {
+  readonly activeView = signal<'analysis' | 'library'>('analysis');
+  readonly isMenuOpen = signal(false);
+
   readonly currentFen = signal('');
   readonly turnColor = signal<'white' | 'black'>('white');
   readonly legalDests = signal<Map<Key, Key[]>>(new Map());
@@ -30,6 +36,9 @@ export class Test implements OnInit, OnDestroy {
   readonly depth = signal(12);
   readonly multiPv = signal(1);
   readonly showEvalBar = signal(true);
+  readonly fenFeedback = signal('');
+
+  readonly libraryItems = signal<PgnLibraryItem[]>([]);
 
   private readonly chess = new Chess();
 
@@ -44,6 +53,47 @@ export class Test implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stockfish.destroy();
+  }
+
+  setActiveView(view: 'analysis' | 'library'): void {
+    this.activeView.set(view);
+    this.isMenuOpen.set(false);
+  }
+
+  toggleMenu(): void {
+    this.isMenuOpen.update((value) => !value);
+  }
+
+  async onLibraryFilesSelected(files: FileList | null): Promise<void> {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const parsedItems = await Promise.all(
+      Array.from(files).map(async (file, index) => {
+        const pgn = await file.text();
+        const headers = this.parsePgnHeaders(pgn);
+
+        return {
+          id: `${Date.now()}-${index}-${file.name}`,
+          name: file.name,
+          pgn,
+          mode: 'view',
+          event: headers['Event'],
+          white: headers['White'],
+          black: headers['Black'],
+          result: headers['Result'],
+        } as PgnLibraryItem;
+      }),
+    );
+
+    this.libraryItems.update((items) => [...parsedItems, ...items]);
+  }
+
+  onLibraryModeChanged(change: LibraryModeChange): void {
+    this.libraryItems.update((items) =>
+      items.map((item) => (item.id === change.id ? { ...item, mode: change.mode } : item)),
+    );
   }
 
   onBoardMove(move: BoardMove): void {
@@ -68,6 +118,28 @@ export class Test implements OnInit, OnDestroy {
     this.chess.reset();
     this.moveHistory.set([]);
     this.moveCursor.set(0);
+    this.fenFeedback.set('');
+    this.syncGameState();
+    this.analyzePosition();
+  }
+
+  applyFen(rawFen: string): void {
+    const fen = rawFen.trim();
+    if (!fen) {
+      this.fenFeedback.set('Inserisci una FEN valida.');
+      return;
+    }
+
+    try {
+      this.chess.load(fen);
+    } catch {
+      this.fenFeedback.set('FEN non valida.');
+      return;
+    }
+
+    this.moveHistory.set([]);
+    this.moveCursor.set(0);
+    this.fenFeedback.set('Posizione caricata.');
     this.syncGameState();
     this.analyzePosition();
   }
@@ -270,6 +342,19 @@ export class Test implements OnInit, OnDestroy {
 
   private toUci(from: Key, to: Key, promotion?: string): string {
     return `${from}${to}${promotion ?? ''}`;
+  }
+
+  private parsePgnHeaders(pgn: string): Record<string, string> {
+    const headers: Record<string, string> = {};
+    const headerRegex = /^\[(\w+)\s+"([^"]*)"\]$/gm;
+
+    let match = headerRegex.exec(pgn);
+    while (match) {
+      headers[match[1]] = match[2];
+      match = headerRegex.exec(pgn);
+    }
+
+    return headers;
   }
 
   private formatScore(score: EngineScore): string {

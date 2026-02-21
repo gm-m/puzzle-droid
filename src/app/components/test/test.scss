@@ -1,12 +1,59 @@
-.poc-shell {
+.layout-shell {
   min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.menu-trigger {
+  display: none;
+}
+
+.side-menu {
+  border-right: 1px solid #dbe3f0;
+  background: #ffffff;
+  padding: 1.2rem 1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #475569;
+  }
+}
+
+.menu-item {
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.65rem 0.8rem;
+  background: #e2e8f0;
+  text-align: left;
+  font-weight: 700;
+  cursor: pointer;
+  color: #1e293b;
+
+  &.active {
+    background: #111827;
+    color: #fff;
+  }
+}
+
+.content-area {
+  padding: clamp(0.8rem, 2.2vw, 1.8rem);
+  min-width: 0;
+}
+
+.poc-shell {
   width: 100%;
   display: grid;
   gap: 1.25rem;
   grid-template-columns: minmax(280px, 760px);
   justify-content: center;
   align-content: start;
-  padding: clamp(0.9rem, 2.5vw, 2rem);
 }
 
 .board-section {
@@ -24,19 +71,68 @@
   min-width: 0;
 }
 
-app-analysis-panel {
+app-analysis-panel,
+app-library-panel {
   display: block;
   width: 100%;
   max-width: 720px;
   justify-self: center;
 }
 
+.menu-backdrop {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .board-section {
-    max-width: 100%;
+  .layout-shell {
+    grid-template-columns: 1fr;
   }
 
-  app-analysis-panel {
+  .menu-trigger {
+    display: inline-flex;
+    position: fixed;
+    top: 0.8rem;
+    left: 0.8rem;
+    z-index: 40;
+    border: 0;
+    border-radius: 0.55rem;
+    padding: 0.5rem 0.7rem;
+    background: #111827;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .side-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(80vw, 280px);
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    z-index: 50;
+
+    &.open {
+      transform: translateX(0);
+    }
+  }
+
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 45;
+  }
+
+  .content-area {
+    padding-top: 3.4rem;
+  }
+
+  .board-section,
+  app-analysis-panel,
+  app-library-panel {
     max-width: 100%;
   }
 }

@@ -25,6 +25,8 @@ export class AnalysisPanelComponent {
   @Input() canGoBack = false;
   @Input() canGoForward = false;
   @Input() moveCursorLabel = '0/0';
+  @Input() fenInputValue = '';
+  @Input() fenFeedback = '';
 
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
@@ -34,6 +36,7 @@ export class AnalysisPanelComponent {
   @Output() readonly previousMove = new EventEmitter<void>();
   @Output() readonly nextMove = new EventEmitter<void>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
+  @Output() readonly fenApplied = new EventEmitter<string>();
 
   onDepthInput(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
@@ -55,6 +58,11 @@ export class AnalysisPanelComponent {
 
   selectLineMove(line: EngineLine, moveIndex: number): void {
     this.lineSelected.emit({ line, moveIndex });
+  }
+
+  onFenSubmit(event: Event, rawFen: string): void {
+    event.preventDefault();
+    this.fenApplied.emit(rawFen);
   }
 
   private formatScore(score: EngineScore): string {

@@ -1,35 +1,84 @@
-<main class="poc-shell">
-  <section class="board-section">
-    <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar()"></app-eval-bar>
+<main class="layout-shell">
+  <button type="button" class="menu-trigger" (click)="toggleMenu()">Menu</button>
 
-    <app-chess-board
-      class="board-host"
-      [fen]="currentFen()"
-      [turnColor]="turnColor()"
-      [legalDests]="legalDests()"
-      (moved)="onBoardMove($event)"
-    ></app-chess-board>
-  </section>
+  <aside class="side-menu" [class.open]="isMenuOpen()">
+    <h2>Navigazione</h2>
 
-  <app-analysis-panel
-    [isAnalyzing]="isAnalyzing()"
-    [bestMove]="bestMove()"
-    [evalLabel]="evalLabel()"
-    [fen]="currentFen()"
-    [depth]="depth()"
-    [multiPv]="multiPv()"
-    [showEvalBar]="showEvalBar()"
-    [lines]="lines()"
-    [canGoBack]="canGoBack()"
-    [canGoForward]="canGoForward()"
-    [moveCursorLabel]="moveCursorLabel()"
-    (analyze)="analyzePosition()"
-    (reset)="resetBoard()"
-    (depthChanged)="onDepthChange($event)"
-    (multiPvChanged)="onMultiPvChange($event)"
-    (toggleEvalBar)="toggleEvalBar()"
-    (previousMove)="previousMove()"
-    (nextMove)="nextMove()"
-    (lineSelected)="onLineSelected($event)"
-  ></app-analysis-panel>
+    <button
+      type="button"
+      class="menu-item"
+      [class.active]="activeView() === 'analysis'"
+      (click)="setActiveView('analysis')"
+    >
+      Analisi
+    </button>
+
+    <button
+      type="button"
+      class="menu-item"
+      [class.active]="activeView() === 'library'"
+      (click)="setActiveView('library')"
+    >
+      Libreria
+    </button>
+  </aside>
+
+  <div class="content-area">
+    <ng-container *ngIf="activeView() === 'analysis'; else libraryView">
+      <section class="poc-shell">
+        <section class="board-section">
+          <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar()"></app-eval-bar>
+
+          <app-chess-board
+            class="board-host"
+            [fen]="currentFen()"
+            [turnColor]="turnColor()"
+            [legalDests]="legalDests()"
+            (moved)="onBoardMove($event)"
+          ></app-chess-board>
+        </section>
+
+        <app-analysis-panel
+          [isAnalyzing]="isAnalyzing()"
+          [bestMove]="bestMove()"
+          [evalLabel]="evalLabel()"
+          [fen]="currentFen()"
+          [fenInputValue]="currentFen()"
+          [fenFeedback]="fenFeedback()"
+          [depth]="depth()"
+          [multiPv]="multiPv()"
+          [showEvalBar]="showEvalBar()"
+          [lines]="lines()"
+          [canGoBack]="canGoBack()"
+          [canGoForward]="canGoForward()"
+          [moveCursorLabel]="moveCursorLabel()"
+          (analyze)="analyzePosition()"
+          (reset)="resetBoard()"
+          (fenApplied)="applyFen($event)"
+          (depthChanged)="onDepthChange($event)"
+          (multiPvChanged)="onMultiPvChange($event)"
+          (toggleEvalBar)="toggleEvalBar()"
+          (previousMove)="previousMove()"
+          (nextMove)="nextMove()"
+          (lineSelected)="onLineSelected($event)"
+        ></app-analysis-panel>
+      </section>
+    </ng-container>
+
+    <ng-template #libraryView>
+      <app-library-panel
+        [items]="libraryItems()"
+        (filesSelected)="onLibraryFilesSelected($event)"
+        (modeChanged)="onLibraryModeChanged($event)"
+      ></app-library-panel>
+    </ng-template>
+  </div>
+
+  <button
+    *ngIf="isMenuOpen()"
+    type="button"
+    class="menu-backdrop"
+    aria-label="Close menu"
+    (click)="toggleMenu()"
+  ></button>
 </main>
