@@ -5,8 +5,13 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:web": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "android:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android": "npm run build:web && npm run cap:sync && npm run android:open"
   },
   "prettier": {
     "printWidth": 100,
