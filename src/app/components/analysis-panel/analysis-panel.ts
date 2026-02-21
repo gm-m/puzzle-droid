@@ -28,6 +28,8 @@ export class AnalysisPanelComponent {
   @Input() fenInputValue = '';
   @Input() fenFeedback = '';
 
+  isSettingsOpen = false;
+
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
   @Output() readonly depthChanged = new EventEmitter<number>();
@@ -37,6 +39,10 @@ export class AnalysisPanelComponent {
   @Output() readonly nextMove = new EventEmitter<void>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();
+
+  toggleSettings(): void {
+    this.isSettingsOpen = !this.isSettingsOpen;
+  }
 
   onDepthInput(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);

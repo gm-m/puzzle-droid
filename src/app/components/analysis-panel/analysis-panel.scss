@@ -9,9 +9,6 @@
 }
 
 .fen-controls {
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: #f3f4f6;
   display: grid;
   gap: 0.65rem;
 
@@ -36,12 +33,56 @@
   font-weight: 600;
 }
 
-.stats,
-.engine-config,
+.settings-accordion {
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+
+  .accordion-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    color: #1e293b;
+    padding: 0.85rem 1rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-align: left;
+    border-radius: 0;
+
+    .accordion-icon {
+      font-size: 0.8rem;
+      transition: transform 200ms ease;
+      color: #64748b;
+
+      &.open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .accordion-content {
+    padding: 0 1rem 1rem;
+    display: grid;
+    gap: 1rem;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
 .pv-list {
   padding: 1rem;
   border-radius: 0.75rem;
   background: #f3f4f6;
+}
+
+.stats,
+.engine-config,
+.fen-controls {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .stats {
