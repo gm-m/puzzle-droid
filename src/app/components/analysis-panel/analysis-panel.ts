@@ -25,6 +25,8 @@ export class AnalysisPanelComponent {
   @Input() canGoBack = false;
   @Input() canGoForward = false;
   @Input() moveCursorLabel = '0/0';
+  @Input() moves: string[] = [];
+  @Input() moveCursor = 0;
   @Input() fenInputValue = '';
   @Input() fenFeedback = '';
 
@@ -37,6 +39,7 @@ export class AnalysisPanelComponent {
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
   @Output() readonly previousMove = new EventEmitter<void>();
   @Output() readonly nextMove = new EventEmitter<void>();
+  @Output() readonly moveJumpRequested = new EventEmitter<number>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();
 
@@ -64,6 +67,16 @@ export class AnalysisPanelComponent {
 
   selectLineMove(line: EngineLine, moveIndex: number): void {
     this.lineSelected.emit({ line, moveIndex });
+  }
+
+  jumpToMove(ply: number): void {
+    this.moveJumpRequested.emit(ply);
+  }
+
+  moveLabel(move: string, index: number): string {
+    const moveNumber = Math.floor(index / 2) + 1;
+    const prefix = index % 2 === 0 ? `${moveNumber}.` : `${moveNumber}...`;
+    return `${prefix} ${move}`;
   }
 
   onFenSubmit(event: Event, rawFen: string): void {

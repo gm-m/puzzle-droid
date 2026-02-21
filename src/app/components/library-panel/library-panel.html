@@ -7,15 +7,22 @@
     </label>
   </header>
 
-  <p class="hint">Carica partite PGN. La modalità Puzzle è disponibile come preparazione UI (logica in arrivo).</p>
+  <p class="hint">Carica file PGN, apri una card e seleziona una partita/posizione per visualizzarla sulla scacchiera.</p>
 
   <div class="library-grid" *ngIf="items.length > 0; else emptyState">
     <article class="game-card" *ngFor="let item of items">
-      <h2>{{ item.name }}</h2>
-      <p><strong>Evento:</strong> {{ item.event || '-' }}</p>
-      <p><strong>Bianco:</strong> {{ item.white || '-' }}</p>
-      <p><strong>Nero:</strong> {{ item.black || '-' }}</p>
-      <p><strong>Risultato:</strong> {{ item.result || '-' }}</p>
+      <button type="button" class="card-toggle" (click)="toggleItemExpansion(item.id)">
+        <div class="card-title-wrap">
+          <h2>{{ item.name }}</h2>
+          <p><strong>Partite:</strong> {{ item.games.length }}</p>
+          <p><strong>Evento:</strong> {{ item.event || '-' }}</p>
+          <p><strong>Bianco:</strong> {{ item.white || '-' }}</p>
+          <p><strong>Nero:</strong> {{ item.black || '-' }}</p>
+          <p><strong>Risultato:</strong> {{ item.result || '-' }}</p>
+        </div>
+
+        <span class="toggle-label">{{ isExpanded(item.id) ? 'Chiudi' : 'Apri' }}</span>
+      </button>
 
       <label class="mode-select">
         Modalità
@@ -24,6 +31,25 @@
           <option value="puzzle">Puzzle (coming soon)</option>
         </select>
       </label>
+
+      <section class="card-details" *ngIf="isExpanded(item.id)">
+        <article class="library-game" *ngFor="let game of item.games; let gameIndex = index">
+          <h3>{{ gameTitle(gameIndex, item) }}</h3>
+
+          <ul class="positions-list">
+            <li *ngFor="let position of game.positions">
+              <button
+                type="button"
+                class="position-button"
+                [class.selected]="isPositionSelected(item.id, game.id, position.id)"
+                (click)="onPositionClick(item.id, game, position)"
+              >
+                {{ position.label }}
+              </button>
+            </li>
+          </ul>
+        </article>
+      </section>
     </article>
   </div>
 

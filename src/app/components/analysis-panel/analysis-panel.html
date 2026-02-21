@@ -67,6 +67,23 @@
     </div>
   </div>
 
+  <section class="move-list" *ngIf="moves.length > 0">
+    <h2>Mosse giocate</h2>
+    <ol>
+      <li *ngFor="let move of moves; let index = index">
+        <button
+          type="button"
+          class="history-move-button"
+          [class.played]="index < moveCursor"
+          [class.active]="index + 1 === moveCursor"
+          (click)="jumpToMove(index + 1)"
+        >
+          {{ moveLabel(move, index) }}
+        </button>
+      </li>
+    </ol>
+  </section>
+
   <div class="history-nav">
     <button type="button" [disabled]="!canGoBack" (click)="previousMove.emit()">Previous</button>
     <span class="cursor">{{ moveCursorLabel }}</span>

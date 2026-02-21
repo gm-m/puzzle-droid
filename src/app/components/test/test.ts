@@ -1,13 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { Chess } from 'chess.js';
+import type { Move as ChessMove } from 'chess.js';
 import type { Key } from 'chessground/types';
 import { AnalysisPanelComponent, type LineMoveSelection } from '../analysis-panel/analysis-panel';
 import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
 import { EvalBarComponent } from '../eval-bar/eval-bar';
-import { LibraryPanelComponent, type LibraryModeChange } from '../library-panel/library-panel';
+import {
+  LibraryPanelComponent,
+  type LibraryModeChange,
+  type LibraryPositionSelection,
+} from '../library-panel/library-panel';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
-import type { PgnLibraryItem } from '../../models/library.models';
+import type { PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
 import { StockfishService } from '../../services/stockfish.service';
 
 @Component({
@@ -17,6 +22,8 @@ import { StockfishService } from '../../services/stockfish.service';
   styleUrl: './test.scss',
 })
 export class Test implements OnInit, OnDestroy {
+  private static readonly STARTING_FEN = new Chess().fen();
+
   readonly activeView = signal<'analysis' | 'library'>('analysis');
   readonly isMenuOpen = signal(false);
 
@@ -41,6 +48,7 @@ export class Test implements OnInit, OnDestroy {
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
 
   private readonly chess = new Chess();
+  private historyInitialFen = Test.STARTING_FEN;
 
   constructor(private readonly stockfish: StockfishService) {}
 
@@ -72,17 +80,20 @@ export class Test implements OnInit, OnDestroy {
     const parsedItems = await Promise.all(
       Array.from(files).map(async (file, index) => {
         const pgn = await file.text();
-        const headers = this.parsePgnHeaders(pgn);
+        const itemId = `${Date.now()}-${index}-${file.name}`;
+        const games = this.parsePgnGames(pgn, itemId);
+        const firstGame = games[0];
 
         return {
-          id: `${Date.now()}-${index}-${file.name}`,
+          id: itemId,
           name: file.name,
           pgn,
           mode: 'view',
-          event: headers['Event'],
-          white: headers['White'],
-          black: headers['Black'],
-          result: headers['Result'],
+          games,
+          event: firstGame?.event,
+          white: firstGame?.white,
+          black: firstGame?.black,
+          result: firstGame?.result,
         } as PgnLibraryItem;
       }),
     );
@@ -94,6 +105,24 @@ export class Test implements OnInit, OnDestroy {
     this.libraryItems.update((items) =>
       items.map((item) => (item.id === change.id ? { ...item, mode: change.mode } : item)),
     );
+  }
+
+  onLibraryPositionSelected(selection: LibraryPositionSelection): void {
+    try {
+      this.chess.load(selection.fen);
+    } catch {
+      return;
+    }
+
+    const fullHistory = selection.fullUciHistory.length > 0 ? selection.fullUciHistory : selection.uciHistory;
+
+    this.historyInitialFen = selection.initialFen;
+    this.moveHistory.set([...fullHistory]);
+    this.moveCursor.set(selection.uciHistory.length);
+    this.fenFeedback.set('Posizione caricata dalla libreria.');
+    this.syncGameState();
+    this.analyzePosition();
+    this.setActiveView('analysis');
   }
 
   onBoardMove(move: BoardMove): void {
@@ -116,6 +145,7 @@ export class Test implements OnInit, OnDestroy {
 
   resetBoard(): void {
     this.chess.reset();
+    this.historyInitialFen = Test.STARTING_FEN;
     this.moveHistory.set([]);
     this.moveCursor.set(0);
     this.fenFeedback.set('');
@@ -137,6 +167,7 @@ export class Test implements OnInit, OnDestroy {
       return;
     }
 
+    this.historyInitialFen = this.chess.fen();
     this.moveHistory.set([]);
     this.moveCursor.set(0);
     this.fenFeedback.set('Posizione caricata.');
@@ -190,6 +221,11 @@ export class Test implements OnInit, OnDestroy {
     }
 
     this.rebuildPositionFromHistory(this.moveCursor() + 1);
+    this.analyzePosition();
+  }
+
+  onMoveJumpRequested(targetPly: number): void {
+    this.rebuildPositionFromHistory(targetPly);
     this.analyzePosition();
   }
 
@@ -292,7 +328,12 @@ export class Test implements OnInit, OnDestroy {
     const history = this.moveHistory();
     const safeTarget = this.clamp(targetCursor, 0, history.length);
 
-    this.chess.reset();
+    try {
+      this.chess.load(this.historyInitialFen);
+    } catch {
+      this.chess.reset();
+      this.historyInitialFen = Test.STARTING_FEN;
+    }
 
     const replayedMoves: string[] = [];
     for (let i = 0; i < safeTarget; i += 1) {
@@ -342,6 +383,155 @@ export class Test implements OnInit, OnDestroy {
 
   private toUci(from: Key, to: Key, promotion?: string): string {
     return `${from}${to}${promotion ?? ''}`;
+  }
+
+  private parsePgnGames(pgn: string, itemId: string): PgnLibraryGame[] {
+    const gameBlocks = this.splitPgnIntoGames(pgn);
+
+    return gameBlocks
+      .map((block, index) => this.parseSinglePgnGame(block, itemId, index))
+      .filter((game): game is PgnLibraryGame => game !== null);
+  }
+
+  private splitPgnIntoGames(pgn: string): string[] {
+    const normalized = pgn.replace(/\r\n?/g, '\n').trim();
+    if (!normalized) {
+      return [];
+    }
+
+    const lines = normalized.split('\n');
+    const games: string[] = [];
+
+    let currentGame: string[] = [];
+    let hasMovetext = false;
+    let hasHeader = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      const isHeaderLine = /^\[[^\]]+\]$/.test(trimmed);
+
+      if (isHeaderLine && hasHeader && hasMovetext && currentGame.length > 0) {
+        const gameText = currentGame.join('\n').trim();
+        if (gameText) {
+          games.push(gameText);
+        }
+
+        currentGame = [line];
+        hasMovetext = false;
+        hasHeader = true;
+        continue;
+      }
+
+      if (isHeaderLine) {
+        hasHeader = true;
+      } else if (trimmed.length > 0 && hasHeader) {
+        hasMovetext = true;
+      }
+
+      currentGame.push(line);
+    }
+
+    const trailingGame = currentGame.join('\n').trim();
+    if (trailingGame) {
+      games.push(trailingGame);
+    }
+
+    return games.length > 0 ? games : [normalized];
+  }
+
+  private parseSinglePgnGame(pgn: string, itemId: string, gameIndex: number): PgnLibraryGame | null {
+    const headers = this.parsePgnHeaders(pgn);
+    const initialFen = this.resolveInitialFen(headers['FEN']);
+
+    const chess = new Chess();
+    try {
+      chess.loadPgn(pgn, { strict: false });
+    } catch {
+      return null;
+    }
+
+    const moves = chess.history({ verbose: true });
+    const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex);
+
+    return {
+      id: `${itemId}-g${gameIndex + 1}`,
+      event: headers['Event'],
+      white: headers['White'],
+      black: headers['Black'],
+      result: headers['Result'],
+      initialFen,
+      positions,
+    };
+  }
+
+  private buildPositionsFromMoves(
+    moves: ChessMove[],
+    initialFen: string,
+    itemId: string,
+    gameIndex: number,
+  ): PgnLibraryPosition[] {
+    const replay = new Chess();
+    if (initialFen !== Test.STARTING_FEN) {
+      replay.load(initialFen);
+    }
+
+    const positions: PgnLibraryPosition[] = [
+      {
+        id: `${itemId}-g${gameIndex + 1}-p0`,
+        ply: 0,
+        moveNumber: 1,
+        turn: replay.turn() === 'w' ? 'white' : 'black',
+        san: '',
+        label: 'Inizio partita',
+        fen: replay.fen(),
+        uciHistory: [],
+      },
+    ];
+
+    const uciHistory: string[] = [];
+
+    for (let index = 0; index < moves.length; index += 1) {
+      const move = moves[index];
+      const result = replay.move({ from: move.from, to: move.to, promotion: move.promotion });
+      if (!result) {
+        break;
+      }
+
+      const uci = this.toUci(result.from as Key, result.to as Key, result.promotion);
+      uciHistory.push(uci);
+
+      const turn = move.color === 'w' ? 'white' : 'black';
+      const moveNumber = Math.floor(index / 2) + 1;
+      const label = `${moveNumber}${turn === 'white' ? '.' : '...'} ${move.san}`;
+
+      positions.push({
+        id: `${itemId}-g${gameIndex + 1}-p${index + 1}`,
+        ply: index + 1,
+        moveNumber,
+        turn,
+        san: move.san,
+        label,
+        fen: replay.fen(),
+        uciHistory: [...uciHistory],
+      });
+    }
+
+    return positions;
+  }
+
+  private resolveInitialFen(fenHeader?: string): string {
+    if (!fenHeader || fenHeader.trim().length === 0) {
+      return Test.STARTING_FEN;
+    }
+
+    const candidate = fenHeader.trim();
+    const chess = new Chess();
+    try {
+      chess.load(candidate);
+      return chess.fen();
+    } catch {
+      return Test.STARTING_FEN;
+    }
   }
 
   private parsePgnHeaders(pgn: string): Record<string, string> {

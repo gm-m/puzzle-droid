@@ -143,6 +143,40 @@ button {
   background: #334155;
 }
 
+.move-list {
+  display: grid;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+}
+
+.history-move-button {
+  background: #334155;
+  padding: 0.38rem 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.history-move-button.played {
+  background: #0b5f59;
+}
+
+.history-move-button.active {
+  background: #0f766e;
+}
+
 .history-nav {
   display: flex;
   align-items: center;

@@ -52,6 +52,8 @@
           [canGoBack]="canGoBack()"
           [canGoForward]="canGoForward()"
           [moveCursorLabel]="moveCursorLabel()"
+          [moves]="moveHistory()"
+          [moveCursor]="moveCursor()"
           (analyze)="analyzePosition()"
           (reset)="resetBoard()"
           (fenApplied)="applyFen($event)"
@@ -60,6 +62,7 @@
           (toggleEvalBar)="toggleEvalBar()"
           (previousMove)="previousMove()"
           (nextMove)="nextMove()"
+          (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
         ></app-analysis-panel>
       </section>
@@ -70,6 +73,7 @@
         [items]="libraryItems()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
+        (positionSelected)="onLibraryPositionSelected($event)"
       ></app-library-panel>
     </ng-template>
   </div>

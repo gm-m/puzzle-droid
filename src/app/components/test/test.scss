@@ -54,12 +54,14 @@
   grid-template-columns: minmax(320px, 600px) 1fr;
   justify-content: center;
   align-content: start;
+  align-items: start;
 }
 
 .board-section {
   display: flex;
   gap: 0.75rem;
   align-items: stretch;
+  align-self: start;
   width: 100%;
 }
 
