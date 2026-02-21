@@ -51,6 +51,7 @@
 .actions {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 button {
@@ -61,11 +62,30 @@ button {
   cursor: pointer;
   background: #111827;
   color: #fff;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
 .toggle {
   justify-self: start;
   background: #334155;
+}
+
+.history-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+
+  .cursor {
+    min-width: 3.5rem;
+    text-align: center;
+    font-weight: 600;
+    color: #1f2937;
+  }
 }
 
 .pv-list {
@@ -80,10 +100,19 @@ button {
   }
 
   ol {
-    padding-left: 1rem;
+    padding-left: 0;
+    list-style: none;
     display: grid;
     gap: 0.5rem;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.88rem;
   }
+}
+
+.line-button {
+  width: 100%;
+  text-align: left;
+  background: #1f2937;
+  white-space: normal;
+  line-height: 1.4;
 }

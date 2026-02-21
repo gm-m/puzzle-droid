@@ -18,6 +18,9 @@ export class Test implements OnInit, OnDestroy {
   readonly turnColor = signal<'white' | 'black'>('white');
   readonly legalDests = signal<Map<Key, Key[]>>(new Map());
 
+  readonly moveHistory = signal<string[]>([]);
+  readonly moveCursor = signal(0);
+
   readonly bestMove = signal('-');
   readonly evalLabel = signal('-');
   readonly isAnalyzing = signal(false);
@@ -51,12 +54,20 @@ export class Test implements OnInit, OnDestroy {
       return;
     }
 
+    const branch = this.moveHistory().slice(0, this.moveCursor());
+    const uci = this.toUci(playedMove.from as Key, playedMove.to as Key, playedMove.promotion);
+    const updatedHistory = [...branch, uci];
+    this.moveHistory.set(updatedHistory);
+    this.moveCursor.set(updatedHistory.length);
+
     this.syncGameState();
     this.analyzePosition();
   }
 
   resetBoard(): void {
     this.chess.reset();
+    this.moveHistory.set([]);
+    this.moveCursor.set(0);
     this.syncGameState();
     this.analyzePosition();
   }
@@ -90,6 +101,65 @@ export class Test implements OnInit, OnDestroy {
 
   toggleEvalBar(): void {
     this.showEvalBar.update((value) => !value);
+  }
+
+  previousMove(): void {
+    if (this.moveCursor() === 0) {
+      return;
+    }
+
+    this.rebuildPositionFromHistory(this.moveCursor() - 1);
+    this.analyzePosition();
+  }
+
+  nextMove(): void {
+    if (this.moveCursor() >= this.moveHistory().length) {
+      return;
+    }
+
+    this.rebuildPositionFromHistory(this.moveCursor() + 1);
+    this.analyzePosition();
+  }
+
+  onLineSelected(line: EngineLine): void {
+    const branch = this.moveHistory().slice(0, this.moveCursor());
+    const executedMoves: string[] = [];
+
+    for (const uci of line.pv) {
+      const parsedMove = this.parseUciMove(uci);
+      if (!parsedMove) {
+        break;
+      }
+
+      const result = this.chess.move(parsedMove);
+      if (!result) {
+        break;
+      }
+
+      executedMoves.push(this.toUci(result.from as Key, result.to as Key, result.promotion));
+    }
+
+    if (executedMoves.length === 0) {
+      return;
+    }
+
+    const updatedHistory = [...branch, ...executedMoves];
+    this.moveHistory.set(updatedHistory);
+    this.moveCursor.set(updatedHistory.length);
+    this.syncGameState();
+    this.analyzePosition();
+  }
+
+  canGoBack(): boolean {
+    return this.moveCursor() > 0;
+  }
+
+  canGoForward(): boolean {
+    return this.moveCursor() < this.moveHistory().length;
+  }
+
+  moveCursorLabel(): string {
+    return `${this.moveCursor()}/${this.moveHistory().length}`;
   }
 
   private syncGameState(): void {
@@ -139,6 +209,62 @@ export class Test implements OnInit, OnDestroy {
 
     this.primaryScore.set(firstLine.score);
     this.evalLabel.set(this.formatScore(firstLine.score));
+  }
+
+  private rebuildPositionFromHistory(targetCursor: number): void {
+    const history = this.moveHistory();
+    const safeTarget = this.clamp(targetCursor, 0, history.length);
+
+    this.chess.reset();
+
+    const replayedMoves: string[] = [];
+    for (let i = 0; i < safeTarget; i += 1) {
+      const parsedMove = this.parseUciMove(history[i]);
+      if (!parsedMove) {
+        break;
+      }
+
+      const result = this.chess.move(parsedMove);
+      if (!result) {
+        break;
+      }
+
+      replayedMoves.push(this.toUci(result.from as Key, result.to as Key, result.promotion));
+    }
+
+    if (replayedMoves.length < safeTarget) {
+      this.moveHistory.set(replayedMoves);
+      this.moveCursor.set(replayedMoves.length);
+      this.syncGameState();
+      return;
+    }
+
+    this.moveCursor.set(safeTarget);
+    this.syncGameState();
+  }
+
+  private parseUciMove(uci: string): { from: Key; to: Key; promotion?: 'q' | 'r' | 'b' | 'n' } | null {
+    if (uci.length < 4) {
+      return null;
+    }
+
+    const from = uci.slice(0, 2) as Key;
+    const to = uci.slice(2, 4) as Key;
+    const promoChar = uci.slice(4, 5).toLowerCase();
+    const promotion =
+      promoChar === 'q' || promoChar === 'r' || promoChar === 'b' || promoChar === 'n'
+        ? (promoChar as 'q' | 'r' | 'b' | 'n')
+        : undefined;
+
+    return {
+      from,
+      to,
+      promotion,
+    };
+  }
+
+  private toUci(from: Key, to: Key, promotion?: string): string {
+    return `${from}${to}${promotion ?? ''}`;
   }
 
   private formatScore(score: EngineScore): string {

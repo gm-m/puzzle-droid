@@ -20,10 +20,16 @@
     [multiPv]="multiPv()"
     [showEvalBar]="showEvalBar()"
     [lines]="lines()"
+    [canGoBack]="canGoBack()"
+    [canGoForward]="canGoForward()"
+    [moveCursorLabel]="moveCursorLabel()"
     (analyze)="analyzePosition()"
     (reset)="resetBoard()"
     (depthChanged)="onDepthChange($event)"
     (multiPvChanged)="onMultiPvChange($event)"
     (toggleEvalBar)="toggleEvalBar()"
+    (previousMove)="previousMove()"
+    (nextMove)="nextMove()"
+    (lineSelected)="onLineSelected($event)"
   ></app-analysis-panel>
 </main>

@@ -17,12 +17,18 @@ export class AnalysisPanelComponent {
   @Input() multiPv = 1;
   @Input() showEvalBar = true;
   @Input() lines: EngineLine[] = [];
+  @Input() canGoBack = false;
+  @Input() canGoForward = false;
+  @Input() moveCursorLabel = '0/0';
 
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
   @Output() readonly depthChanged = new EventEmitter<number>();
   @Output() readonly multiPvChanged = new EventEmitter<number>();
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
+  @Output() readonly previousMove = new EventEmitter<void>();
+  @Output() readonly nextMove = new EventEmitter<void>();
+  @Output() readonly lineSelected = new EventEmitter<EngineLine>();
 
   onDepthInput(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
@@ -40,6 +46,10 @@ export class AnalysisPanelComponent {
 
   lineLabel(line: EngineLine): string {
     return `${this.formatScore(line.score)} | d${line.depth} | ${line.pv.join(' ')}`;
+  }
+
+  selectLine(line: EngineLine): void {
+    this.lineSelected.emit(line);
   }
 
   private formatScore(score: EngineScore): string {

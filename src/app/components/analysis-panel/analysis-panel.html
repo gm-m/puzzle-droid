@@ -29,11 +29,21 @@
     <button type="button" (click)="reset.emit()">Reset</button>
   </div>
 
+  <div class="history-nav">
+    <button type="button" [disabled]="!canGoBack" (click)="previousMove.emit()">Previous</button>
+    <span class="cursor">{{ moveCursorLabel }}</span>
+    <button type="button" [disabled]="!canGoForward" (click)="nextMove.emit()">Next</button>
+  </div>
+
   <section class="pv-list">
     <h2>Engine lines</h2>
     <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
     <ol *ngIf="lines.length > 0">
-      <li *ngFor="let line of lines">{{ lineLabel(line) }}</li>
+      <li *ngFor="let line of lines">
+        <button type="button" class="line-button" (click)="selectLine(line)">
+          {{ lineLabel(line) }}
+        </button>
+      </li>
     </ol>
   </section>
 </aside>
