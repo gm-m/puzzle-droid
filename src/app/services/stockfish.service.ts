@@ -1,0 +1,133 @@
+import { Injectable } from '@angular/core';
+import type { EngineLine, StockfishEvent } from '../models/engine.models';
+
+const STOCKFISH_WORKER_URL = '/stockfish/stockfish-17.1-lite-single-03e3232.js';
+
+interface AnalyzeOptions {
+  depth: number;
+  multiPv: number;
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class StockfishService {
+  private engine?: Worker;
+  private listener?: (event: StockfishEvent) => void;
+  private readonly lines = new Map<number, EngineLine>();
+
+  setListener(listener: (event: StockfishEvent) => void): void {
+    this.listener = listener;
+  }
+
+  init(): void {
+    if (this.engine) {
+      return;
+    }
+
+    try {
+      this.engine = new Worker(STOCKFISH_WORKER_URL);
+    } catch {
+      this.listener?.({ type: 'error', message: 'Engine non disponibile' });
+      return;
+    }
+
+    this.engine.onmessage = (event) => {
+      const rawMessage = typeof event.data === 'string' ? event.data : String(event.data ?? '');
+      this.handleEngineMessage(rawMessage);
+    };
+
+    this.engine.postMessage('uci');
+    this.engine.postMessage('isready');
+  }
+
+  analyze(fen: string, options: AnalyzeOptions): boolean {
+    if (!this.engine) {
+      this.listener?.({ type: 'error', message: 'Engine non disponibile' });
+      return false;
+    }
+
+    const depth = this.clamp(options.depth, 1, 30);
+    const multiPv = this.clamp(options.multiPv, 1, 5);
+
+    this.lines.clear();
+    this.listener?.({ type: 'line', lines: [] });
+
+    this.engine.postMessage(`setoption name MultiPV value ${multiPv}`);
+    this.engine.postMessage('stop');
+    this.engine.postMessage(`position fen ${fen}`);
+    this.engine.postMessage(`go depth ${depth}`);
+
+    return true;
+  }
+
+  destroy(): void {
+    this.engine?.postMessage('stop');
+    this.engine?.terminate();
+    this.engine = undefined;
+    this.lines.clear();
+  }
+
+  private handleEngineMessage(message: string): void {
+    if (message.startsWith('bestmove')) {
+      const bestMove = message.split(' ')[1] ?? '-';
+      this.listener?.({ type: 'bestmove', bestMove });
+      return;
+    }
+
+    if (!message.startsWith('info')) {
+      return;
+    }
+
+    const line = this.parseLine(message);
+    if (!line) {
+      return;
+    }
+
+    this.lines.set(line.multipv, line);
+    const sortedLines = [...this.lines.values()].sort((a, b) => a.multipv - b.multipv);
+    this.listener?.({ type: 'line', lines: sortedLines });
+  }
+
+  private parseLine(message: string): EngineLine | null {
+    const depthMatch = message.match(/\bdepth (\d+)/);
+    const multipvMatch = message.match(/\bmultipv (\d+)/);
+    const cpMatch = message.match(/\bscore cp (-?\d+)/);
+    const mateMatch = message.match(/\bscore mate (-?\d+)/);
+    const pvMatch = message.match(/\spv (.+)$/);
+
+    if (!depthMatch || !pvMatch || (!cpMatch && !mateMatch)) {
+      return null;
+    }
+
+    const depth = Number(depthMatch[1]);
+    const multipv = Number(multipvMatch?.[1] ?? 1);
+    const pv = pvMatch[1].trim().split(/\s+/);
+
+    if (cpMatch) {
+      return {
+        multipv,
+        depth,
+        score: {
+          type: 'cp',
+          value: Number(cpMatch[1]),
+        },
+        pv,
+      };
+    }
+
+    return {
+      multipv,
+      depth,
+      score: {
+        type: 'mate',
+        value: Number(mateMatch![1]),
+      },
+      pv,
+    };
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, Math.trunc(value)));
+  }
+}

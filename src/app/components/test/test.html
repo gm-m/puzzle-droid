@@ -1,21 +1,29 @@
 <main class="poc-shell">
   <section class="board-section">
-    <div #boardHost class="board"></div>
+    <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar()"></app-eval-bar>
+
+    <app-chess-board
+      class="board-host"
+      [fen]="currentFen()"
+      [turnColor]="turnColor()"
+      [legalDests]="legalDests()"
+      (moved)="onBoardMove($event)"
+    ></app-chess-board>
   </section>
 
-  <aside class="analysis-panel">
-    <h1>Chessground + Stockfish POC</h1>
-
-    <div class="stats">
-      <p><strong>Best move:</strong> {{ bestMove() }}</p>
-      <p><strong>Eval:</strong> {{ evaluation() }}</p>
-      <p><strong>Status:</strong> {{ isAnalyzing() ? 'Analyzing...' : 'Ready' }}</p>
-      <p class="fen"><strong>FEN:</strong> {{ currentFen() }}</p>
-    </div>
-
-    <div class="actions">
-      <button type="button" (click)="analyzePosition()">Analyze</button>
-      <button type="button" (click)="resetBoard()">Reset</button>
-    </div>
-  </aside>
+  <app-analysis-panel
+    [isAnalyzing]="isAnalyzing()"
+    [bestMove]="bestMove()"
+    [evalLabel]="evalLabel()"
+    [fen]="currentFen()"
+    [depth]="depth()"
+    [multiPv]="multiPv()"
+    [showEvalBar]="showEvalBar()"
+    [lines]="lines()"
+    (analyze)="analyzePosition()"
+    (reset)="resetBoard()"
+    (depthChanged)="onDepthChange($event)"
+    (multiPvChanged)="onMultiPvChange($event)"
+    (toggleEvalBar)="toggleEvalBar()"
+  ></app-analysis-panel>
 </main>

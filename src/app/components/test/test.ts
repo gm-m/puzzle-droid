@@ -1,125 +1,101 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { Chess } from 'chess.js';
-import { Chessground } from 'chessground';
-import type { Api } from 'chessground/api';
 import type { Key } from 'chessground/types';
-
-const STOCKFISH_WORKER_URL = '/stockfish/stockfish-17.1-lite-single-03e3232.js';
-
-type StockfishEngine = {
-  onmessage: ((event: MessageEvent<string> | string) => void) | null;
-  postMessage: (message: string) => void;
-  terminate?: () => void;
-};
+import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel';
+import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
+import { EvalBarComponent } from '../eval-bar/eval-bar';
+import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
+import { StockfishService } from '../../services/stockfish.service';
 
 @Component({
   selector: 'app-test',
-  imports: [],
+  imports: [ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
-export class Test implements AfterViewInit, OnDestroy {
-  @ViewChild('boardHost', { static: true })
-  private readonly boardHost!: ElementRef<HTMLDivElement>;
-
+export class Test implements OnInit, OnDestroy {
   readonly currentFen = signal('');
+  readonly turnColor = signal<'white' | 'black'>('white');
+  readonly legalDests = signal<Map<Key, Key[]>>(new Map());
+
   readonly bestMove = signal('-');
-  readonly evaluation = signal('-');
+  readonly evalLabel = signal('-');
   readonly isAnalyzing = signal(false);
+  readonly lines = signal<EngineLine[]>([]);
+  readonly primaryScore = signal<EngineScore | null>(null);
+
+  readonly depth = signal(12);
+  readonly multiPv = signal(1);
+  readonly showEvalBar = signal(true);
 
   private readonly chess = new Chess();
-  private boardApi?: Api;
-  private engine?: StockfishEngine;
 
-  ngAfterViewInit(): void {
-    this.currentFen.set(this.chess.fen());
-    this.initBoard();
-    this.initEngine();
+  constructor(private readonly stockfish: StockfishService) {}
+
+  ngOnInit(): void {
+    this.syncGameState();
+    this.stockfish.setListener((event) => this.handleEngineEvent(event));
+    this.stockfish.init();
     this.analyzePosition();
   }
 
   ngOnDestroy(): void {
-    this.engine?.postMessage('stop');
-    this.engine?.terminate?.();
+    this.stockfish.destroy();
+  }
+
+  onBoardMove(move: BoardMove): void {
+    const playedMove = this.chess.move({ from: move.from, to: move.to, promotion: 'q' });
+
+    if (!playedMove) {
+      this.syncGameState();
+      return;
+    }
+
+    this.syncGameState();
+    this.analyzePosition();
   }
 
   resetBoard(): void {
     this.chess.reset();
-    this.syncBoard();
+    this.syncGameState();
     this.analyzePosition();
   }
 
   analyzePosition(): void {
-    if (!this.engine) {
-      this.evaluation.set('Engine non disponibile');
-      return;
-    }
-
     this.isAnalyzing.set(true);
     this.bestMove.set('-');
-    this.evaluation.set('-');
+    this.lines.set([]);
+    this.primaryScore.set(null);
+    this.evalLabel.set('-');
 
-    this.engine.postMessage('stop');
-    this.engine.postMessage(`position fen ${this.chess.fen()}`);
-    this.engine.postMessage('go depth 12');
-  }
-
-  private initBoard(): void {
-    this.boardApi = Chessground(this.boardHost.nativeElement, {
-      fen: this.chess.fen(),
-      orientation: 'white',
-      movable: {
-        color: 'both',
-        free: false,
-        dests: this.getLegalDestinations(),
-        events: {
-          after: (from, to) => this.onMove(from, to),
-        },
-      },
+    const hasStarted = this.stockfish.analyze(this.chess.fen(), {
+      depth: this.depth(),
+      multiPv: this.multiPv(),
     });
+
+    if (!hasStarted) {
+      this.isAnalyzing.set(false);
+    }
   }
 
-  private initEngine(): void {
-    try {
-      this.engine = new Worker(STOCKFISH_WORKER_URL) as unknown as StockfishEngine;
-    } catch {
-      this.evaluation.set('Engine non disponibile');
-      return;
-    }
-
-    this.engine.onmessage = (event) => {
-      const message = typeof event === 'string' ? event : event.data;
-      this.handleEngineMessage(message);
-    };
-
-    this.engine.postMessage('uci');
-    this.engine.postMessage('isready');
-  }
-
-  private onMove(from: Key, to: Key): void {
-    const move = this.chess.move({ from, to, promotion: 'q' });
-
-    if (!move) {
-      this.syncBoard();
-      return;
-    }
-
-    this.syncBoard();
+  onDepthChange(depth: number): void {
+    this.depth.set(this.clamp(depth, 1, 30));
     this.analyzePosition();
   }
 
-  private syncBoard(): void {
-    this.currentFen.set(this.chess.fen());
+  onMultiPvChange(multiPv: number): void {
+    this.multiPv.set(this.clamp(multiPv, 1, 5));
+    this.analyzePosition();
+  }
 
-    this.boardApi?.set({
-      fen: this.chess.fen(),
-      turnColor: this.chess.turn() === 'w' ? 'white' : 'black',
-      movable: {
-        color: 'both',
-        free: false,
-        dests: this.getLegalDestinations(),
-      },
-    });
+  toggleEvalBar(): void {
+    this.showEvalBar.update((value) => !value);
+  }
+
+  private syncGameState(): void {
+    this.currentFen.set(this.chess.fen());
+    this.turnColor.set(this.chess.turn() === 'w' ? 'white' : 'black');
+    this.legalDests.set(this.getLegalDestinations());
   }
 
   private getLegalDestinations(): Map<Key, Key[]> {
@@ -140,23 +116,45 @@ export class Test implements AfterViewInit, OnDestroy {
     return destinations;
   }
 
-  private handleEngineMessage(message: string): void {
-    if (message.startsWith('info')) {
-      const cpMatch = message.match(/score cp (-?\d+)/);
-      if (cpMatch) {
-        this.evaluation.set((Number(cpMatch[1]) / 100).toFixed(2));
-      }
-
-      const mateMatch = message.match(/score mate (-?\d+)/);
-      if (mateMatch) {
-        this.evaluation.set(`M${mateMatch[1]}`);
-      }
-    }
-
-    if (message.startsWith('bestmove')) {
-      const move = message.split(' ')[1] ?? '-';
-      this.bestMove.set(move);
+  private handleEngineEvent(event: StockfishEvent): void {
+    if (event.type === 'error') {
+      this.evalLabel.set(event.message);
       this.isAnalyzing.set(false);
+      return;
     }
+
+    if (event.type === 'bestmove') {
+      this.bestMove.set(event.bestMove);
+      this.isAnalyzing.set(false);
+      return;
+    }
+
+    this.lines.set(event.lines);
+    const firstLine = event.lines[0];
+    if (!firstLine) {
+      this.primaryScore.set(null);
+      this.evalLabel.set('-');
+      return;
+    }
+
+    this.primaryScore.set(firstLine.score);
+    this.evalLabel.set(this.formatScore(firstLine.score));
+  }
+
+  private formatScore(score: EngineScore): string {
+    if (score.type === 'mate') {
+      return `M${score.value}`;
+    }
+
+    const pawns = score.value / 100;
+    return `${pawns >= 0 ? '+' : ''}${pawns.toFixed(2)}`;
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    if (!Number.isFinite(value)) {
+      return min;
+    }
+
+    return Math.max(min, Math.min(max, Math.trunc(value)));
   }
 }

@@ -1,0 +1,7 @@
+<div class="eval-bar" [class.is-hidden]="hidden">
+  <div class="score">{{ scoreLabel }}</div>
+  <div class="track">
+    <div class="black" [style.height.%]="100 - whitePercent"></div>
+    <div class="white" [style.height.%]="whitePercent"></div>
+  </div>
+</div>

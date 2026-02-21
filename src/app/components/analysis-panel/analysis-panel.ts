@@ -1,0 +1,53 @@
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import type { EngineLine, EngineScore } from '../../models/engine.models';
+
+@Component({
+  selector: 'app-analysis-panel',
+  imports: [CommonModule],
+  templateUrl: './analysis-panel.html',
+  styleUrl: './analysis-panel.scss',
+})
+export class AnalysisPanelComponent {
+  @Input() isAnalyzing = false;
+  @Input() bestMove = '-';
+  @Input() evalLabel = '-';
+  @Input() fen = '';
+  @Input() depth = 12;
+  @Input() multiPv = 1;
+  @Input() showEvalBar = true;
+  @Input() lines: EngineLine[] = [];
+
+  @Output() readonly analyze = new EventEmitter<void>();
+  @Output() readonly reset = new EventEmitter<void>();
+  @Output() readonly depthChanged = new EventEmitter<number>();
+  @Output() readonly multiPvChanged = new EventEmitter<number>();
+  @Output() readonly toggleEvalBar = new EventEmitter<void>();
+
+  onDepthInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) {
+      this.depthChanged.emit(value);
+    }
+  }
+
+  onMultiPvInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) {
+      this.multiPvChanged.emit(value);
+    }
+  }
+
+  lineLabel(line: EngineLine): string {
+    return `${this.formatScore(line.score)} | d${line.depth} | ${line.pv.join(' ')}`;
+  }
+
+  private formatScore(score: EngineScore): string {
+    if (score.type === 'mate') {
+      return `M${score.value}`;
+    }
+
+    const pawns = score.value / 100;
+    return `${pawns >= 0 ? '+' : ''}${pawns.toFixed(2)}`;
+  }
+}

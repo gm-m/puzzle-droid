@@ -1,0 +1,39 @@
+<aside class="analysis-panel">
+  <h1>Chessground + Stockfish POC</h1>
+
+  <div class="stats">
+    <p><strong>Best move:</strong> {{ bestMove }}</p>
+    <p><strong>Eval:</strong> {{ evalLabel }}</p>
+    <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
+    <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
+  </div>
+
+  <div class="engine-config">
+    <label>
+      Depth
+      <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
+    </label>
+
+    <label>
+      Multiple lines
+      <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
+    </label>
+
+    <button type="button" class="toggle" (click)="toggleEvalBar.emit()">
+      {{ showEvalBar ? 'Nascondi eval bar' : 'Mostra eval bar' }}
+    </button>
+  </div>
+
+  <div class="actions">
+    <button type="button" (click)="analyze.emit()">Analyze</button>
+    <button type="button" (click)="reset.emit()">Reset</button>
+  </div>
+
+  <section class="pv-list">
+    <h2>Engine lines</h2>
+    <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
+    <ol *ngIf="lines.length > 0">
+      <li *ngFor="let line of lines">{{ lineLabel(line) }}</li>
+    </ol>
+  </section>
+</aside>

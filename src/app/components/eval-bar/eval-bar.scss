@@ -1,0 +1,40 @@
+.eval-bar {
+  width: 2rem;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.5rem;
+  transition: width 200ms ease, opacity 200ms ease;
+
+  &.is-hidden {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+}
+
+.score {
+  border-radius: 0.4rem;
+  background: #111827;
+  color: #fff;
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 0.25rem 0.1rem;
+}
+
+.track {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+}
+
+.black {
+  background: #111827;
+}
+
+.white {
+  background: #f9fafb;
+}
