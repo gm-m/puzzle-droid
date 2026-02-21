@@ -1,6 +1,26 @@
 <aside class="analysis-panel">
   <h1>Chessground + Stockfish POC</h1>
 
+  <section class="pv-list">
+    <h2>Engine lines</h2>
+    <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
+    <ol *ngIf="lines.length > 0">
+      <li *ngFor="let line of lines">
+        <p class="line-header">{{ lineHeader(line) }}</p>
+        <div class="line-moves">
+          <button
+            *ngFor="let move of line.pv; let moveIndex = index"
+            type="button"
+            class="line-button"
+            (click)="selectLineMove(line, moveIndex)"
+          >
+            {{ move }}
+          </button>
+        </div>
+      </li>
+    </ol>
+  </section>
+
   <div class="stats">
     <p><strong>Best move:</strong> {{ bestMove }}</p>
     <p><strong>Eval:</strong> {{ evalLabel }}</p>
@@ -44,23 +64,4 @@
     <button type="button" [disabled]="!canGoForward" (click)="nextMove.emit()">Next</button>
   </div>
 
-  <section class="pv-list">
-    <h2>Engine lines</h2>
-    <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
-    <ol *ngIf="lines.length > 0">
-      <li *ngFor="let line of lines">
-        <p class="line-header">{{ lineHeader(line) }}</p>
-        <div class="line-moves">
-          <button
-            *ngFor="let move of line.pv; let moveIndex = index"
-            type="button"
-            class="line-button"
-            (click)="selectLineMove(line, moveIndex)"
-          >
-            {{ move }}
-          </button>
-        </div>
-      </li>
-    </ol>
-  </section>
 </aside>

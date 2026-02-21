@@ -8,6 +8,12 @@ interface AnalyzeOptions {
   multiPv: number;
 }
 
+interface PendingAnalyze {
+  fen: string;
+  depth: number;
+  multiPv: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -15,6 +21,8 @@ export class StockfishService {
   private engine?: Worker;
   private listener?: (event: StockfishEvent) => void;
   private readonly lines = new Map<number, EngineLine>();
+  private whitePerspectiveFactor = 1;
+  private pendingAnalyze: PendingAnalyze | null = null;
 
   setListener(listener: (event: StockfishEvent) => void): void {
     this.listener = listener;
@@ -49,14 +57,13 @@ export class StockfishService {
 
     const depth = this.clamp(options.depth, 1, 30);
     const multiPv = this.clamp(options.multiPv, 1, 5);
+    this.pendingAnalyze = { fen, depth, multiPv };
 
     this.lines.clear();
     this.listener?.({ type: 'line', lines: [] });
 
-    this.engine.postMessage(`setoption name MultiPV value ${multiPv}`);
     this.engine.postMessage('stop');
-    this.engine.postMessage(`position fen ${fen}`);
-    this.engine.postMessage(`go depth ${depth}`);
+    this.engine.postMessage('isready');
 
     return true;
   }
@@ -69,6 +76,11 @@ export class StockfishService {
   }
 
   private handleEngineMessage(message: string): void {
+    if (message.startsWith('readyok')) {
+      this.startPendingAnalyze();
+      return;
+    }
+
     if (message.startsWith('bestmove')) {
       const bestMove = message.split(' ')[1] ?? '-';
       this.listener?.({ type: 'bestmove', bestMove });
@@ -87,6 +99,20 @@ export class StockfishService {
     this.lines.set(line.multipv, line);
     const sortedLines = [...this.lines.values()].sort((a, b) => a.multipv - b.multipv);
     this.listener?.({ type: 'line', lines: sortedLines });
+  }
+
+  private startPendingAnalyze(): void {
+    if (!this.engine || !this.pendingAnalyze) {
+      return;
+    }
+
+    const { fen, depth, multiPv } = this.pendingAnalyze;
+    this.pendingAnalyze = null;
+    this.whitePerspectiveFactor = this.getWhitePerspectiveFactor(fen);
+
+    this.engine.postMessage(`setoption name MultiPV value ${multiPv}`);
+    this.engine.postMessage(`position fen ${fen}`);
+    this.engine.postMessage(`go depth ${depth}`);
   }
 
   private parseLine(message: string): EngineLine | null {
@@ -110,7 +136,7 @@ export class StockfishService {
         depth,
         score: {
           type: 'cp',
-          value: Number(cpMatch[1]),
+          value: Number(cpMatch[1]) * this.whitePerspectiveFactor,
         },
         pv,
       };
@@ -121,10 +147,15 @@ export class StockfishService {
       depth,
       score: {
         type: 'mate',
-        value: Number(mateMatch![1]),
+        value: Number(mateMatch![1]) * this.whitePerspectiveFactor,
       },
       pv,
     };
+  }
+
+  private getWhitePerspectiveFactor(fen: string): number {
+    const sideToMove = fen.trim().split(/\s+/)[1];
+    return sideToMove === 'b' ? -1 : 1;
   }
 
   private clamp(value: number, min: number, max: number): number {

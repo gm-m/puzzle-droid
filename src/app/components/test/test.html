@@ -25,7 +25,7 @@
 
   <div class="content-area">
     <ng-container *ngIf="activeView() === 'analysis'; else libraryView">
-      <section class="poc-shell">
+      <section class="poc-shell" style="display: flex;">
         <section class="board-section">
           <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar()"></app-eval-bar>
 
