@@ -27,7 +27,7 @@
     <ng-container *ngIf="activeView() === 'analysis'; else libraryView">
       <section class="poc-shell">
         <section class="board-section">
-          <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar()"></app-eval-bar>
+          <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar() || isEngineHidden()"></app-eval-bar>
 
           <app-chess-board
             class="board-host"
@@ -54,6 +54,9 @@
           [moveCursorLabel]="moveCursorLabel()"
           [moves]="moveHistory()"
           [moveCursor]="moveCursor()"
+          [hideEngine]="isEngineHidden()"
+          [puzzleMessage]="puzzleMessage()"
+          [showSurrender]="showSurrenderButton()"
           (analyze)="analyzePosition()"
           (reset)="resetBoard()"
           (fenApplied)="applyFen($event)"
@@ -64,6 +67,7 @@
           (nextMove)="nextMove()"
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
+          (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
       </section>
     </ng-container>
@@ -73,7 +77,7 @@
         [items]="libraryItems()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
-        (positionSelected)="onLibraryPositionSelected($event)"
+        (gameSelected)="onLibraryGameSelected($event)"
       ></app-library-panel>
     </ng-template>
   </div>

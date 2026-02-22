@@ -16,6 +16,18 @@
   }
 }
 
+.puzzle-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #334155;
+
+  input {
+    margin: 0;
+  }
+}
+
 .card-details {
   margin-top: 0.35rem;
   padding-top: 0.5rem;
@@ -35,28 +47,16 @@
   }
 }
 
-.positions-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.position-button {
+.game-select-button {
   width: 100%;
   text-align: left;
   border: 1px solid #cbd5e1;
   border-radius: 0.5rem;
   background: #f8fafc;
   color: #0f172a;
-  padding: 0.35rem 0.5rem;
+  padding: 0.45rem 0.55rem;
   cursor: pointer;
-}
-
-.position-button.selected {
-  border-color: #0f766e;
-  background: #ccfbf1;
+  font-weight: 600;
 }
 
 .upload-button {

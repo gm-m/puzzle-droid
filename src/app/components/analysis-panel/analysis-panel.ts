@@ -29,6 +29,9 @@ export class AnalysisPanelComponent {
   @Input() moveCursor = 0;
   @Input() fenInputValue = '';
   @Input() fenFeedback = '';
+  @Input() hideEngine = false;
+  @Input() puzzleMessage = '';
+  @Input() showSurrender = false;
 
   isSettingsOpen = false;
 
@@ -42,6 +45,7 @@ export class AnalysisPanelComponent {
   @Output() readonly moveJumpRequested = new EventEmitter<number>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();
+  @Output() readonly surrenderPuzzle = new EventEmitter<void>();
 
   toggleSettings(): void {
     this.isSettingsOpen = !this.isSettingsOpen;

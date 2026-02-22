@@ -68,6 +68,13 @@ export class StockfishService {
     return true;
   }
 
+  stop(): void {
+    this.pendingAnalyze = null;
+    this.engine?.postMessage('stop');
+    this.lines.clear();
+    this.listener?.({ type: 'line', lines: [] });
+  }
+
   destroy(): void {
     this.engine?.postMessage('stop');
     this.engine?.terminate();

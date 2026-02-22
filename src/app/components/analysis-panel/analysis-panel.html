@@ -1,71 +1,83 @@
 <aside class="analysis-panel">
   <h1>Chessground + Stockfish POC</h1>
 
-  <section class="pv-list">
-    <h2>Engine lines</h2>
-    <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
-    <ol *ngIf="lines.length > 0">
-      <li *ngFor="let line of lines">
-        <p class="line-header">{{ lineHeader(line) }}</p>
-        <div class="line-moves">
-          <button
-            *ngFor="let move of line.pv; let moveIndex = index"
-            type="button"
-            class="line-button"
-            (click)="selectLineMove(line, moveIndex)"
-          >
-            {{ move }}
+  <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
+    <section class="pv-list">
+      <h2>Engine lines</h2>
+      <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
+      <ol *ngIf="lines.length > 0">
+        <li *ngFor="let line of lines">
+          <p class="line-header">{{ lineHeader(line) }}</p>
+          <div class="line-moves">
+            <button
+              *ngFor="let move of line.pv; let moveIndex = index"
+              type="button"
+              class="line-button"
+              (click)="selectLineMove(line, moveIndex)"
+            >
+              {{ move }}
+            </button>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <div class="settings-accordion">
+      <button type="button" class="accordion-header" (click)="toggleSettings()">
+        Impostazioni e Stato Engine
+        <span class="accordion-icon" [class.open]="isSettingsOpen">▼</span>
+      </button>
+
+      <div class="accordion-content" *ngIf="isSettingsOpen">
+        <div class="stats">
+          <p><strong>Best move:</strong> {{ bestMove }}</p>
+          <p><strong>Eval:</strong> {{ evalLabel }}</p>
+          <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
+          <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
+        </div>
+
+        <div class="engine-config">
+          <label>
+            Depth
+            <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
+          </label>
+
+          <label>
+            Multiple lines
+            <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
+          </label>
+
+          <button type="button" class="toggle" (click)="toggleEvalBar.emit()">
+            {{ showEvalBar ? 'Nascondi eval bar' : 'Mostra eval bar' }}
           </button>
         </div>
-      </li>
-    </ol>
-  </section>
 
-  <div class="settings-accordion">
-    <button type="button" class="accordion-header" (click)="toggleSettings()">
-      Impostazioni e Stato Engine
-      <span class="accordion-icon" [class.open]="isSettingsOpen">▼</span>
-    </button>
-    
-    <div class="accordion-content" *ngIf="isSettingsOpen">
-      <div class="stats">
-        <p><strong>Best move:</strong> {{ bestMove }}</p>
-        <p><strong>Eval:</strong> {{ evalLabel }}</p>
-        <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
-        <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
-      </div>
+        <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
+          <label>
+            Posizione iniziale (FEN)
+            <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
+          </label>
+          <button type="submit">Applica FEN</button>
+          <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
+        </form>
 
-      <div class="engine-config">
-        <label>
-          Depth
-          <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
-        </label>
-
-        <label>
-          Multiple lines
-          <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
-        </label>
-
-        <button type="button" class="toggle" (click)="toggleEvalBar.emit()">
-          {{ showEvalBar ? 'Nascondi eval bar' : 'Mostra eval bar' }}
-        </button>
-      </div>
-
-      <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
-        <label>
-          Posizione iniziale (FEN)
-          <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
-        </label>
-        <button type="submit">Applica FEN</button>
-        <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
-      </form>
-
-      <div class="actions">
-        <button type="button" (click)="analyze.emit()">Analyze</button>
-        <button type="button" (click)="reset.emit()">Reset</button>
+        <div class="actions">
+          <button type="button" (click)="analyze.emit()">Analyze</button>
+          <button type="button" (click)="reset.emit()">Reset</button>
+        </div>
       </div>
     </div>
-  </div>
+  </ng-container>
+
+  <ng-template #puzzleModeInfo>
+    <section class="puzzle-status">
+      <h2>Modalità Puzzle</h2>
+      <p>{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+      <button *ngIf="showSurrender" type="button" class="surrender" (click)="surrenderPuzzle.emit()">
+        Arrenditi
+      </button>
+    </section>
+  </ng-template>
 
   <section class="move-list" *ngIf="moves.length > 0">
     <h2>Mosse giocate</h2>

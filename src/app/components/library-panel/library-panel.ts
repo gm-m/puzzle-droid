@@ -1,20 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem } from '../../models/library.models';
 
 export interface LibraryModeChange {
   id: string;
   mode: LibraryMode;
 }
 
-export interface LibraryPositionSelection {
+export interface LibraryGameSelection {
   itemId: string;
   gameId: string;
-  positionId: string;
+  mode: LibraryMode;
   initialFen: string;
-  fen: string;
-  uciHistory: string[];
   fullUciHistory: string[];
+  autoPlayFirstMove: boolean;
 }
 
 @Component({
@@ -28,10 +27,10 @@ export class LibraryPanelComponent {
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
-  @Output() readonly positionSelected = new EventEmitter<LibraryPositionSelection>();
+  @Output() readonly gameSelected = new EventEmitter<LibraryGameSelection>();
 
   expandedItemId: string | null = null;
-  selectedPositionKey: string | null = null;
+  private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -52,23 +51,26 @@ export class LibraryPanelComponent {
     return this.expandedItemId === id;
   }
 
-  onPositionClick(itemId: string, game: PgnLibraryGame, position: PgnLibraryPosition): void {
+  onGameClick(item: PgnLibraryItem, game: PgnLibraryGame): void {
     const fullUciHistory = game.positions.at(-1)?.uciHistory ?? [];
 
-    this.selectedPositionKey = this.buildPositionKey(itemId, game.id, position.id);
-    this.positionSelected.emit({
-      itemId,
+    this.gameSelected.emit({
+      itemId: item.id,
       gameId: game.id,
-      positionId: position.id,
+      mode: item.mode,
       initialFen: game.initialFen,
-      fen: position.fen,
-      uciHistory: [...position.uciHistory],
       fullUciHistory: [...fullUciHistory],
+      autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
     });
   }
 
-  isPositionSelected(itemId: string, gameId: string, positionId: string): boolean {
-    return this.selectedPositionKey === this.buildPositionKey(itemId, gameId, positionId);
+  onPuzzleAutoFirstMoveChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleAutoFirstMoveByItem.set(itemId, checked);
+  }
+
+  isPuzzleAutoFirstMove(itemId: string): boolean {
+    return this.puzzleAutoFirstMoveByItem.get(itemId) ?? false;
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {
@@ -79,7 +81,4 @@ export class LibraryPanelComponent {
     return `Partita ${index + 1}: ${white} vs ${black} (${result})`;
   }
 
-  private buildPositionKey(itemId: string, gameId: string, positionId: string): string {
-    return `${itemId}:${gameId}:${positionId}`;
-  }
 }

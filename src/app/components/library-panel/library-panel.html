@@ -7,7 +7,7 @@
     </label>
   </header>
 
-  <p class="hint">Carica file PGN, apri una card e seleziona una partita/posizione per visualizzarla sulla scacchiera.</p>
+  <p class="hint">Carica file PGN, apri una card e seleziona una partita per avviarla sulla scacchiera.</p>
 
   <div class="library-grid" *ngIf="items.length > 0; else emptyState">
     <article class="game-card" *ngFor="let item of items">
@@ -28,26 +28,24 @@
         Modalità
         <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
           <option value="view">Visualizzazione</option>
-          <option value="puzzle">Puzzle (coming soon)</option>
+          <option value="puzzle">Puzzle</option>
         </select>
+      </label>
+
+      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+        <input
+          type="checkbox"
+          [checked]="isPuzzleAutoFirstMove(item.id)"
+          (change)="onPuzzleAutoFirstMoveChange(item.id, $event)"
+        />
+        Auto-esegui la prima mossa all'apertura partita
       </label>
 
       <section class="card-details" *ngIf="isExpanded(item.id)">
         <article class="library-game" *ngFor="let game of item.games; let gameIndex = index">
-          <h3>{{ gameTitle(gameIndex, item) }}</h3>
-
-          <ul class="positions-list">
-            <li *ngFor="let position of game.positions">
-              <button
-                type="button"
-                class="position-button"
-                [class.selected]="isPositionSelected(item.id, game.id, position.id)"
-                (click)="onPositionClick(item.id, game, position)"
-              >
-                {{ position.label }}
-              </button>
-            </li>
-          </ul>
+          <button type="button" class="game-select-button" (click)="onGameClick(item, game)">
+            {{ gameTitle(gameIndex, item) }}
+          </button>
         </article>
       </section>
     </article>

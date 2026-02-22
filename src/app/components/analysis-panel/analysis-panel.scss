@@ -143,6 +143,25 @@ button {
   background: #334155;
 }
 
+.puzzle-status {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+
+  h2,
+  p {
+    margin: 0;
+  }
+}
+
+.surrender {
+  justify-self: start;
+  background: #b91c1c;
+}
+
 .move-list {
   display: grid;
   gap: 0.5rem;

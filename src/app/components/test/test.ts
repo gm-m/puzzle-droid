@@ -8,8 +8,8 @@ import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board'
 import { EvalBarComponent } from '../eval-bar/eval-bar';
 import {
   LibraryPanelComponent,
+  type LibraryGameSelection,
   type LibraryModeChange,
-  type LibraryPositionSelection,
 } from '../library-panel/library-panel';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
 import type { PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
@@ -44,6 +44,10 @@ export class Test implements OnInit, OnDestroy {
   readonly multiPv = signal(1);
   readonly showEvalBar = signal(true);
   readonly fenFeedback = signal('');
+  readonly puzzleMessage = signal('');
+
+  readonly isPuzzleMode = signal(false);
+  readonly isPuzzleSurrendered = signal(false);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
 
@@ -107,25 +111,52 @@ export class Test implements OnInit, OnDestroy {
     );
   }
 
-  onLibraryPositionSelected(selection: LibraryPositionSelection): void {
+  onLibraryGameSelected(selection: LibraryGameSelection): void {
     try {
-      this.chess.load(selection.fen);
+      this.chess.load(selection.initialFen);
     } catch {
       return;
     }
 
-    const fullHistory = selection.fullUciHistory.length > 0 ? selection.fullUciHistory : selection.uciHistory;
-
     this.historyInitialFen = selection.initialFen;
+    const fullHistory = [...selection.fullUciHistory];
+    let startCursor = 0;
+
+    if (selection.mode === 'puzzle') {
+      this.isPuzzleMode.set(true);
+      this.isPuzzleSurrendered.set(false);
+      this.stockfish.stop();
+
+      if (selection.autoPlayFirstMove && fullHistory.length > 0) {
+        if (this.autoPlayFirstPuzzleMove(fullHistory[0])) {
+          startCursor = 1;
+          this.puzzleMessage.set('Prima mossa eseguita. Trova la continuazione corretta.');
+        } else {
+          this.puzzleMessage.set('Puzzle avviato. Mossa iniziale non auto-applicabile, continua manualmente.');
+        }
+      } else {
+        this.puzzleMessage.set('Puzzle avviato. Trova la prossima mossa corretta del PGN.');
+      }
+    } else {
+      this.isPuzzleMode.set(false);
+      this.isPuzzleSurrendered.set(false);
+      this.puzzleMessage.set('');
+    }
+
     this.moveHistory.set([...fullHistory]);
-    this.moveCursor.set(selection.uciHistory.length);
-    this.fenFeedback.set('Posizione caricata dalla libreria.');
+    this.moveCursor.set(startCursor);
+    this.fenFeedback.set('Partita caricata dalla libreria.');
     this.syncGameState();
     this.analyzePosition();
     this.setActiveView('analysis');
   }
 
   onBoardMove(move: BoardMove): void {
+    if (this.isPuzzleActive()) {
+      this.handlePuzzleMove(move);
+      return;
+    }
+
     const playedMove = this.chess.move({ from: move.from, to: move.to, promotion: 'q' });
 
     if (!playedMove) {
@@ -146,6 +177,9 @@ export class Test implements OnInit, OnDestroy {
   resetBoard(): void {
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
+    this.isPuzzleMode.set(false);
+    this.isPuzzleSurrendered.set(false);
+    this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
     this.fenFeedback.set('');
@@ -168,6 +202,9 @@ export class Test implements OnInit, OnDestroy {
     }
 
     this.historyInitialFen = this.chess.fen();
+    this.isPuzzleMode.set(false);
+    this.isPuzzleSurrendered.set(false);
+    this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
     this.fenFeedback.set('Posizione caricata.');
@@ -181,6 +218,12 @@ export class Test implements OnInit, OnDestroy {
     this.lines.set([]);
     this.primaryScore.set(null);
     this.evalLabel.set('-');
+
+    if (this.isPuzzleActive()) {
+      this.stockfish.stop();
+      this.isAnalyzing.set(false);
+      return;
+    }
 
     const hasStarted = this.stockfish.analyze(this.chess.fen(), {
       depth: this.depth(),
@@ -225,7 +268,21 @@ export class Test implements OnInit, OnDestroy {
   }
 
   onMoveJumpRequested(targetPly: number): void {
+    if (this.isPuzzleActive()) {
+      return;
+    }
+
     this.rebuildPositionFromHistory(targetPly);
+    this.analyzePosition();
+  }
+
+  onPuzzleSurrender(): void {
+    if (!this.isPuzzleMode() || this.isPuzzleSurrendered()) {
+      return;
+    }
+
+    this.isPuzzleSurrendered.set(true);
+    this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     this.analyzePosition();
   }
 
@@ -264,11 +321,27 @@ export class Test implements OnInit, OnDestroy {
   }
 
   canGoBack(): boolean {
+    if (this.isPuzzleActive()) {
+      return false;
+    }
+
     return this.moveCursor() > 0;
   }
 
   canGoForward(): boolean {
+    if (this.isPuzzleActive()) {
+      return false;
+    }
+
     return this.moveCursor() < this.moveHistory().length;
+  }
+
+  isEngineHidden(): boolean {
+    return this.isPuzzleActive();
+  }
+
+  showSurrenderButton(): boolean {
+    return this.isPuzzleMode() && !this.isPuzzleSurrendered();
   }
 
   moveCursorLabel(): string {
@@ -279,6 +352,67 @@ export class Test implements OnInit, OnDestroy {
     this.currentFen.set(this.chess.fen());
     this.turnColor.set(this.chess.turn() === 'w' ? 'white' : 'black');
     this.legalDests.set(this.getLegalDestinations());
+  }
+
+  private handlePuzzleMove(move: BoardMove): void {
+    const history = this.moveHistory();
+    const cursor = this.moveCursor();
+    const expectedUci = history[cursor];
+
+    if (!expectedUci) {
+      this.puzzleMessage.set('Puzzle completato.');
+      this.syncGameState();
+      return;
+    }
+
+    const expectedMove = this.parseUciMove(expectedUci);
+    if (!expectedMove) {
+      this.puzzleMessage.set('PGN puzzle non valido.');
+      this.syncGameState();
+      return;
+    }
+
+    if (move.from !== expectedMove.from || move.to !== expectedMove.to) {
+      this.puzzleMessage.set('Mossa sbagliata, riprova.');
+      this.syncGameState();
+      return;
+    }
+
+    const result = this.chess.move({
+      from: move.from,
+      to: move.to,
+      promotion: expectedMove.promotion ?? 'q',
+    });
+    if (!result) {
+      this.puzzleMessage.set('Mossa non valida in questa posizione.');
+      this.syncGameState();
+      return;
+    }
+
+    const newCursor = cursor + 1;
+    this.moveCursor.set(newCursor);
+    this.syncGameState();
+
+    if (newCursor >= history.length) {
+      this.puzzleMessage.set('Puzzle risolto!');
+      return;
+    }
+
+    this.puzzleMessage.set('Corretto. Continua con la prossima mossa.');
+  }
+
+  private autoPlayFirstPuzzleMove(firstUci: string): boolean {
+    const parsed = this.parseUciMove(firstUci);
+    if (!parsed) {
+      return false;
+    }
+
+    const result = this.chess.move(parsed);
+    return Boolean(result);
+  }
+
+  private isPuzzleActive(): boolean {
+    return this.isPuzzleMode() && !this.isPuzzleSurrendered();
   }
 
   private getLegalDestinations(): Map<Key, Key[]> {
