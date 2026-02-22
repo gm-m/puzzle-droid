@@ -79,6 +79,24 @@
     </section>
   </ng-template>
 
+  <section class="board-controls">
+    <h2>Scacchiera</h2>
+    <div class="board-controls-row">
+      <button type="button" (click)="rotateBoard.emit()">
+        Ruota ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
+      </button>
+      <label class="best-arrow-toggle" [class.disabled]="hideEngine">
+        <input
+          type="checkbox"
+          [checked]="showBestMoveArrow"
+          [disabled]="hideEngine"
+          (change)="onBestMoveArrowChange($event)"
+        />
+        Mostra freccia best move
+      </label>
+    </div>
+  </section>
+
   <section class="move-list" *ngIf="showMoveList && moves.length > 0">
     <h2>Mosse giocate</h2>
     <ol>

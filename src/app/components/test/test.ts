@@ -47,6 +47,9 @@ export class Test implements OnInit, OnDestroy {
   readonly showEvalBar = signal(true);
   readonly fenFeedback = signal('');
   readonly puzzleMessage = signal('');
+  readonly boardOrientation = signal<'white' | 'black'>('white');
+  readonly showBestMoveArrow = signal(false);
+  readonly bestMoveArrow = signal<{ from: Key; to: Key } | null>(null);
 
   readonly isPuzzleMode = signal(false);
   readonly isPuzzleSurrendered = signal(false);
@@ -240,6 +243,7 @@ export class Test implements OnInit, OnDestroy {
   analyzePosition(): void {
     this.isAnalyzing.set(true);
     this.bestMove.set('-');
+    this.bestMoveArrow.set(null);
     this.lines.set([]);
     this.primaryScore.set(null);
     this.evalLabel.set('-');
@@ -272,6 +276,15 @@ export class Test implements OnInit, OnDestroy {
 
   toggleEvalBar(): void {
     this.showEvalBar.update((value) => !value);
+  }
+
+  rotateBoard(): void {
+    this.boardOrientation.update((value) => (value === 'white' ? 'black' : 'white'));
+  }
+
+  onBestMoveArrowToggled(enabled: boolean): void {
+    this.showBestMoveArrow.set(enabled);
+    this.refreshBestMoveArrow();
   }
 
   previousMove(): void {
@@ -627,12 +640,14 @@ export class Test implements OnInit, OnDestroy {
   private handleEngineEvent(event: StockfishEvent): void {
     if (event.type === 'error') {
       this.evalLabel.set(event.message);
+      this.bestMoveArrow.set(null);
       this.isAnalyzing.set(false);
       return;
     }
 
     if (event.type === 'bestmove') {
       this.bestMove.set(event.bestMove);
+      this.refreshBestMoveArrow();
       this.isAnalyzing.set(false);
       return;
     }
@@ -647,6 +662,21 @@ export class Test implements OnInit, OnDestroy {
 
     this.primaryScore.set(firstLine.score);
     this.evalLabel.set(this.formatScore(firstLine.score));
+  }
+
+  private refreshBestMoveArrow(): void {
+    if (!this.showBestMoveArrow() || this.isEngineHidden()) {
+      this.bestMoveArrow.set(null);
+      return;
+    }
+
+    const parsed = this.parseUciMove(this.bestMove());
+    if (!parsed) {
+      this.bestMoveArrow.set(null);
+      return;
+    }
+
+    this.bestMoveArrow.set({ from: parsed.from, to: parsed.to });
   }
 
   private rebuildPositionFromHistory(targetCursor: number): void {

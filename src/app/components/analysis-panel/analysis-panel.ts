@@ -35,6 +35,8 @@ export class AnalysisPanelComponent {
   @Input() hideEngine = false;
   @Input() puzzleMessage = '';
   @Input() showSurrender = false;
+  @Input() boardOrientation: 'white' | 'black' = 'white';
+  @Input() showBestMoveArrow = false;
 
   isSettingsOpen = false;
 
@@ -51,6 +53,8 @@ export class AnalysisPanelComponent {
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();
   @Output() readonly surrenderPuzzle = new EventEmitter<void>();
+  @Output() readonly rotateBoard = new EventEmitter<void>();
+  @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
 
   toggleSettings(): void {
     this.isSettingsOpen = !this.isSettingsOpen;
@@ -91,6 +95,10 @@ export class AnalysisPanelComponent {
   onFenSubmit(event: Event, rawFen: string): void {
     event.preventDefault();
     this.fenApplied.emit(rawFen);
+  }
+
+  onBestMoveArrowChange(event: Event): void {
+    this.bestMoveArrowToggled.emit((event.target as HTMLInputElement).checked);
   }
 
   private formatScore(score: EngineScore): string {

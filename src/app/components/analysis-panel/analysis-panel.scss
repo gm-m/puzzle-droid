@@ -162,6 +162,39 @@ button {
   background: #b91c1c;
 }
 
+.board-controls {
+  display: grid;
+  gap: 0.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.board-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.best-arrow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: #334155;
+
+  &.disabled {
+    opacity: 0.6;
+  }
+
+  input {
+    margin: 0;
+  }
+}
+
 .move-list {
   display: grid;
   gap: 0.5rem;
