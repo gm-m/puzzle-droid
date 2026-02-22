@@ -23,6 +23,7 @@ import { StockfishService } from '../../services/stockfish.service';
 })
 export class Test implements OnInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
+  private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
 
   readonly activeView = signal<'analysis' | 'library'>('analysis');
   readonly isMenuOpen = signal(false);
@@ -48,11 +49,13 @@ export class Test implements OnInit, OnDestroy {
 
   readonly isPuzzleMode = signal(false);
   readonly isPuzzleSurrendered = signal(false);
+  readonly isPuzzleAutoPlaying = signal(false);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
 
   private readonly chess = new Chess();
   private historyInitialFen = Test.STARTING_FEN;
+  private puzzleAutoMoveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly stockfish: StockfishService) {}
 
@@ -64,6 +67,7 @@ export class Test implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearPuzzleAutoMoveTimer();
     this.stockfish.destroy();
   }
 
@@ -120,23 +124,14 @@ export class Test implements OnInit, OnDestroy {
 
     this.historyInitialFen = selection.initialFen;
     const fullHistory = [...selection.fullUciHistory];
-    let startCursor = 0;
+    this.clearPuzzleAutoMoveTimer();
+    this.isPuzzleAutoPlaying.set(false);
 
     if (selection.mode === 'puzzle') {
       this.isPuzzleMode.set(true);
       this.isPuzzleSurrendered.set(false);
       this.stockfish.stop();
-
-      if (selection.autoPlayFirstMove && fullHistory.length > 0) {
-        if (this.autoPlayFirstPuzzleMove(fullHistory[0])) {
-          startCursor = 1;
-          this.puzzleMessage.set('Prima mossa eseguita. Trova la continuazione corretta.');
-        } else {
-          this.puzzleMessage.set('Puzzle avviato. Mossa iniziale non auto-applicabile, continua manualmente.');
-        }
-      } else {
-        this.puzzleMessage.set('Puzzle avviato. Trova la prossima mossa corretta del PGN.');
-      }
+      this.puzzleMessage.set('Puzzle avviato.');
     } else {
       this.isPuzzleMode.set(false);
       this.isPuzzleSurrendered.set(false);
@@ -144,15 +139,28 @@ export class Test implements OnInit, OnDestroy {
     }
 
     this.moveHistory.set([...fullHistory]);
-    this.moveCursor.set(startCursor);
+    this.moveCursor.set(0);
     this.fenFeedback.set('Partita caricata dalla libreria.');
     this.syncGameState();
-    this.analyzePosition();
     this.setActiveView('analysis');
+    this.analyzePosition();
+
+    if (selection.mode === 'puzzle') {
+      if (selection.autoPlayFirstMove && fullHistory.length > 0) {
+        this.schedulePuzzleAutoMove(0, 'Prima mossa in arrivo...');
+      } else {
+        this.puzzleMessage.set('Puzzle avviato. Fai la prima mossa corretta.');
+      }
+    }
   }
 
   onBoardMove(move: BoardMove): void {
     if (this.isPuzzleActive()) {
+      if (this.isPuzzleAutoPlaying()) {
+        this.syncGameState();
+        return;
+      }
+
       this.handlePuzzleMove(move);
       return;
     }
@@ -175,6 +183,8 @@ export class Test implements OnInit, OnDestroy {
   }
 
   resetBoard(): void {
+    this.clearPuzzleAutoMoveTimer();
+    this.isPuzzleAutoPlaying.set(false);
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
     this.isPuzzleMode.set(false);
@@ -201,6 +211,8 @@ export class Test implements OnInit, OnDestroy {
       return;
     }
 
+    this.clearPuzzleAutoMoveTimer();
+    this.isPuzzleAutoPlaying.set(false);
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
@@ -281,6 +293,8 @@ export class Test implements OnInit, OnDestroy {
       return;
     }
 
+    this.clearPuzzleAutoMoveTimer();
+    this.isPuzzleAutoPlaying.set(false);
     this.isPuzzleSurrendered.set(true);
     this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     this.analyzePosition();
@@ -344,6 +358,10 @@ export class Test implements OnInit, OnDestroy {
     return this.isPuzzleMode() && !this.isPuzzleSurrendered();
   }
 
+  showMoveList(): boolean {
+    return !this.isPuzzleActive();
+  }
+
   moveCursorLabel(): string {
     return `${this.moveCursor()}/${this.moveHistory().length}`;
   }
@@ -398,17 +416,61 @@ export class Test implements OnInit, OnDestroy {
       return;
     }
 
-    this.puzzleMessage.set('Corretto. Continua con la prossima mossa.');
+    this.schedulePuzzleAutoMove(newCursor, 'Corretto. Mossa avversaria in arrivo...');
   }
 
-  private autoPlayFirstPuzzleMove(firstUci: string): boolean {
-    const parsed = this.parseUciMove(firstUci);
-    if (!parsed) {
-      return false;
+  private schedulePuzzleAutoMove(ply: number, pendingMessage: string): void {
+    const history = this.moveHistory();
+    const expectedUci = history[ply];
+    if (!expectedUci) {
+      this.puzzleMessage.set('Puzzle risolto!');
+      return;
     }
 
-    const result = this.chess.move(parsed);
-    return Boolean(result);
+    this.clearPuzzleAutoMoveTimer();
+    this.isPuzzleAutoPlaying.set(true);
+    this.puzzleMessage.set(pendingMessage);
+
+    this.puzzleAutoMoveTimer = setTimeout(() => {
+      this.puzzleAutoMoveTimer = null;
+      this.isPuzzleAutoPlaying.set(false);
+
+      if (!this.isPuzzleActive()) {
+        return;
+      }
+
+      const parsed = this.parseUciMove(expectedUci);
+      if (!parsed) {
+        this.puzzleMessage.set('PGN puzzle non valido.');
+        this.syncGameState();
+        return;
+      }
+
+      const result = this.chess.move(parsed);
+      if (!result) {
+        this.puzzleMessage.set('Mossa automatica non valida in questa posizione.');
+        this.syncGameState();
+        return;
+      }
+
+      const nextCursor = ply + 1;
+      this.moveCursor.set(nextCursor);
+      this.syncGameState();
+
+      if (nextCursor >= this.moveHistory().length) {
+        this.puzzleMessage.set('Puzzle risolto!');
+        return;
+      }
+
+      this.puzzleMessage.set('Tocca a te.');
+    }, Test.PUZZLE_AUTO_MOVE_DELAY_MS);
+  }
+
+  private clearPuzzleAutoMoveTimer(): void {
+    if (this.puzzleAutoMoveTimer !== null) {
+      clearTimeout(this.puzzleAutoMoveTimer);
+      this.puzzleAutoMoveTimer = null;
+    }
   }
 
   private isPuzzleActive(): boolean {

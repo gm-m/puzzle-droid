@@ -24,6 +24,7 @@ export class AnalysisPanelComponent {
   @Input() lines: EngineLine[] = [];
   @Input() canGoBack = false;
   @Input() canGoForward = false;
+  @Input() showMoveList = true;
   @Input() moveCursorLabel = '0/0';
   @Input() moves: string[] = [];
   @Input() moveCursor = 0;

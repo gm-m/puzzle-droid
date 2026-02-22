@@ -79,7 +79,7 @@
     </section>
   </ng-template>
 
-  <section class="move-list" *ngIf="moves.length > 0">
+  <section class="move-list" *ngIf="showMoveList && moves.length > 0">
     <h2>Mosse giocate</h2>
     <ol>
       <li *ngFor="let move of moves; let index = index">
