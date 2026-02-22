@@ -7,6 +7,17 @@ export interface LineMoveSelection {
   moveIndex: number;
 }
 
+interface MoveEntry {
+  index: number;
+  text: string;
+}
+
+interface MoveRow {
+  moveNumber: number;
+  white: MoveEntry | null;
+  black: MoveEntry | null;
+}
+
 @Component({
   selector: 'app-analysis-panel',
   imports: [CommonModule],
@@ -38,7 +49,8 @@ export class AnalysisPanelComponent {
   @Input() boardOrientation: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;
 
-  isSettingsOpen = false;
+  isEngineSettingsOpen = false;
+  isQuickMenuOpen = false;
 
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
@@ -56,8 +68,12 @@ export class AnalysisPanelComponent {
   @Output() readonly rotateBoard = new EventEmitter<void>();
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
 
-  toggleSettings(): void {
-    this.isSettingsOpen = !this.isSettingsOpen;
+  toggleEngineSettings(): void {
+    this.isEngineSettingsOpen = !this.isEngineSettingsOpen;
+  }
+
+  toggleQuickMenu(): void {
+    this.isQuickMenuOpen = !this.isQuickMenuOpen;
   }
 
   onDepthInput(event: Event): void {
@@ -99,6 +115,46 @@ export class AnalysisPanelComponent {
 
   onBestMoveArrowChange(event: Event): void {
     this.bestMoveArrowToggled.emit((event.target as HTMLInputElement).checked);
+  }
+
+  onHideEvalBarChange(event: Event): void {
+    const shouldHide = (event.target as HTMLInputElement).checked;
+    const isHidden = !this.showEvalBar;
+
+    if (shouldHide !== isHidden) {
+      this.toggleEvalBar.emit();
+    }
+  }
+
+  moveRows(): MoveRow[] {
+    const rows: MoveRow[] = [];
+
+    for (let index = 0; index < this.moves.length; index += 2) {
+      rows.push({
+        moveNumber: Math.floor(index / 2) + 1,
+        white: {
+          index,
+          text: this.moves[index],
+        },
+        black:
+          index + 1 < this.moves.length
+            ? {
+                index: index + 1,
+                text: this.moves[index + 1],
+              }
+            : null,
+      });
+    }
+
+    return rows;
+  }
+
+  isMovePlayed(index: number): boolean {
+    return index < this.moveCursor;
+  }
+
+  isMoveActive(index: number): boolean {
+    return index + 1 === this.moveCursor;
   }
 
   private formatScore(score: EngineScore): string {

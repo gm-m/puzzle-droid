@@ -83,6 +83,12 @@ app-library-panel {
   display: none;
 }
 
+@media (min-width: 1200px) {
+  .poc-shell {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
 @media (max-width: 900px) {
   .layout-shell {
     grid-template-columns: 1fr;
