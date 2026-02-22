@@ -35,6 +35,7 @@ export class Test implements OnInit, OnDestroy {
 
   readonly moveHistory = signal<string[]>([]);
   readonly moveCursor = signal(0);
+  readonly puzzleReplayLimit = signal(0);
 
   readonly bestMove = signal('-');
   readonly evalLabel = signal('-');
@@ -152,6 +153,7 @@ export class Test implements OnInit, OnDestroy {
 
     this.moveHistory.set([...fullHistory]);
     this.moveCursor.set(0);
+    this.puzzleReplayLimit.set(selection.mode === 'puzzle' ? 0 : fullHistory.length);
     this.fenFeedback.set('Partita caricata dalla libreria.');
     this.syncGameState();
     this.setActiveView('analysis');
@@ -206,6 +208,7 @@ export class Test implements OnInit, OnDestroy {
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
+    this.puzzleReplayLimit.set(0);
     this.fenFeedback.set('');
     this.syncGameState();
     this.analyzePosition();
@@ -235,6 +238,7 @@ export class Test implements OnInit, OnDestroy {
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
+    this.puzzleReplayLimit.set(0);
     this.fenFeedback.set('Posizione caricata.');
     this.syncGameState();
     this.analyzePosition();
@@ -288,7 +292,7 @@ export class Test implements OnInit, OnDestroy {
   }
 
   previousMove(): void {
-    if (this.moveCursor() === 0) {
+    if (!this.canGoBack()) {
       return;
     }
 
@@ -297,7 +301,7 @@ export class Test implements OnInit, OnDestroy {
   }
 
   nextMove(): void {
-    if (this.moveCursor() >= this.moveHistory().length) {
+    if (!this.canGoForward()) {
       return;
     }
 
@@ -378,7 +382,7 @@ export class Test implements OnInit, OnDestroy {
   }
 
   canGoBack(): boolean {
-    if (this.isPuzzleActive()) {
+    if (this.isPuzzleAutoPlaying()) {
       return false;
     }
 
@@ -386,11 +390,13 @@ export class Test implements OnInit, OnDestroy {
   }
 
   canGoForward(): boolean {
-    if (this.isPuzzleActive()) {
+    if (this.isPuzzleAutoPlaying()) {
       return false;
     }
 
-    return this.moveCursor() < this.moveHistory().length;
+    const historyLength = this.moveHistory().length;
+    const forwardLimit = this.isPuzzleActive() ? Math.min(this.puzzleReplayLimit(), historyLength) : historyLength;
+    return this.moveCursor() < forwardLimit;
   }
 
   isEngineHidden(): boolean {
@@ -403,6 +409,10 @@ export class Test implements OnInit, OnDestroy {
 
   showMoveList(): boolean {
     return !this.isPuzzleActive();
+  }
+
+  showLibraryGameNavigation(): boolean {
+    return this.currentLibrarySelection !== null;
   }
 
   canGoToPreviousLibraryGame(): boolean {
@@ -470,6 +480,7 @@ export class Test implements OnInit, OnDestroy {
 
     const newCursor = cursor + 1;
     this.moveCursor.set(newCursor);
+    this.puzzleReplayLimit.update((currentLimit) => Math.max(currentLimit, newCursor));
     this.syncGameState();
 
     if (newCursor >= history.length) {
@@ -516,6 +527,7 @@ export class Test implements OnInit, OnDestroy {
 
       const nextCursor = ply + 1;
       this.moveCursor.set(nextCursor);
+      this.puzzleReplayLimit.update((currentLimit) => Math.max(currentLimit, nextCursor));
       this.syncGameState();
 
       if (nextCursor >= this.moveHistory().length) {

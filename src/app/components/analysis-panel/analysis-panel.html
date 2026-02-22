@@ -11,6 +11,11 @@
     </button>
   </header>
 
+  <div class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
+    <span class="turn-dot" aria-hidden="true"></span>
+    <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
+  </div>
+
   <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
     <section class="pv-list">
       <h2>Engine lines</h2>
@@ -122,7 +127,7 @@
     <button type="button" [disabled]="!canGoForward" (click)="nextMove.emit()">Next</button>
   </div>
 
-  <div class="library-game-nav">
+  <div class="library-game-nav" *ngIf="showLibraryGameNavigation">
     <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
     <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
   </div>

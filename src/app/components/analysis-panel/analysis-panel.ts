@@ -47,7 +47,9 @@ export class AnalysisPanelComponent {
   @Input() puzzleMessage = '';
   @Input() showSurrender = false;
   @Input() boardOrientation: 'white' | 'black' = 'white';
+  @Input() turnColor: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;
+  @Input() showLibraryGameNavigation = false;
 
   isEngineSettingsOpen = false;
   isQuickMenuOpen = false;

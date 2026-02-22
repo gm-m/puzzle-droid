@@ -17,6 +17,27 @@
   gap: 0.75rem;
 }
 
+.turn-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: #1f2937;
+
+  .turn-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    border: 1px solid #475569;
+    background: #ffffff;
+  }
+
+  &.black .turn-dot {
+    background: #111827;
+    border-color: #111827;
+  }
+}
+
 .engine-cog {
   width: 2.2rem;
   height: 2.2rem;
