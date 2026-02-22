@@ -24,6 +24,8 @@ export class AnalysisPanelComponent {
   @Input() lines: EngineLine[] = [];
   @Input() canGoBack = false;
   @Input() canGoForward = false;
+  @Input() canGoPreviousGame = false;
+  @Input() canGoNextGame = false;
   @Input() showMoveList = true;
   @Input() moveCursorLabel = '0/0';
   @Input() moves: string[] = [];
@@ -43,6 +45,8 @@ export class AnalysisPanelComponent {
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
   @Output() readonly previousMove = new EventEmitter<void>();
   @Output() readonly nextMove = new EventEmitter<void>();
+  @Output() readonly previousGame = new EventEmitter<void>();
+  @Output() readonly nextGame = new EventEmitter<void>();
   @Output() readonly moveJumpRequested = new EventEmitter<number>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();

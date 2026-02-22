@@ -102,4 +102,9 @@
     <button type="button" [disabled]="!canGoForward" (click)="nextMove.emit()">Next</button>
   </div>
 
+  <div class="library-game-nav">
+    <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
+    <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
+  </div>
+
 </aside>

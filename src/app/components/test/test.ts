@@ -24,6 +24,7 @@ import { StockfishService } from '../../services/stockfish.service';
 export class Test implements OnInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
+  private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
 
   readonly activeView = signal<'analysis' | 'library'>('analysis');
   readonly isMenuOpen = signal(false);
@@ -56,6 +57,8 @@ export class Test implements OnInit, OnDestroy {
   private readonly chess = new Chess();
   private historyInitialFen = Test.STARTING_FEN;
   private puzzleAutoMoveTimer: ReturnType<typeof setTimeout> | null = null;
+  private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
+  private currentLibrarySelection: LibraryGameSelection | null = null;
 
   constructor(private readonly stockfish: StockfishService) {}
 
@@ -68,6 +71,7 @@ export class Test implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
     this.stockfish.destroy();
   }
 
@@ -125,7 +129,12 @@ export class Test implements OnInit, OnDestroy {
     this.historyInitialFen = selection.initialFen;
     const fullHistory = [...selection.fullUciHistory];
     this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
+    this.currentLibrarySelection = {
+      ...selection,
+      fullUciHistory: [...selection.fullUciHistory],
+    };
 
     if (selection.mode === 'puzzle') {
       this.isPuzzleMode.set(true);
@@ -184,7 +193,9 @@ export class Test implements OnInit, OnDestroy {
 
   resetBoard(): void {
     this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
+    this.currentLibrarySelection = null;
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
     this.isPuzzleMode.set(false);
@@ -212,7 +223,9 @@ export class Test implements OnInit, OnDestroy {
     }
 
     this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
+    this.currentLibrarySelection = null;
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
@@ -294,10 +307,27 @@ export class Test implements OnInit, OnDestroy {
     }
 
     this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.isPuzzleSurrendered.set(true);
     this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     this.analyzePosition();
+  }
+
+  previousLibraryGame(): void {
+    if (this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    this.navigateLibraryGame(-1);
+  }
+
+  nextLibraryGame(): void {
+    if (this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    this.navigateLibraryGame(1);
   }
 
   onLineSelected(selection: LineMoveSelection): void {
@@ -362,6 +392,24 @@ export class Test implements OnInit, OnDestroy {
     return !this.isPuzzleActive();
   }
 
+  canGoToPreviousLibraryGame(): boolean {
+    if (this.isPuzzleAutoPlaying()) {
+      return false;
+    }
+
+    const location = this.getCurrentLibraryGameLocation();
+    return Boolean(location && location.gameIndex > 0);
+  }
+
+  canGoToNextLibraryGame(): boolean {
+    if (this.isPuzzleAutoPlaying()) {
+      return false;
+    }
+
+    const location = this.getCurrentLibraryGameLocation();
+    return Boolean(location && location.gameIndex < location.item.games.length - 1);
+  }
+
   moveCursorLabel(): string {
     return `${this.moveCursor()}/${this.moveHistory().length}`;
   }
@@ -378,7 +426,7 @@ export class Test implements OnInit, OnDestroy {
     const expectedUci = history[cursor];
 
     if (!expectedUci) {
-      this.puzzleMessage.set('Puzzle completato.');
+      this.handlePuzzleSolved();
       this.syncGameState();
       return;
     }
@@ -412,7 +460,7 @@ export class Test implements OnInit, OnDestroy {
     this.syncGameState();
 
     if (newCursor >= history.length) {
-      this.puzzleMessage.set('Puzzle risolto!');
+      this.handlePuzzleSolved();
       return;
     }
 
@@ -423,7 +471,7 @@ export class Test implements OnInit, OnDestroy {
     const history = this.moveHistory();
     const expectedUci = history[ply];
     if (!expectedUci) {
-      this.puzzleMessage.set('Puzzle risolto!');
+      this.handlePuzzleSolved();
       return;
     }
 
@@ -458,7 +506,7 @@ export class Test implements OnInit, OnDestroy {
       this.syncGameState();
 
       if (nextCursor >= this.moveHistory().length) {
-        this.puzzleMessage.set('Puzzle risolto!');
+        this.handlePuzzleSolved();
         return;
       }
 
@@ -471,6 +519,87 @@ export class Test implements OnInit, OnDestroy {
       clearTimeout(this.puzzleAutoMoveTimer);
       this.puzzleAutoMoveTimer = null;
     }
+  }
+
+  private clearPuzzleAutoNextGameTimer(): void {
+    if (this.puzzleAutoNextGameTimer !== null) {
+      clearTimeout(this.puzzleAutoNextGameTimer);
+      this.puzzleAutoNextGameTimer = null;
+    }
+  }
+
+  private handlePuzzleSolved(): void {
+    const location = this.getCurrentLibraryGameLocation();
+    const hasNextGame = Boolean(location && location.gameIndex < location.item.games.length - 1);
+    const shouldAutoAdvance =
+      this.isPuzzleMode() &&
+      !this.isPuzzleSurrendered() &&
+      this.currentLibrarySelection?.mode === 'puzzle' &&
+      this.currentLibrarySelection?.autoAdvanceOnSuccess === true;
+
+    if (shouldAutoAdvance && hasNextGame) {
+      this.clearPuzzleAutoNextGameTimer();
+      this.isPuzzleAutoPlaying.set(true);
+      this.puzzleMessage.set('Puzzle risolto! Carico il successivo...');
+      this.puzzleAutoNextGameTimer = setTimeout(() => {
+        this.puzzleAutoNextGameTimer = null;
+        this.isPuzzleAutoPlaying.set(false);
+
+        if (!this.isPuzzleMode() || this.isPuzzleSurrendered()) {
+          return;
+        }
+
+        this.navigateLibraryGame(1);
+      }, Test.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
+      return;
+    }
+
+    this.puzzleMessage.set('Puzzle risolto!');
+  }
+
+  private navigateLibraryGame(direction: -1 | 1): void {
+    const location = this.getCurrentLibraryGameLocation();
+    if (!location) {
+      return;
+    }
+
+    const targetIndex = location.gameIndex + direction;
+    const targetGame = location.item.games[targetIndex];
+    if (!targetGame) {
+      return;
+    }
+
+    const reference = this.currentLibrarySelection;
+    const fullUciHistory = targetGame.positions.at(-1)?.uciHistory ?? [];
+
+    this.onLibraryGameSelected({
+      itemId: location.item.id,
+      gameId: targetGame.id,
+      mode: reference?.mode ?? location.item.mode,
+      initialFen: targetGame.initialFen,
+      fullUciHistory: [...fullUciHistory],
+      autoPlayFirstMove: reference?.autoPlayFirstMove ?? false,
+      autoAdvanceOnSuccess: reference?.autoAdvanceOnSuccess ?? true,
+    });
+  }
+
+  private getCurrentLibraryGameLocation(): { item: PgnLibraryItem; gameIndex: number } | null {
+    const selection = this.currentLibrarySelection;
+    if (!selection) {
+      return null;
+    }
+
+    const item = this.libraryItems().find((libraryItem) => libraryItem.id === selection.itemId);
+    if (!item) {
+      return null;
+    }
+
+    const gameIndex = item.games.findIndex((game) => game.id === selection.gameId);
+    if (gameIndex === -1) {
+      return null;
+    }
+
+    return { item, gameIndex };
   }
 
   private isPuzzleActive(): boolean {

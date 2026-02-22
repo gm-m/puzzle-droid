@@ -41,6 +41,11 @@
         Auto-esegui la prima mossa all'apertura partita
       </label>
 
+      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+        <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)" (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
+        Vai al puzzle successivo quando risolto
+      </label>
+
       <section class="card-details" *ngIf="isExpanded(item.id)">
         <article class="library-game" *ngFor="let game of item.games; let gameIndex = index">
           <button type="button" class="game-select-button" (click)="onGameClick(item, game)">

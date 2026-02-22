@@ -14,6 +14,7 @@ export interface LibraryGameSelection {
   initialFen: string;
   fullUciHistory: string[];
   autoPlayFirstMove: boolean;
+  autoAdvanceOnSuccess: boolean;
 }
 
 @Component({
@@ -31,6 +32,7 @@ export class LibraryPanelComponent {
 
   expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
+  private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -61,6 +63,7 @@ export class LibraryPanelComponent {
       initialFen: game.initialFen,
       fullUciHistory: [...fullUciHistory],
       autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
+      autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
     });
   }
 
@@ -71,6 +74,15 @@ export class LibraryPanelComponent {
 
   isPuzzleAutoFirstMove(itemId: string): boolean {
     return this.puzzleAutoFirstMoveByItem.get(itemId) ?? false;
+  }
+
+  onPuzzleAutoAdvanceChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleAutoAdvanceByItem.set(itemId, checked);
+  }
+
+  isPuzzleAutoAdvance(itemId: string): boolean {
+    return this.puzzleAutoAdvanceByItem.get(itemId) ?? true;
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {
