@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
 import type { Key } from 'chessground/types';
@@ -21,7 +21,7 @@ import { StockfishService } from '../../services/stockfish.service';
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
-export class Test implements OnInit, OnDestroy {
+export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
@@ -36,6 +36,7 @@ export class Test implements OnInit, OnDestroy {
   readonly moveHistory = signal<string[]>([]);
   readonly moveCursor = signal(0);
   readonly puzzleReplayLimit = signal(0);
+  readonly boardPixelSize = signal(0);
 
   readonly bestMove = signal('-');
   readonly evalLabel = signal('-');
@@ -55,6 +56,7 @@ export class Test implements OnInit, OnDestroy {
   readonly isPuzzleMode = signal(false);
   readonly isPuzzleSurrendered = signal(false);
   readonly isPuzzleAutoPlaying = signal(false);
+  readonly puzzleAutoRotateBoardOnTurn = signal(true);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
 
@@ -62,7 +64,11 @@ export class Test implements OnInit, OnDestroy {
   private historyInitialFen = Test.STARTING_FEN;
   private puzzleAutoMoveTimer: ReturnType<typeof setTimeout> | null = null;
   private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
+  private boardResizeObserver: ResizeObserver | null = null;
   private currentLibrarySelection: LibraryGameSelection | null = null;
+
+  @ViewChild('boardHostRef', { read: ElementRef })
+  private boardHostRef?: ElementRef<HTMLElement>;
 
   constructor(private readonly stockfish: StockfishService) {}
 
@@ -73,15 +79,27 @@ export class Test implements OnInit, OnDestroy {
     this.analyzePosition();
   }
 
+  ngAfterViewInit(): void {
+    this.observeBoardSize();
+  }
+
   ngOnDestroy(): void {
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    if (this.boardResizeObserver) {
+      this.boardResizeObserver.disconnect();
+      this.boardResizeObserver = null;
+    }
     this.stockfish.destroy();
   }
 
   setActiveView(view: 'analysis' | 'library'): void {
     this.activeView.set(view);
     this.isMenuOpen.set(false);
+
+    if (view === 'analysis') {
+      setTimeout(() => this.observeBoardSize());
+    }
   }
 
   toggleMenu(): void {
@@ -143,11 +161,16 @@ export class Test implements OnInit, OnDestroy {
     if (selection.mode === 'puzzle') {
       this.isPuzzleMode.set(true);
       this.isPuzzleSurrendered.set(false);
+      this.puzzleAutoRotateBoardOnTurn.set(selection.autoRotateBoardOnTurn);
+      if (selection.autoRotateBoardOnTurn) {
+        this.boardOrientation.set(this.getPuzzleInitialOrientation(selection.initialFen, fullHistory, selection.autoPlayFirstMove));
+      }
       this.stockfish.stop();
       this.puzzleMessage.set('Puzzle avviato.');
     } else {
       this.isPuzzleMode.set(false);
       this.isPuzzleSurrendered.set(false);
+      this.puzzleAutoRotateBoardOnTurn.set(false);
       this.puzzleMessage.set('');
     }
 
@@ -205,6 +228,7 @@ export class Test implements OnInit, OnDestroy {
     this.historyInitialFen = Test.STARTING_FEN;
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
+    this.puzzleAutoRotateBoardOnTurn.set(false);
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
@@ -235,6 +259,7 @@ export class Test implements OnInit, OnDestroy {
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
+    this.puzzleAutoRotateBoardOnTurn.set(false);
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
@@ -300,12 +325,32 @@ export class Test implements OnInit, OnDestroy {
     this.analyzePosition();
   }
 
+  firstMove(): void {
+    if (!this.canGoBack()) {
+      return;
+    }
+
+    this.rebuildPositionFromHistory(0);
+    this.analyzePosition();
+  }
+
   nextMove(): void {
     if (!this.canGoForward()) {
       return;
     }
 
     this.rebuildPositionFromHistory(this.moveCursor() + 1);
+    this.analyzePosition();
+  }
+
+  lastMove(): void {
+    if (!this.canGoForward()) {
+      return;
+    }
+
+    const historyLength = this.moveHistory().length;
+    const forwardLimit = this.isPuzzleActive() ? Math.min(this.puzzleReplayLimit(), historyLength) : historyLength;
+    this.rebuildPositionFromHistory(forwardLimit);
     this.analyzePosition();
   }
 
@@ -605,7 +650,50 @@ export class Test implements OnInit, OnDestroy {
       fullUciHistory: [...fullUciHistory],
       autoPlayFirstMove: reference?.autoPlayFirstMove ?? false,
       autoAdvanceOnSuccess: reference?.autoAdvanceOnSuccess ?? true,
+      autoRotateBoardOnTurn: reference?.autoRotateBoardOnTurn ?? true,
     });
+  }
+
+  private observeBoardSize(): void {
+    if (this.boardResizeObserver) {
+      this.boardResizeObserver.disconnect();
+      this.boardResizeObserver = null;
+    }
+
+    const boardHost = this.boardHostRef?.nativeElement;
+    if (!boardHost || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const boardElement = boardHost.querySelector('.board') as HTMLElement | null;
+    const measurementTarget = boardElement ?? boardHost;
+
+    const updateBoardSize = (): void => {
+      const nextSize = Math.round(measurementTarget.getBoundingClientRect().height);
+      this.boardPixelSize.set(nextSize > 0 ? nextSize : 0);
+    };
+
+    updateBoardSize();
+    this.boardResizeObserver = new ResizeObserver(() => updateBoardSize());
+    this.boardResizeObserver.observe(measurementTarget);
+  }
+
+  private getPuzzleInitialOrientation(initialFen: string, fullHistory: string[], autoPlayFirstMove: boolean): 'white' | 'black' {
+    const preview = new Chess();
+    try {
+      preview.load(initialFen);
+    } catch {
+      return this.boardOrientation();
+    }
+
+    if (autoPlayFirstMove && fullHistory.length > 0) {
+      const firstMove = this.parseUciMove(fullHistory[0]);
+      if (firstMove) {
+        preview.move(firstMove);
+      }
+    }
+
+    return preview.turn() === 'w' ? 'white' : 'black';
   }
 
   private getCurrentLibraryGameLocation(): { item: PgnLibraryItem; gameIndex: number } | null {

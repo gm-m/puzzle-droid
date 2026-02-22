@@ -15,6 +15,7 @@ export interface LibraryGameSelection {
   fullUciHistory: string[];
   autoPlayFirstMove: boolean;
   autoAdvanceOnSuccess: boolean;
+  autoRotateBoardOnTurn: boolean;
 }
 
 @Component({
@@ -33,6 +34,7 @@ export class LibraryPanelComponent {
   expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
+  private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -64,6 +66,7 @@ export class LibraryPanelComponent {
       fullUciHistory: [...fullUciHistory],
       autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
+      autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),
     });
   }
 
@@ -83,6 +86,15 @@ export class LibraryPanelComponent {
 
   isPuzzleAutoAdvance(itemId: string): boolean {
     return this.puzzleAutoAdvanceByItem.get(itemId) ?? true;
+  }
+
+  onPuzzleAutoRotateChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleAutoRotateByItem.set(itemId, checked);
+  }
+
+  isPuzzleAutoRotate(itemId: string): boolean {
+    return this.puzzleAutoRotateByItem.get(itemId) ?? true;
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {

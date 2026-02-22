@@ -1,76 +1,70 @@
 <aside class="analysis-panel">
-  <header class="panel-header">
-    <button
-      *ngIf="!hideEngine"
-      type="button"
-      class="engine-cog"
-      aria-label="Apri impostazioni engine"
-      (click)="toggleEngineSettings()"
-    >
-      ⚙
-    </button>
-  </header>
 
-  <div class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
+  <div *ngIf="showEngineArea" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
     <span class="turn-dot" aria-hidden="true"></span>
     <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
   </div>
 
-  <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
-    <section class="pv-list">
-      <h2>Engine lines</h2>
-      <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
-      <ol *ngIf="lines.length > 0">
-        <li *ngFor="let line of lines">
-          <p class="line-header">{{ lineHeader(line) }}</p>
-          <div class="line-moves">
-            <button
-              *ngFor="let move of line.pv; let moveIndex = index"
-              type="button"
-              class="line-button"
-              (click)="selectLineMove(line, moveIndex)"
-            >
-              {{ move }}
-            </button>
-          </div>
-        </li>
-      </ol>
-    </section>
+  <ng-container *ngIf="showEngineArea">
+    <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
+      <section class="pv-list">
+        <div class="pv-list-header">
+          <h2>Engine lines</h2>
+          <button type="button" class="engine-cog" aria-label="Apri impostazioni engine" (click)="toggleEngineSettings()">⚙</button>
+        </div>
+        <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
+        <ol *ngIf="lines.length > 0">
+          <li *ngFor="let line of lines">
+            <p class="line-header">{{ lineHeader(line) }}</p>
+            <div class="line-moves">
+              <button
+                *ngFor="let move of line.pv; let moveIndex = index"
+                type="button"
+                class="line-button"
+                (click)="selectLineMove(line, moveIndex)"
+              >
+                {{ move }}
+              </button>
+            </div>
+          </li>
+        </ol>
+      </section>
 
-    <section class="engine-settings" *ngIf="isEngineSettingsOpen">
-      <div class="stats">
-        <p><strong>Best move:</strong> {{ bestMove }}</p>
-        <p><strong>Eval:</strong> {{ evalLabel }}</p>
-        <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
-        <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
-      </div>
+      <section class="engine-settings" *ngIf="isEngineSettingsOpen">
+        <div class="stats">
+          <p><strong>Best move:</strong> {{ bestMove }}</p>
+          <p><strong>Eval:</strong> {{ evalLabel }}</p>
+          <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
+          <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
+        </div>
 
-      <div class="engine-config">
-        <label>
-          Depth
-          <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
-        </label>
+        <div class="engine-config">
+          <label>
+            Depth
+            <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
+          </label>
 
-        <label>
-          Multiple lines
-          <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
-        </label>
-      </div>
+          <label>
+            Multiple lines
+            <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
+          </label>
+        </div>
 
-      <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
-        <label>
-          Posizione iniziale (FEN)
-          <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
-        </label>
-        <button type="submit">Applica FEN</button>
-        <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
-      </form>
+        <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
+          <label>
+            Posizione iniziale (FEN)
+            <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
+          </label>
+          <button type="submit">Applica FEN</button>
+          <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
+        </form>
 
-      <div class="actions">
-        <button type="button" (click)="analyze.emit()">Analyze</button>
-        <button type="button" (click)="reset.emit()">Reset</button>
-      </div>
-    </section>
+        <div class="actions">
+          <button type="button" (click)="analyze.emit()">Analyze</button>
+          <button type="button" (click)="reset.emit()">Reset</button>
+        </div>
+      </section>
+    </ng-container>
   </ng-container>
 
   <ng-template #puzzleModeInfo>
@@ -83,15 +77,15 @@
     </section>
   </ng-template>
 
-  <section class="board-controls">
+  <section class="board-controls" *ngIf="showMoveArea">
     <button type="button" (click)="rotateBoard.emit()">
       Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
     </button>
   </section>
 
-  <section class="move-list" *ngIf="showMoveList && moves.length > 0">
+  <section class="move-list" *ngIf="showMoveArea && showMoveList && moves.length > 0">
     <h2>Mosse giocate</h2>
-    <ol class="move-rows">
+    <ol class="move-rows" [style.max-height.px]="moveListMaxHeight > 0 ? moveListMaxHeight : null">
       <li class="move-row" *ngFor="let row of moveRows()">
         <span class="move-number">{{ row.moveNumber }}.</span>
         <div class="move-pair">
@@ -121,20 +115,44 @@
     </ol>
   </section>
 
-  <div class="history-nav">
-    <button type="button" [disabled]="!canGoBack" (click)="previousMove.emit()">Previous</button>
+  <div class="history-nav" *ngIf="showMoveArea">
+    <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
+      |&lt;
+    </button>
+    <button
+      type="button"
+      class="history-icon-button"
+      [disabled]="!canGoBack"
+      aria-label="Mossa precedente"
+      (click)="previousMove.emit()"
+    >
+      &lt;
+    </button>
     <span class="cursor">{{ moveCursorLabel }}</span>
-    <button type="button" [disabled]="!canGoForward" (click)="nextMove.emit()">Next</button>
+    <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
+      &gt;
+    </button>
+    <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
+      &gt;|
+    </button>
   </div>
 
-  <div class="library-game-nav" *ngIf="showLibraryGameNavigation">
+  <div class="library-game-nav" *ngIf="showMoveArea && showLibraryGameNavigation">
     <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
     <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
   </div>
 
-  <button type="button" class="quick-menu-trigger" aria-label="Apri impostazioni rapide" (click)="toggleQuickMenu()">☰</button>
+  <button
+    *ngIf="showMoveArea"
+    type="button"
+    class="quick-menu-trigger"
+    aria-label="Apri impostazioni rapide"
+    (click)="toggleQuickMenu()"
+  >
+    ☰
+  </button>
 
-  <section class="quick-menu" *ngIf="isQuickMenuOpen">
+  <section class="quick-menu" *ngIf="showMoveArea && isQuickMenuOpen">
     <label class="quick-option" [class.disabled]="hideEngine">
       <input
         type="checkbox"

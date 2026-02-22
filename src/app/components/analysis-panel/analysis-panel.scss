@@ -10,11 +10,11 @@
   }
 }
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+.history-icon-button {
+  min-width: 2.2rem;
+  padding: 0.5rem 0.45rem;
+  line-height: 1;
+  text-align: center;
 }
 
 .turn-indicator {
@@ -116,6 +116,18 @@
   padding: 1rem;
   border-radius: 0.75rem;
   background: #f3f4f6;
+}
+
+.pv-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+
+  h2 {
+    margin: 0;
+  }
 }
 
 .stats,
@@ -246,6 +258,7 @@ button {
     list-style: none;
     display: grid;
     gap: 0.35rem;
+    overflow-y: auto;
   }
 }
 
@@ -354,7 +367,6 @@ button {
 
 .pv-list {
   h2 {
-    margin: 0 0 0.75rem;
     font-size: 1rem;
   }
 

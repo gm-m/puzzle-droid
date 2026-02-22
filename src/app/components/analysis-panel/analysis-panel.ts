@@ -37,7 +37,10 @@ export class AnalysisPanelComponent {
   @Input() canGoForward = false;
   @Input() canGoPreviousGame = false;
   @Input() canGoNextGame = false;
+  @Input() showEngineArea = true;
+  @Input() showMoveArea = true;
   @Input() showMoveList = true;
+  @Input() moveListMaxHeight = 0;
   @Input() moveCursorLabel = '0/0';
   @Input() moves: string[] = [];
   @Input() moveCursor = 0;
@@ -59,8 +62,10 @@ export class AnalysisPanelComponent {
   @Output() readonly depthChanged = new EventEmitter<number>();
   @Output() readonly multiPvChanged = new EventEmitter<number>();
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
+  @Output() readonly firstMove = new EventEmitter<void>();
   @Output() readonly previousMove = new EventEmitter<void>();
   @Output() readonly nextMove = new EventEmitter<void>();
+  @Output() readonly lastMove = new EventEmitter<void>();
   @Output() readonly previousGame = new EventEmitter<void>();
   @Output() readonly nextGame = new EventEmitter<void>();
   @Output() readonly moveJumpRequested = new EventEmitter<number>();

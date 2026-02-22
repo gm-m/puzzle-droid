@@ -79,6 +79,15 @@ app-library-panel {
   min-width: 0;
 }
 
+.analysis-panel-mobile-engine,
+.analysis-panel-mobile-moves {
+  display: none;
+}
+
+.analysis-panel-desktop {
+  display: block;
+}
+
 .menu-backdrop {
   display: none;
 }
@@ -140,6 +149,20 @@ app-library-panel {
     grid-template-columns: 1fr;
   }
 
+  .analysis-panel-mobile-engine {
+    display: block;
+    order: 1;
+  }
+
+  .analysis-panel-desktop {
+    display: none;
+  }
+
+  .analysis-panel-mobile-moves {
+    display: block;
+    order: 3;
+  }
+
   .board-section,
   app-analysis-panel,
   app-library-panel {
@@ -147,7 +170,7 @@ app-library-panel {
   }
 
   .board-section {
-    order: -1;
+    order: 2;
   }
 }
 
