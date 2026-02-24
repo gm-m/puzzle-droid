@@ -1,4 +1,5 @@
 <aside class="analysis-panel">
+  <p *ngIf="showEngineArea && libraryGameTitle" class="library-game-title">{{ libraryGameTitle }}</p>
 
   <div *ngIf="showEngineArea" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
     <span class="turn-dot" aria-hidden="true"></span>

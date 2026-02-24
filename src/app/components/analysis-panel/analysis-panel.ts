@@ -29,10 +29,11 @@ export class AnalysisPanelComponent {
   @Input() bestMove = '-';
   @Input() evalLabel = '-';
   @Input() fen = '';
-  @Input() depth = 12;
+  @Input() depth = 8;
   @Input() multiPv = 1;
   @Input() showEvalBar = true;
   @Input() lines: EngineLine[] = [];
+  @Input() libraryGameTitle = '';
   @Input() canGoBack = false;
   @Input() canGoForward = false;
   @Input() canGoPreviousGame = false;

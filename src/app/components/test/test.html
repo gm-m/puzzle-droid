@@ -23,7 +23,7 @@
     </button>
   </aside>
 
-  <div class="content-area">
+  <div class="content-area" (touchstart)="onContentTouchStart($event)" (touchend)="onContentTouchEnd($event)" (touchcancel)="onContentTouchCancel()">
     <ng-container *ngIf="activeView() === 'analysis'; else libraryView">
       <section class="poc-shell">
         <app-analysis-panel
@@ -38,6 +38,7 @@
           [multiPv]="multiPv()"
           [showEvalBar]="showEvalBar()"
           [lines]="lines()"
+          [libraryGameTitle]="currentLibraryGameTitle()"
           [canGoBack]="canGoBack()"
           [canGoForward]="canGoForward()"
           [canGoPreviousGame]="canGoToPreviousLibraryGame()"
@@ -102,6 +103,7 @@
           [multiPv]="multiPv()"
           [showEvalBar]="showEvalBar()"
           [lines]="lines()"
+          [libraryGameTitle]="currentLibraryGameTitle()"
           [canGoBack]="canGoBack()"
           [canGoForward]="canGoForward()"
           [canGoPreviousGame]="canGoToPreviousLibraryGame()"
@@ -151,6 +153,7 @@
           [multiPv]="multiPv()"
           [showEvalBar]="showEvalBar()"
           [lines]="lines()"
+          [libraryGameTitle]="currentLibraryGameTitle()"
           [canGoBack]="canGoBack()"
           [canGoForward]="canGoForward()"
           [canGoPreviousGame]="canGoToPreviousLibraryGame()"
@@ -199,6 +202,51 @@
       ></app-library-panel>
     </ng-template>
   </div>
+
+  <button
+    *ngIf="isLibraryGamePickerOpen()"
+    type="button"
+    class="library-picker-backdrop"
+    aria-label="Chiudi elenco partite"
+    (click)="closeLibraryGamePicker()"
+  ></button>
+
+  <aside class="library-picker-drawer" [class.open]="isLibraryGamePickerOpen()" aria-label="Elenco partite libreria">
+    <header class="library-picker-header">
+      <h2>{{ currentLibraryItemName() || 'Elenco partite' }}</h2>
+      <button type="button" class="library-picker-close" aria-label="Chiudi" (click)="closeLibraryGamePicker()">✕</button>
+    </header>
+
+    <label class="library-picker-filter" for="library-game-filter">
+      Filtra per titolo
+      <input
+        id="library-game-filter"
+        type="text"
+        [value]="libraryGameFilter()"
+        placeholder="Es. Carlsen, Partita 12, 1-0"
+        (input)="onLibraryGameFilterInput($event)"
+      />
+    </label>
+
+    <ng-container *ngIf="libraryGamePickerEntries() as entries">
+      <div class="library-picker-list" *ngIf="entries.length > 0; else noFilteredGames">
+        <button
+          type="button"
+          class="library-picker-entry"
+          *ngFor="let entry of entries"
+          [class.active]="isCurrentLibraryGame(entry.id)"
+          [disabled]="isPuzzleAutoPlaying()"
+          (click)="selectLibraryGameFromPicker(entry.id)"
+        >
+          {{ entry.title }}
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-template #noFilteredGames>
+      <p class="library-picker-empty">Nessuna partita trovata con questo filtro.</p>
+    </ng-template>
+  </aside>
 
   <button
     *ngIf="isMenuOpen()"

@@ -10,6 +10,7 @@ export interface LibraryModeChange {
 export interface LibraryGameSelection {
   itemId: string;
   gameId: string;
+  gameTitle: string;
   mode: LibraryMode;
   initialFen: string;
   fullUciHistory: string[];
@@ -61,6 +62,7 @@ export class LibraryPanelComponent {
     this.gameSelected.emit({
       itemId: item.id,
       gameId: game.id,
+      gameTitle: this.gameTitle(item.games.indexOf(game), item),
       mode: item.mode,
       initialFen: game.initialFen,
       fullUciHistory: [...fullUciHistory],

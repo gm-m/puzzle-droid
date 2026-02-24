@@ -15,6 +15,12 @@ import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engin
 import type { PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
 import { StockfishService } from '../../services/stockfish.service';
 
+interface LibraryGameListEntry {
+  id: string;
+  index: number;
+  title: string;
+}
+
 @Component({
   selector: 'app-test',
   imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent],
@@ -44,7 +50,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly lines = signal<EngineLine[]>([]);
   readonly primaryScore = signal<EngineScore | null>(null);
 
-  readonly depth = signal(12);
+  readonly depth = signal(8);
   readonly multiPv = signal(1);
   readonly showEvalBar = signal(true);
   readonly fenFeedback = signal('');
@@ -59,6 +65,9 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly puzzleAutoRotateBoardOnTurn = signal(true);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
+  readonly currentLibraryGameTitle = signal('');
+  readonly isLibraryGamePickerOpen = signal(false);
+  readonly libraryGameFilter = signal('');
 
   private readonly chess = new Chess();
   private historyInitialFen = Test.STARTING_FEN;
@@ -66,6 +75,10 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
   private boardResizeObserver: ResizeObserver | null = null;
   private currentLibrarySelection: LibraryGameSelection | null = null;
+  private touchStartX: number | null = null;
+  private touchStartY: number | null = null;
+  private touchStartFromLeftEdge = false;
+  private touchStartedOnBoard = false;
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -96,6 +109,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   setActiveView(view: 'analysis' | 'library'): void {
     this.activeView.set(view);
     this.isMenuOpen.set(false);
+    this.closeLibraryGamePicker();
 
     if (view === 'analysis') {
       setTimeout(() => this.observeBoardSize());
@@ -103,7 +117,123 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleMenu(): void {
+    this.closeLibraryGamePicker();
     this.isMenuOpen.update((value) => !value);
+  }
+
+  onContentTouchStart(event: TouchEvent): void {
+    if (!this.canHandleLibrarySwipe()) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    if (!touch) {
+      return;
+    }
+
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchStartFromLeftEdge = touch.clientX <= 36;
+    this.touchStartedOnBoard = Boolean((event.target as HTMLElement | null)?.closest('.board'));
+  }
+
+  onContentTouchEnd(event: TouchEvent): void {
+    if (!this.canHandleLibrarySwipe()) {
+      this.resetTouchState();
+      return;
+    }
+
+    if (this.touchStartedOnBoard) {
+      this.resetTouchState();
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    if (!touch || this.touchStartX === null || this.touchStartY === null) {
+      this.resetTouchState();
+      return;
+    }
+
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (absX < 64 || absY > absX * 0.7) {
+      this.resetTouchState();
+      return;
+    }
+
+    if (deltaX < 0) {
+      this.openLibraryGamePicker();
+      this.resetTouchState();
+      return;
+    }
+
+    if (deltaX > 0 && this.touchStartFromLeftEdge) {
+      this.isMenuOpen.set(true);
+    }
+
+    this.resetTouchState();
+  }
+
+  onContentTouchCancel(): void {
+    this.resetTouchState();
+  }
+
+  onLibraryGameFilterInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.libraryGameFilter.set(value);
+  }
+
+  closeLibraryGamePicker(): void {
+    this.isLibraryGamePickerOpen.set(false);
+    this.libraryGameFilter.set('');
+  }
+
+  libraryGamePickerEntries(): LibraryGameListEntry[] {
+    const location = this.getCurrentLibraryGameLocation();
+    if (!location) {
+      return [];
+    }
+
+    const query = this.libraryGameFilter().trim().toLowerCase();
+    return location.item.games
+      .map((game, index) => ({
+        id: game.id,
+        index,
+        title: this.formatLibraryGameTitle(game, index),
+      }))
+      .filter((entry) => !query || entry.title.toLowerCase().includes(query));
+  }
+
+  currentLibraryItemName(): string {
+    const location = this.getCurrentLibraryGameLocation();
+    return location?.item.name ?? '';
+  }
+
+  isCurrentLibraryGame(gameId: string): boolean {
+    return this.currentLibrarySelection?.gameId === gameId;
+  }
+
+  selectLibraryGameFromPicker(gameId: string): void {
+    if (this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    const location = this.getCurrentLibraryGameLocation();
+    if (!location) {
+      return;
+    }
+
+    const targetIndex = location.item.games.findIndex((game) => game.id === gameId);
+    const targetGame = targetIndex >= 0 ? location.item.games[targetIndex] : null;
+    if (!targetGame) {
+      return;
+    }
+
+    this.selectLibraryGame(location.item, targetGame, targetIndex);
+    this.closeLibraryGamePicker();
   }
 
   async onLibraryFilesSelected(files: FileList | null): Promise<void> {
@@ -157,6 +287,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       ...selection,
       fullUciHistory: [...selection.fullUciHistory],
     };
+    this.currentLibraryGameTitle.set(selection.gameTitle);
+    this.closeLibraryGamePicker();
 
     if (selection.mode === 'puzzle') {
       this.isPuzzleMode.set(true);
@@ -224,6 +356,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
+    this.currentLibraryGameTitle.set('');
+    this.closeLibraryGamePicker();
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
     this.isPuzzleMode.set(false);
@@ -256,6 +390,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
+    this.currentLibraryGameTitle.set('');
+    this.closeLibraryGamePicker();
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
@@ -639,13 +775,18 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    this.selectLibraryGame(location.item, targetGame, targetIndex);
+  }
+
+  private selectLibraryGame(item: PgnLibraryItem, targetGame: PgnLibraryGame, targetIndex: number): void {
     const reference = this.currentLibrarySelection;
     const fullUciHistory = targetGame.positions.at(-1)?.uciHistory ?? [];
 
     this.onLibraryGameSelected({
-      itemId: location.item.id,
+      itemId: item.id,
       gameId: targetGame.id,
-      mode: reference?.mode ?? location.item.mode,
+      gameTitle: this.formatLibraryGameTitle(targetGame, targetIndex),
+      mode: reference?.mode ?? item.mode,
       initialFen: targetGame.initialFen,
       fullUciHistory: [...fullUciHistory],
       autoPlayFirstMove: reference?.autoPlayFirstMove ?? false,
@@ -694,6 +835,35 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return preview.turn() === 'w' ? 'white' : 'black';
+  }
+
+  private formatLibraryGameTitle(game: PgnLibraryGame, gameIndex: number): string {
+    const white = game.white || '?';
+    const black = game.black || '?';
+    const result = game.result || '*';
+    return `Partita ${gameIndex + 1}: ${white} vs ${black} (${result})`;
+  }
+
+  private canHandleLibrarySwipe(): boolean {
+    return this.activeView() === 'analysis' && this.currentLibrarySelection !== null && !this.isLibraryGamePickerOpen();
+  }
+
+  private openLibraryGamePicker(): void {
+    const location = this.getCurrentLibraryGameLocation();
+    if (!location || location.item.games.length === 0) {
+      return;
+    }
+
+    this.isMenuOpen.set(false);
+    this.libraryGameFilter.set('');
+    this.isLibraryGamePickerOpen.set(true);
+  }
+
+  private resetTouchState(): void {
+    this.touchStartX = null;
+    this.touchStartY = null;
+    this.touchStartFromLeftEdge = false;
+    this.touchStartedOnBoard = false;
   }
 
   private getCurrentLibraryGameLocation(): { item: PgnLibraryItem; gameIndex: number } | null {

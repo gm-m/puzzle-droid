@@ -2,12 +2,22 @@
   display: grid;
   gap: 1rem;
   position: relative;
-  padding-bottom: 3.75rem;
+  padding-bottom: 1rem;
 
   h1 {
     margin: 0;
     font-size: 1.4rem;
   }
+}
+
+.library-game-title {
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.55rem;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .history-icon-button {
@@ -113,6 +123,10 @@
 }
 
 .pv-list {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  min-height: 12.5rem;
   padding: 1rem;
   border-radius: 0.75rem;
   background: #f3f4f6;
@@ -380,6 +394,8 @@ button {
     list-style: none;
     display: grid;
     gap: 0.5rem;
+    max-height: 9.5rem;
+    overflow-y: auto;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.88rem;
   }
@@ -387,9 +403,12 @@ button {
 
 .line-button {
   width: auto;
+  max-width: 100%;
   text-align: center;
   background: #1f2937;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.2;
   padding: 0.35rem 0.55rem;
   font-size: 0.8rem;
@@ -403,6 +422,7 @@ button {
 
 .line-moves {
   display: flex;
+  min-width: 0;
   gap: 0.4rem;
   flex-wrap: wrap;
 }

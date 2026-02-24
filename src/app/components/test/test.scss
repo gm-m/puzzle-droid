@@ -92,6 +92,105 @@ app-library-panel {
   display: none;
 }
 
+.library-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 56;
+}
+
+.library-picker-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(86vw, 380px);
+  background: #ffffff;
+  border-left: 1px solid #dbe3f0;
+  transform: translateX(100%);
+  transition: transform 220ms ease;
+  z-index: 57;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.85rem;
+  padding: 0.95rem 0.9rem;
+
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+.library-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    color: #0f172a;
+    word-break: break-word;
+  }
+}
+
+.library-picker-close {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #1e293b;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.library-picker-filter {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #475569;
+
+  input {
+    border: 1px solid #cbd5e1;
+    border-radius: 0.55rem;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    color: #0f172a;
+    background: #fff;
+  }
+}
+
+.library-picker-list {
+  display: grid;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+}
+
+.library-picker-entry {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+
+  &.active {
+    border-color: #0f172a;
+    background: #e2e8f0;
+  }
+}
+
+.library-picker-empty {
+  margin: 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
 @media (min-width: 1200px) {
   .poc-shell {
     grid-template-columns: 3fr 2fr;
@@ -139,6 +238,10 @@ app-library-panel {
     border: 0;
     background: rgba(15, 23, 42, 0.45);
     z-index: 45;
+  }
+
+  .library-picker-drawer {
+    width: min(88vw, 340px);
   }
 
   .content-area {

@@ -3,5 +3,8 @@
   aspect-ratio: 1;
   border-radius: 0.75rem;
   overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   box-shadow: 0 8px 24px rgba(20, 20, 20, 0.2);
 }
