@@ -9,8 +9,38 @@
   box-shadow: 0 8px 24px rgba(20, 20, 20, 0.2);
 }
 
-@media (max-width: 900px) {
-  .board {
-    overflow: visible;
+::ng-deep {
+  .cg-wrap coords {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.8;
+    color: #475569;
+    
+    &.ranks {
+      left: 3px;
+      top: 2px;
+      width: 12px;
+      height: 100%;
+      
+      coord {
+        transform: none !important;
+        display: flex;
+        align-items: flex-start;
+      }
+    }
+    
+    &.files {
+      bottom: 1px;
+      left: 0;
+      width: 100%;
+      height: 16px;
+      
+      coord {
+        padding-right: 3px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+      }
+    }
   }
 }

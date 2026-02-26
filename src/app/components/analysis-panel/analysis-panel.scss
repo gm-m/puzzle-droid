@@ -413,11 +413,53 @@ button {
     overflow-y: auto;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.88rem;
+
+    .line-moves {
+      display: flex;
+      min-width: 0;
+      gap: 0.4rem;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+
+    &.expanded {
+      .line-moves {
+        flex-wrap: wrap;
+        overflow: visible;
+      }
+    }
+  }
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expand-toggle {
+  background: transparent;
+  color: #64748b;
+  border: none;
+  padding: 0.2rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  
+  &:hover {
+    background: #e2e8f0;
+    color: #0f172a;
   }
 }
 
 .line-button {
   width: auto;
+  flex-shrink: 0;
   max-width: 100%;
   text-align: center;
   background: #1f2937;
@@ -433,11 +475,4 @@ button {
   margin: 0 0 0.45rem;
   font-weight: 700;
   color: #0f172a;
-}
-
-.line-moves {
-  display: flex;
-  min-width: 0;
-  gap: 0.4rem;
-  flex-wrap: wrap;
 }

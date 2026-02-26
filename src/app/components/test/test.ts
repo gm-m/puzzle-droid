@@ -70,7 +70,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly lines = signal<EngineLine[]>([]);
   readonly primaryScore = signal<EngineScore | null>(null);
 
-  readonly depth = signal(8);
+  readonly depth = signal(14);
   readonly multiPv = signal(1);
   readonly skillLevel = signal(20);
   readonly showEvalBar = signal(true);

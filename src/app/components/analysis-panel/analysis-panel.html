@@ -10,11 +10,21 @@
     <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
       <section class="pv-list">
         <div class="pv-list-header">
-          <h2>Engine lines</h2>
+          <div class="header-left">
+            <h2>Engine lines</h2>
+            <button 
+              type="button" 
+              class="expand-toggle" 
+              [attr.aria-label]="isEngineLinesExpanded ? 'Comprimi linee' : 'Espandi linee'" 
+              (click)="toggleEngineLines()"
+              *ngIf="lines.length > 0">
+              {{ isEngineLinesExpanded ? '▲' : '▼' }}
+            </button>
+          </div>
           <button type="button" class="engine-cog" aria-label="Apri impostazioni engine" (click)="toggleEngineSettings()">⚙</button>
         </div>
         <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
-        <ol *ngIf="lines.length > 0">
+        <ol *ngIf="lines.length > 0" [class.expanded]="isEngineLinesExpanded">
           <li *ngFor="let line of lines">
             <p class="line-header">{{ lineHeader(line) }}</p>
             <div class="line-moves">

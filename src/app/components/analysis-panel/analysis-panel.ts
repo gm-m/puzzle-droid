@@ -33,7 +33,16 @@ export class AnalysisPanelComponent {
   @Input() multiPv = 1;
   @Input() skillLevel = 20;
   @Input() showEvalBar = true;
-  @Input() lines: EngineLine[] = [];
+  @Input() isSettingsOpen = false;
+  isEngineLinesExpanded = false;
+
+  get lines(): EngineLine[] {
+    return this._lines;
+  }
+  @Input('lines') set lines(value: EngineLine[]) {
+    this._lines = value;
+  }
+  private _lines: EngineLine[] = [];
   @Input() libraryGameTitle = '';
   @Input() canGoBack = false;
   @Input() canGoForward = false;
@@ -84,6 +93,10 @@ export class AnalysisPanelComponent {
 
   toggleEngineSettings(): void {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;
+  }
+
+  toggleEngineLines(): void {
+    this.isEngineLinesExpanded = !this.isEngineLinesExpanded;
   }
 
   toggleQuickMenu(): void {

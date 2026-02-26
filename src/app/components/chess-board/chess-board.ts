@@ -30,6 +30,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() legalDests: Map<Key, Key[]> = new Map();
   @Input() orientation: 'white' | 'black' = 'white';
   @Input() bestMoveArrow: { from: Key; to: Key } | null = null;
+  @Input() showCoordinates = true;
 
   @Output() moved = new EventEmitter<BoardMove>();
 
@@ -43,6 +44,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       fen: this.fen,
       orientation: this.orientation,
       turnColor: this.turnColor,
+      coordinates: this.showCoordinates,
       drawable: {
         autoShapes: this.bestMoveArrow
           ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
@@ -69,6 +71,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
         fen: this.fen,
         orientation: this.orientation,
         turnColor: this.turnColor,
+        coordinates: this.showCoordinates,
         drawable: {
           autoShapes: this.bestMoveArrow
             ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
