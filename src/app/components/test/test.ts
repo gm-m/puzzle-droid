@@ -11,6 +11,8 @@ import {
   type LibraryGameSelection,
   type LibraryModeChange,
 } from '../library-panel/library-panel';
+import { SettingsPanelComponent } from '../settings-panel/settings-panel';
+import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
 import { StockfishService } from '../../services/stockfish.service';
@@ -39,7 +41,7 @@ interface PersistedLibraryItem {
 
 @Component({
   selector: 'app-test',
-  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent],
+  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
@@ -52,7 +54,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
 
-  readonly activeView = signal<'analysis' | 'library'>('analysis');
+  readonly activeView = signal<'analysis' | 'library' | 'settings'>('analysis');
   readonly isMenuOpen = signal(false);
 
   readonly currentFen = signal('');
@@ -107,7 +109,14 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
 
-  constructor(private readonly stockfish: StockfishService) {}
+  readonly settings;
+
+  constructor(
+    private readonly stockfish: StockfishService,
+    private readonly settingsService: SettingsService
+  ) {
+    this.settings = this.settingsService.settings;
+  }
 
   ngOnInit(): void {
     this.loadLibraryItems();
@@ -132,7 +141,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.stockfish.destroy();
   }
 
-  setActiveView(view: 'analysis' | 'library'): void {
+  setActiveView(view: 'analysis' | 'library' | 'settings'): void {
     this.activeView.set(view);
     this.isMenuOpen.set(false);
     this.closeLibraryGamePicker();

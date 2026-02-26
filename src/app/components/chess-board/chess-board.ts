@@ -1,3 +1,4 @@
+import { NgClass } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -20,7 +21,7 @@ export interface BoardMove {
 
 @Component({
   selector: 'app-chess-board',
-  imports: [],
+  imports: [NgClass],
   templateUrl: './chess-board.html',
   styleUrl: './chess-board.scss',
 })
@@ -31,6 +32,8 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() orientation: 'white' | 'black' = 'white';
   @Input() bestMoveArrow: { from: Key; to: Key } | null = null;
   @Input() showCoordinates = true;
+  @Input() boardTheme: 'brown' | 'green' | 'blue' | 'grey' = 'brown';
+  @Input() highlightLastMove = true;
 
   @Output() moved = new EventEmitter<BoardMove>();
 
@@ -45,6 +48,10 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       orientation: this.orientation,
       turnColor: this.turnColor,
       coordinates: this.showCoordinates,
+      highlight: {
+        lastMove: this.highlightLastMove,
+        check: true
+      },
       drawable: {
         autoShapes: this.bestMoveArrow
           ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
@@ -72,6 +79,10 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
         orientation: this.orientation,
         turnColor: this.turnColor,
         coordinates: this.showCoordinates,
+        highlight: {
+          lastMove: this.highlightLastMove,
+          check: true
+        },
         drawable: {
           autoShapes: this.bestMoveArrow
             ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]

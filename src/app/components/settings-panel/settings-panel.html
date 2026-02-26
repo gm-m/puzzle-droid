@@ -1,0 +1,37 @@
+<div class="settings-container">
+  <div class="settings-header">
+    <h2>Impostazioni Grafiche</h2>
+    <p>Personalizza l'aspetto dell'applicazione</p>
+  </div>
+
+  <div class="settings-content">
+    <div class="setting-group">
+      <label class="setting-label" for="board-theme">Tema Scacchiera</label>
+      <select id="board-theme" class="setting-select" [value]="settings().boardTheme" (change)="onThemeChange($event)">
+        <option value="brown">Marrone Classico</option>
+        <option value="blue">Blu Scuro</option>
+        <option value="green">Verde Scacchistico</option>
+      </select>
+    </div>
+
+    <div class="setting-group checkbox-group">
+      <label class="setting-label" for="show-coords">Mostra Coordinate</label>
+      <label class="switch">
+        <input id="show-coords" type="checkbox" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-group checkbox-group">
+      <label class="setting-label" for="highlight-move">Evidenzia Ultima Mossa</label>
+      <label class="switch">
+        <input id="highlight-move" type="checkbox" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+    
+    <div class="settings-actions">
+      <button type="button" class="btn-reset" (click)="resetSettings()">Ripristina Predefinite</button>
+    </div>
+  </div>
+</div>

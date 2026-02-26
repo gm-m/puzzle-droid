@@ -21,10 +21,19 @@
     >
       Libreria
     </button>
+    
+    <button
+      type="button"
+      class="menu-item"
+      [class.active]="activeView() === 'settings'"
+      (click)="setActiveView('settings')"
+    >
+      Impostazioni
+    </button>
   </aside>
 
   <div class="content-area" (touchstart)="onContentTouchStart($event)" (touchend)="onContentTouchEnd($event)" (touchcancel)="onContentTouchCancel()">
-    <ng-container *ngIf="activeView() === 'analysis'; else libraryView">
+    <ng-container *ngIf="activeView() === 'analysis'">
       <section class="poc-shell">
         <app-analysis-panel
           class="analysis-panel-mobile-engine"
@@ -93,6 +102,9 @@
             [legalDests]="legalDests()"
             [orientation]="boardOrientation()"
             [bestMoveArrow]="bestMoveArrow()"
+            [showCoordinates]="settings().showCoordinates"
+            [boardTheme]="settings().boardTheme"
+            [highlightLastMove]="settings().highlightLastMove"
             (moved)="onBoardMove($event)"
           ></app-chess-board>
         </section>
@@ -211,7 +223,7 @@
       </section>
     </ng-container>
 
-    <ng-template #libraryView>
+    <ng-container *ngIf="activeView() === 'library'">
       <app-library-panel
         [items]="libraryItems()"
         (filesSelected)="onLibraryFilesSelected($event)"
@@ -219,7 +231,11 @@
         (gameSelected)="onLibraryGameSelected($event)"
         (itemRemoved)="onLibraryItemRemoved($event)"
       ></app-library-panel>
-    </ng-template>
+    </ng-container>
+
+    <ng-container *ngIf="activeView() === 'settings'">
+      <app-settings-panel></app-settings-panel>
+    </ng-container>
   </div>
 
   <button
