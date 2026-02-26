@@ -90,6 +90,12 @@
       <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
         <p>{{ woodpeckerCycleLabel }}</p>
         <p>{{ woodpeckerProgressLabel }}</p>
+        <p>{{ woodpeckerDayLabel }}</p>
+        <p>{{ woodpeckerCalendarLabel }}</p>
+        <div class="woodpecker-progress" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" aria-valuemin="0" aria-valuemax="100">
+          <span class="woodpecker-progress-fill" [style.width.%]="woodpeckerProgressPercent"></span>
+        </div>
+        <p class="woodpecker-progress-value">{{ woodpeckerProgressPercent }}%</p>
         <p>{{ woodpeckerTargetLabel }}</p>
       </div>
       <button *ngIf="showSurrender" type="button" class="surrender" (click)="surrenderPuzzle.emit()">

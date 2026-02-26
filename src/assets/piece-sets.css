@@ -1,0 +1,41 @@
+/* Additional piece sets loaded from the official Lichess asset CDN. */
+/* Fallback remains cburnett when this class is not selected. */
+
+.pieces-merida piece.king.white { background-image: url('https://lichess1.org/assets/piece/merida/wK.svg'); }
+.pieces-merida piece.queen.white { background-image: url('https://lichess1.org/assets/piece/merida/wQ.svg'); }
+.pieces-merida piece.rook.white { background-image: url('https://lichess1.org/assets/piece/merida/wR.svg'); }
+.pieces-merida piece.bishop.white { background-image: url('https://lichess1.org/assets/piece/merida/wB.svg'); }
+.pieces-merida piece.knight.white { background-image: url('https://lichess1.org/assets/piece/merida/wN.svg'); }
+.pieces-merida piece.pawn.white { background-image: url('https://lichess1.org/assets/piece/merida/wP.svg'); }
+.pieces-merida piece.king.black { background-image: url('https://lichess1.org/assets/piece/merida/bK.svg'); }
+.pieces-merida piece.queen.black { background-image: url('https://lichess1.org/assets/piece/merida/bQ.svg'); }
+.pieces-merida piece.rook.black { background-image: url('https://lichess1.org/assets/piece/merida/bR.svg'); }
+.pieces-merida piece.bishop.black { background-image: url('https://lichess1.org/assets/piece/merida/bB.svg'); }
+.pieces-merida piece.knight.black { background-image: url('https://lichess1.org/assets/piece/merida/bN.svg'); }
+.pieces-merida piece.pawn.black { background-image: url('https://lichess1.org/assets/piece/merida/bP.svg'); }
+
+.pieces-alpha piece.king.white { background-image: url('https://lichess1.org/assets/piece/alpha/wK.svg'); }
+.pieces-alpha piece.queen.white { background-image: url('https://lichess1.org/assets/piece/alpha/wQ.svg'); }
+.pieces-alpha piece.rook.white { background-image: url('https://lichess1.org/assets/piece/alpha/wR.svg'); }
+.pieces-alpha piece.bishop.white { background-image: url('https://lichess1.org/assets/piece/alpha/wB.svg'); }
+.pieces-alpha piece.knight.white { background-image: url('https://lichess1.org/assets/piece/alpha/wN.svg'); }
+.pieces-alpha piece.pawn.white { background-image: url('https://lichess1.org/assets/piece/alpha/wP.svg'); }
+.pieces-alpha piece.king.black { background-image: url('https://lichess1.org/assets/piece/alpha/bK.svg'); }
+.pieces-alpha piece.queen.black { background-image: url('https://lichess1.org/assets/piece/alpha/bQ.svg'); }
+.pieces-alpha piece.rook.black { background-image: url('https://lichess1.org/assets/piece/alpha/bR.svg'); }
+.pieces-alpha piece.bishop.black { background-image: url('https://lichess1.org/assets/piece/alpha/bB.svg'); }
+.pieces-alpha piece.knight.black { background-image: url('https://lichess1.org/assets/piece/alpha/bN.svg'); }
+.pieces-alpha piece.pawn.black { background-image: url('https://lichess1.org/assets/piece/alpha/bP.svg'); }
+
+.pieces-kosal piece.king.white { background-image: url('https://lichess1.org/assets/piece/kosal/wK.svg'); }
+.pieces-kosal piece.queen.white { background-image: url('https://lichess1.org/assets/piece/kosal/wQ.svg'); }
+.pieces-kosal piece.rook.white { background-image: url('https://lichess1.org/assets/piece/kosal/wR.svg'); }
+.pieces-kosal piece.bishop.white { background-image: url('https://lichess1.org/assets/piece/kosal/wB.svg'); }
+.pieces-kosal piece.knight.white { background-image: url('https://lichess1.org/assets/piece/kosal/wN.svg'); }
+.pieces-kosal piece.pawn.white { background-image: url('https://lichess1.org/assets/piece/kosal/wP.svg'); }
+.pieces-kosal piece.king.black { background-image: url('https://lichess1.org/assets/piece/kosal/bK.svg'); }
+.pieces-kosal piece.queen.black { background-image: url('https://lichess1.org/assets/piece/kosal/bQ.svg'); }
+.pieces-kosal piece.rook.black { background-image: url('https://lichess1.org/assets/piece/kosal/bR.svg'); }
+.pieces-kosal piece.bishop.black { background-image: url('https://lichess1.org/assets/piece/kosal/bB.svg'); }
+.pieces-kosal piece.knight.black { background-image: url('https://lichess1.org/assets/piece/kosal/bN.svg'); }
+.pieces-kosal piece.pawn.black { background-image: url('https://lichess1.org/assets/piece/kosal/bP.svg'); }

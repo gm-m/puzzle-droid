@@ -1,5 +1,14 @@
 <main class="layout-shell">
-  <button type="button" class="menu-trigger" (click)="toggleMenu()">Menu</button>
+  <header class="app-topbar">
+    <div class="topbar-main">
+      <button type="button" class="menu-trigger" aria-label="Apri menu" (click)="toggleMenu()">☰</button>
+      <div class="topbar-title-wrap">
+        <p class="topbar-kicker">Vista</p>
+        <h1>{{ currentViewTitle() }}</h1>
+      </div>
+    </div>
+    <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p>
+  </header>
 
   <aside class="side-menu" [class.open]="isMenuOpen()">
     <h2>Navigazione</h2>
@@ -65,6 +74,9 @@
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
           [woodpeckerTargetLabel]="woodpeckerTargetLabel()"
+          [woodpeckerDayLabel]="woodpeckerDayLabel()"
+          [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
+          [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -104,6 +116,7 @@
             [bestMoveArrow]="bestMoveArrow()"
             [showCoordinates]="settings().showCoordinates"
             [boardTheme]="settings().boardTheme"
+            [pieceSet]="settings().pieceSet"
             [highlightLastMove]="settings().highlightLastMove"
             (moved)="onBoardMove($event)"
           ></app-chess-board>
@@ -139,6 +152,9 @@
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
           [woodpeckerTargetLabel]="woodpeckerTargetLabel()"
+          [woodpeckerDayLabel]="woodpeckerDayLabel()"
+          [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
+          [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -195,6 +211,9 @@
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
           [woodpeckerTargetLabel]="woodpeckerTargetLabel()"
+          [woodpeckerDayLabel]="woodpeckerDayLabel()"
+          [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
+          [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"

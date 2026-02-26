@@ -24,6 +24,16 @@ export class SettingsPanelComponent {
     this.updateSetting('boardTheme', value);
   }
 
+  onPieceSetChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as AppSettings['pieceSet'];
+    this.updateSetting('pieceSet', value);
+  }
+
+  onDarkModeChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.updateSetting('darkMode', checked);
+  }
+
   onCoordinatesChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.updateSetting('showCoordinates', checked);

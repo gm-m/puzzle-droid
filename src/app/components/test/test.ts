@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
 import type { Key } from 'chessground/types';
+import { Subscription } from 'rxjs';
 import { AnalysisPanelComponent, type LineMoveSelection } from '../analysis-panel/analysis-panel';
 import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
 import { EvalBarComponent } from '../eval-bar/eval-bar';
@@ -39,6 +41,8 @@ interface PersistedLibraryItem {
   mode: LibraryMode;
 }
 
+type AppView = 'analysis' | 'library' | 'settings';
+
 @Component({
   selector: 'app-test',
   imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent],
@@ -49,12 +53,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
+  private static readonly DAY_MS = 24 * 60 * 60 * 1000;
   private static readonly LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
 
-  readonly activeView = signal<'analysis' | 'library' | 'settings'>('analysis');
+  readonly activeView = signal<AppView>('analysis');
   readonly isMenuOpen = signal(false);
 
   readonly currentFen = signal('');
@@ -105,6 +110,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private touchStartY: number | null = null;
   private touchStartFromLeftEdge = false;
   private touchStartedOnBoard = false;
+  private routeParamsSubscription: Subscription | null = null;
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -113,7 +119,9 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private readonly stockfish: StockfishService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {
     this.settings = this.settingsService.settings;
   }
@@ -121,6 +129,9 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.loadLibraryItems();
     this.loadWoodpeckerSessions();
+    this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
+      this.syncViewFromRoute(params.get('view'));
+    });
     this.syncGameState();
     this.stockfish.setListener((event) => this.handleEngineEvent(event));
     this.stockfish.init();
@@ -132,6 +143,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.routeParamsSubscription?.unsubscribe();
+    this.routeParamsSubscription = null;
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     if (this.boardResizeObserver) {
@@ -141,19 +154,43 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.stockfish.destroy();
   }
 
-  setActiveView(view: 'analysis' | 'library' | 'settings'): void {
-    this.activeView.set(view);
-    this.isMenuOpen.set(false);
-    this.closeLibraryGamePicker();
-
-    if (view === 'analysis') {
-      setTimeout(() => this.observeBoardSize());
+  setActiveView(view: AppView): void {
+    if (this.activeView() === view) {
+      this.applyViewState(view);
+      return;
     }
+
+    void this.router.navigate(['/', view]);
   }
 
   toggleMenu(): void {
     this.closeLibraryGamePicker();
     this.isMenuOpen.update((value) => !value);
+  }
+
+  currentViewTitle(): string {
+    switch (this.activeView()) {
+      case 'analysis':
+        return 'Analisi';
+      case 'library':
+        return 'Libreria';
+      case 'settings':
+        return 'Impostazioni';
+      default:
+        return 'Analisi';
+    }
+  }
+
+  topBarEngineStatus(): string {
+    if (this.isEngineHidden()) {
+      return `Engine OFF · d${this.depth()} · Puzzle`;
+    }
+
+    if (this.isAnalyzing()) {
+      return `Engine ON · d${this.depth()} · Analisi`;
+    }
+
+    return `Engine ON · d${this.depth()}`;
   }
 
   onContentTouchStart(event: TouchEvent): void {
@@ -709,6 +746,48 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return `Obiettivo ciclo: ${session.targetDays} giorno${session.targetDays === 1 ? '' : 'i'}`;
+  }
+
+  woodpeckerDayLabel(): string {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return '';
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - session.cycleStartedAt);
+    const elapsedDays = Math.floor(elapsedMs / Test.DAY_MS) + 1;
+    return `Giorno ${elapsedDays} di ${session.targetDays}`;
+  }
+
+  woodpeckerCalendarLabel(): string {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return '';
+    }
+
+    const deadline = new Date(session.cycleStartedAt + (session.targetDays - 1) * Test.DAY_MS);
+    const formattedDeadline = new Intl.DateTimeFormat('it-IT', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(deadline);
+    const elapsedDays = Math.floor(Math.max(0, Date.now() - session.cycleStartedAt) / Test.DAY_MS) + 1;
+    const remaining = Math.max(0, session.targetDays - elapsedDays);
+
+    if (session.completed) {
+      return `Ciclo completato · deadline prevista ${formattedDeadline}`;
+    }
+
+    return `Scadenza ciclo: ${formattedDeadline} · ${remaining} giorno${remaining === 1 ? '' : 'i'} rimanenti`;
+  }
+
+  woodpeckerProgressPercent(): number {
+    const session = this.woodpeckerSession();
+    if (!session || session.gameCount <= 0) {
+      return 0;
+    }
+
+    return Math.round((session.solvedIndexes.length / session.gameCount) * 100);
   }
 
   private syncGameState(): void {
@@ -1281,6 +1360,36 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private canHandleLibrarySwipe(): boolean {
     return this.activeView() === 'analysis' && this.currentLibrarySelection !== null && !this.isLibraryGamePickerOpen();
+  }
+
+  private syncViewFromRoute(rawView: string | null): void {
+    const parsedView = this.parseRouteView(rawView);
+    if (!parsedView) {
+      if (this.router.url !== '/analysis') {
+        void this.router.navigate(['/analysis'], { replaceUrl: true });
+      }
+      return;
+    }
+
+    this.applyViewState(parsedView);
+  }
+
+  private parseRouteView(rawView: string | null): AppView | null {
+    if (rawView === 'analysis' || rawView === 'library' || rawView === 'settings') {
+      return rawView;
+    }
+
+    return null;
+  }
+
+  private applyViewState(view: AppView): void {
+    this.activeView.set(view);
+    this.isMenuOpen.set(false);
+    this.closeLibraryGamePicker();
+
+    if (view === 'analysis') {
+      setTimeout(() => this.observeBoardSize());
+    }
   }
 
   private openLibraryGamePicker(): void {

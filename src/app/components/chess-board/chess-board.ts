@@ -33,6 +33,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() bestMoveArrow: { from: Key; to: Key } | null = null;
   @Input() showCoordinates = true;
   @Input() boardTheme: 'brown' | 'green' | 'blue' | 'grey' = 'brown';
+  @Input() pieceSet: 'cburnett' | 'merida' | 'alpha' | 'kosal' = 'cburnett';
   @Input() highlightLastMove = true;
 
   @Output() moved = new EventEmitter<BoardMove>();
@@ -73,7 +74,15 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       return;
     }
 
-    if (changes['fen'] || changes['turnColor'] || changes['legalDests'] || changes['orientation'] || changes['bestMoveArrow']) {
+    if (
+      changes['fen'] ||
+      changes['turnColor'] ||
+      changes['legalDests'] ||
+      changes['orientation'] ||
+      changes['bestMoveArrow'] ||
+      changes['showCoordinates'] ||
+      changes['highlightLastMove']
+    ) {
       this.boardApi.set({
         fen: this.fen,
         orientation: this.orientation,

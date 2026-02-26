@@ -323,6 +323,27 @@ button {
   }
 }
 
+.woodpecker-progress {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.18);
+  overflow: hidden;
+}
+
+.woodpecker-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f59e0b, #ea580c);
+  transition: width 220ms ease;
+}
+
+.woodpecker-progress-value {
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+}
+
 .surrender {
   justify-self: start;
   background: #ef4444;
@@ -609,4 +630,29 @@ button {
   margin: 0 0 0.45rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+:host-context(.theme-dark) {
+  .puzzle-status {
+    border-color: #7c2d12;
+    background: linear-gradient(to right, #2b1908, #3a2310);
+
+    h2,
+    p {
+      color: #fed7aa;
+    }
+  }
+
+  .woodpecker-status {
+    border-color: #78350f;
+    background: linear-gradient(to right, #3a230f, #4a2d13);
+
+    p {
+      color: #fdba74;
+    }
+  }
+
+  .woodpecker-progress {
+    background: rgba(251, 191, 36, 0.16);
+  }
 }

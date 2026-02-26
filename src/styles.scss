@@ -2,6 +2,27 @@
 @import 'chessground/assets/chessground.brown.css';
 @import 'chessground/assets/chessground.cburnett.css';
 @import './assets/board-themes.css';
+@import './assets/piece-sets.css';
+
+:root {
+  --app-bg: #f1f5f9;
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #e2e8f0;
+  --border-color: #dbe3f0;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+}
+
+body.theme-dark {
+  --app-bg: #060b16;
+  --surface-1: #0f172a;
+  --surface-2: #111d35;
+  --surface-3: #1f2a44;
+  --border-color: #27364f;
+  --text-primary: #e2e8f0;
+  --text-muted: #94a3b8;
+}
 
 * {
   box-sizing: border-box;
@@ -12,9 +33,81 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--app-bg);
+  color: var(--text-primary);
   line-height: 1.5;
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+body.theme-dark {
+  color-scheme: dark;
+}
+
+body.theme-dark .settings-container,
+body.theme-dark .analysis-panel .library-game-title,
+body.theme-dark .analysis-panel .turn-indicator,
+body.theme-dark .analysis-panel .pv-list,
+body.theme-dark .analysis-panel .settings-accordion,
+body.theme-dark .analysis-panel .engine-settings,
+body.theme-dark .analysis-panel .board-controls,
+body.theme-dark .analysis-panel .move-list,
+body.theme-dark .analysis-panel .history-nav,
+body.theme-dark .analysis-panel .quick-menu,
+body.theme-dark .library-header,
+body.theme-dark .game-card,
+body.theme-dark .empty-state,
+body.theme-dark .library-picker-drawer,
+body.theme-dark .app-topbar {
+  background: var(--surface-1) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .settings-header,
+body.theme-dark .card-details,
+body.theme-dark .pv-list-header {
+  border-color: var(--border-color) !important;
+}
+
+body.theme-dark .library-picker-entry,
+body.theme-dark .library-picker-close,
+body.theme-dark .game-select-button,
+body.theme-dark .toggle-label,
+body.theme-dark .mode-select select,
+body.theme-dark .game-filter input,
+body.theme-dark .library-picker-filter input,
+body.theme-dark .setting-select,
+body.theme-dark .analysis-panel input,
+body.theme-dark .analysis-panel button.history-icon-button {
+  background: var(--surface-2) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .library-header h1,
+body.theme-dark .settings-header h2,
+body.theme-dark .analysis-panel h2,
+body.theme-dark .topbar-title-wrap h1,
+body.theme-dark .library-picker-header h2,
+body.theme-dark .game-card h2,
+body.theme-dark .quick-option,
+body.theme-dark .puzzle-option,
+body.theme-dark .setting-label {
+  color: var(--text-primary) !important;
+}
+
+body.theme-dark .hint,
+body.theme-dark .game-filter-empty,
+body.theme-dark .settings-header p,
+body.theme-dark .game-card p,
+body.theme-dark .library-picker-empty,
+body.theme-dark .library-picker-filter,
+body.theme-dark .topbar-kicker,
+body.theme-dark .topbar-engine,
+body.theme-dark .analysis-panel .cursor,
+body.theme-dark .analysis-panel .move-number {
+  color: var(--text-muted) !important;
 }
 
 /* Custom Scrollbar for better UI on desktop */
@@ -28,10 +121,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: color-mix(in srgb, var(--text-muted) 50%, transparent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }

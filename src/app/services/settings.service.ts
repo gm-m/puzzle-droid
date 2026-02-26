@@ -1,4 +1,5 @@
-import { Injectable, signal, effect } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { AppSettings, DEFAULT_SETTINGS } from '../models/settings.models';
 
 const SETTINGS_STORAGE_KEY = 'puzzle-droid-settings-v1';
@@ -7,11 +8,15 @@ const SETTINGS_STORAGE_KEY = 'puzzle-droid-settings-v1';
   providedIn: 'root'
 })
 export class SettingsService {
+  private readonly document = inject(DOCUMENT);
+
   readonly settings = signal<AppSettings>(this.loadSettings());
 
   constructor() {
     effect(() => {
-      this.saveSettings(this.settings());
+      const nextSettings = this.settings();
+      this.saveSettings(nextSettings);
+      this.applyTheme(nextSettings.darkMode);
     });
   }
 
@@ -45,5 +50,14 @@ export class SettingsService {
     } catch (e) {
       console.warn('Could not save settings to localStorage', e);
     }
+  }
+
+  private applyTheme(darkMode: boolean): void {
+    const body = this.document?.body;
+    if (!body) {
+      return;
+    }
+
+    body.classList.toggle('theme-dark', darkMode);
   }
 }

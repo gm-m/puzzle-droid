@@ -1,16 +1,35 @@
 <div class="settings-container">
   <div class="settings-header">
-    <h2>Impostazioni Grafiche</h2>
-    <p>Personalizza l'aspetto dell'applicazione</p>
+    <h2>Impostazioni App</h2>
+    <p>Tema globale, scacchiera e set pezzi</p>
   </div>
 
   <div class="settings-content">
+    <div class="setting-group checkbox-group">
+      <label class="setting-label" for="dark-mode">Dark mode globale</label>
+      <label class="switch">
+        <input id="dark-mode" type="checkbox" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
     <div class="setting-group">
       <label class="setting-label" for="board-theme">Tema Scacchiera</label>
       <select id="board-theme" class="setting-select" [value]="settings().boardTheme" (change)="onThemeChange($event)">
         <option value="brown">Marrone Classico</option>
         <option value="blue">Blu Scuro</option>
         <option value="green">Verde Scacchistico</option>
+        <option value="grey">Grigio Minimal</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label class="setting-label" for="piece-set">Set Pezzi</label>
+      <select id="piece-set" class="setting-select" [value]="settings().pieceSet" (change)="onPieceSetChange($event)">
+        <option value="cburnett">Cburnett</option>
+        <option value="merida">Merida</option>
+        <option value="alpha">Alpha</option>
+        <option value="kosal">Kosal</option>
       </select>
     </div>
 

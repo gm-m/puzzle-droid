@@ -5,24 +5,25 @@
   max-width: 600px;
   margin: 0 auto;
   padding: 1rem;
-  background: white;
+  background: var(--surface-1);
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .settings-header {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
   
   h2 {
     margin: 0;
     font-size: 1.5rem;
-    color: #1e293b;
+    color: var(--text-primary);
   }
   
   p {
     margin: 0.5rem 0 0;
-    color: #64748b;
+    color: var(--text-muted);
     font-size: 0.9rem;
   }
 }
@@ -47,16 +48,16 @@
 
 .setting-label {
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
 .setting-select {
   padding: 0.75rem;
   border-radius: 0.5rem;
-  border: 1px solid #cbd5e1;
-  background-color: #f8fafc;
-  color: #1e293b;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-2);
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-family: inherit;
   cursor: pointer;
@@ -72,7 +73,7 @@
 .settings-actions {
   margin-top: 1rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
 }

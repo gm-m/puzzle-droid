@@ -64,6 +64,9 @@ export class AnalysisPanelComponent {
   @Input() woodpeckerCycleLabel = '';
   @Input() woodpeckerProgressLabel = '';
   @Input() woodpeckerTargetLabel = '';
+  @Input() woodpeckerDayLabel = '';
+  @Input() woodpeckerCalendarLabel = '';
+  @Input() woodpeckerProgressPercent = 0;
   @Input() boardOrientation: 'white' | 'black' = 'white';
   @Input() turnColor: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;
