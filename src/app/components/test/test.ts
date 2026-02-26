@@ -21,6 +21,15 @@ interface LibraryGameListEntry {
   title: string;
 }
 
+interface WoodpeckerSession {
+  cycle: number;
+  targetDays: number;
+  cycleStartedAt: number;
+  solvedIndexes: number[];
+  completed: boolean;
+  gameCount: number;
+}
+
 @Component({
   selector: 'app-test',
   imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent],
@@ -31,6 +40,9 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
+  private static readonly WOODPECKER_MAX_CYCLES = 7;
+  private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
+  private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
 
   readonly activeView = signal<'analysis' | 'library'>('analysis');
   readonly isMenuOpen = signal(false);
@@ -68,6 +80,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly currentLibraryGameTitle = signal('');
   readonly isLibraryGamePickerOpen = signal(false);
   readonly libraryGameFilter = signal('');
+  readonly woodpeckerSession = signal<WoodpeckerSession | null>(null);
 
   private readonly chess = new Chess();
   private historyInitialFen = Test.STARTING_FEN;
@@ -75,6 +88,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
   private boardResizeObserver: ResizeObserver | null = null;
   private currentLibrarySelection: LibraryGameSelection | null = null;
+  private currentWoodpeckerSessionKey: string | null = null;
+  private woodpeckerSessionsByKey: Record<string, WoodpeckerSession> = {};
   private touchStartX: number | null = null;
   private touchStartY: number | null = null;
   private touchStartFromLeftEdge = false;
@@ -86,6 +101,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   constructor(private readonly stockfish: StockfishService) {}
 
   ngOnInit(): void {
+    this.loadWoodpeckerSessions();
     this.syncGameState();
     this.stockfish.setListener((event) => this.handleEngineEvent(event));
     this.stockfish.init();
@@ -288,6 +304,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       fullUciHistory: [...selection.fullUciHistory],
     };
     this.currentLibraryGameTitle.set(selection.gameTitle);
+    this.syncWoodpeckerSessionForSelection();
     this.closeLibraryGamePicker();
 
     if (selection.mode === 'puzzle') {
@@ -357,6 +374,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
     this.currentLibraryGameTitle.set('');
+    this.currentWoodpeckerSessionKey = null;
+    this.woodpeckerSession.set(null);
     this.closeLibraryGamePicker();
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
@@ -391,6 +410,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
     this.currentLibraryGameTitle.set('');
+    this.currentWoodpeckerSessionKey = null;
+    this.woodpeckerSession.set(null);
     this.closeLibraryGamePicker();
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
@@ -618,6 +639,41 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     return `${this.moveCursor()}/${this.moveHistory().length}`;
   }
 
+  showWoodpeckerInfo(): boolean {
+    return this.woodpeckerSession() !== null && this.currentLibrarySelection?.mode === 'puzzle';
+  }
+
+  woodpeckerCycleLabel(): string {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return '';
+    }
+
+    return `Ciclo ${session.cycle}/${Test.WOODPECKER_MAX_CYCLES}`;
+  }
+
+  woodpeckerProgressLabel(): string {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return '';
+    }
+
+    return `${session.solvedIndexes.length}/${session.gameCount} puzzle completati nel ciclo corrente`;
+  }
+
+  woodpeckerTargetLabel(): string {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return '';
+    }
+
+    if (session.completed) {
+      return 'Metodo completato';
+    }
+
+    return `Obiettivo ciclo: ${session.targetDays} giorno${session.targetDays === 1 ? '' : 'i'}`;
+  }
+
   private syncGameState(): void {
     this.currentFen.set(this.chess.fen());
     this.turnColor.set(this.chess.turn() === 'w' ? 'white' : 'black');
@@ -736,6 +792,11 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private handlePuzzleSolved(): void {
     const location = this.getCurrentLibraryGameLocation();
+    if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
+      this.handleWoodpeckerSolved(location);
+      return;
+    }
+
     const hasNextGame = Boolean(location && location.gameIndex < location.item.games.length - 1);
     const shouldAutoAdvance =
       this.isPuzzleMode() &&
@@ -761,6 +822,110 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.puzzleMessage.set('Puzzle risolto!');
+  }
+
+  private handleWoodpeckerSolved(location: { item: PgnLibraryItem; gameIndex: number }): void {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      this.puzzleMessage.set('Puzzle risolto!');
+      return;
+    }
+
+    const solvedSet = new Set(session.solvedIndexes);
+    solvedSet.add(location.gameIndex);
+    const solvedIndexes = Array.from(solvedSet).sort((a, b) => a - b);
+    const solvedCount = solvedIndexes.length;
+    const total = session.gameCount;
+
+    if (solvedCount >= total) {
+      const reachedFinalCycle = session.cycle >= Test.WOODPECKER_MAX_CYCLES || session.targetDays <= 1;
+      if (reachedFinalCycle) {
+        this.updateWoodpeckerSession({
+          ...session,
+          solvedIndexes,
+          completed: true,
+        });
+        this.puzzleMessage.set('Woodpecker completato! Set risolto fino al ciclo finale.');
+        return;
+      }
+
+      const nextCycle = session.cycle + 1;
+      const nextTargetDays = Math.max(1, Math.ceil(session.targetDays / 2));
+      this.updateWoodpeckerSession({
+        ...session,
+        cycle: nextCycle,
+        targetDays: nextTargetDays,
+        cycleStartedAt: Date.now(),
+        solvedIndexes: [],
+        completed: false,
+      });
+      this.puzzleMessage.set(
+        `Ciclo ${session.cycle} completato. Pausa consigliata di almeno 1 giorno. Nuovo obiettivo: ${nextTargetDays} giorni.`,
+      );
+      return;
+    }
+
+    this.updateWoodpeckerSession({
+      ...session,
+      solvedIndexes,
+      completed: false,
+    });
+
+    const remaining = total - solvedCount;
+    const shouldAutoAdvance =
+      this.currentLibrarySelection?.autoAdvanceOnSuccess === true &&
+      this.isPuzzleMode() &&
+      !this.isPuzzleSurrendered() &&
+      remaining > 0;
+
+    if (!shouldAutoAdvance) {
+      this.puzzleMessage.set(
+        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Rimanenti: ${remaining}.`,
+      );
+      return;
+    }
+
+    const nextIndex = this.findNextWoodpeckerUnsolvedIndex(location.gameIndex, solvedSet, total);
+    if (nextIndex === null) {
+      this.puzzleMessage.set(
+        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Rimanenti: ${remaining}.`,
+      );
+      return;
+    }
+
+    this.scheduleNextLibraryGameSelection(location.item, nextIndex, `Corretto! Woodpecker: ${solvedCount}/${total}.`);
+  }
+
+  private findNextWoodpeckerUnsolvedIndex(fromIndex: number, solvedSet: Set<number>, gameCount: number): number | null {
+    for (let offset = 1; offset <= gameCount; offset += 1) {
+      const candidate = (fromIndex + offset) % gameCount;
+      if (!solvedSet.has(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  private scheduleNextLibraryGameSelection(item: PgnLibraryItem, targetIndex: number, pendingMessage: string): void {
+    this.clearPuzzleAutoNextGameTimer();
+    this.isPuzzleAutoPlaying.set(true);
+    this.puzzleMessage.set(pendingMessage);
+    this.puzzleAutoNextGameTimer = setTimeout(() => {
+      this.puzzleAutoNextGameTimer = null;
+      this.isPuzzleAutoPlaying.set(false);
+
+      if (!this.isPuzzleMode() || this.isPuzzleSurrendered()) {
+        return;
+      }
+
+      const targetGame = item.games[targetIndex];
+      if (!targetGame) {
+        return;
+      }
+
+      this.selectLibraryGame(item, targetGame, targetIndex);
+    }, Test.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
   }
 
   private navigateLibraryGame(direction: -1 | 1): void {
@@ -792,6 +957,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       autoPlayFirstMove: reference?.autoPlayFirstMove ?? false,
       autoAdvanceOnSuccess: reference?.autoAdvanceOnSuccess ?? true,
       autoRotateBoardOnTurn: reference?.autoRotateBoardOnTurn ?? true,
+      woodpeckerEnabled: reference?.woodpeckerEnabled ?? false,
     });
   }
 
@@ -842,6 +1008,150 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const black = game.black || '?';
     const result = game.result || '*';
     return `Partita ${gameIndex + 1}: ${white} vs ${black} (${result})`;
+  }
+
+  private isWoodpeckerEnabledForCurrentSelection(): boolean {
+    return this.currentLibrarySelection?.mode === 'puzzle' && this.currentLibrarySelection?.woodpeckerEnabled === true;
+  }
+
+  private syncWoodpeckerSessionForSelection(): void {
+    if (!this.isWoodpeckerEnabledForCurrentSelection()) {
+      this.currentWoodpeckerSessionKey = null;
+      this.woodpeckerSession.set(null);
+      return;
+    }
+
+    const location = this.getCurrentLibraryGameLocation();
+    if (!location) {
+      this.currentWoodpeckerSessionKey = null;
+      this.woodpeckerSession.set(null);
+      return;
+    }
+
+    const key = this.getWoodpeckerSessionKey(location.item);
+    this.currentWoodpeckerSessionKey = key;
+    this.woodpeckerSession.set(this.ensureWoodpeckerSession(key, location.item.games.length));
+  }
+
+  private ensureWoodpeckerSession(key: string, gameCount: number): WoodpeckerSession {
+    const existing = this.woodpeckerSessionsByKey[key];
+    if (existing && existing.gameCount === gameCount) {
+      return existing;
+    }
+
+    const created: WoodpeckerSession = {
+      cycle: 1,
+      targetDays: Test.WOODPECKER_INITIAL_TARGET_DAYS,
+      cycleStartedAt: Date.now(),
+      solvedIndexes: [],
+      completed: false,
+      gameCount,
+    };
+    this.woodpeckerSessionsByKey = {
+      ...this.woodpeckerSessionsByKey,
+      [key]: created,
+    };
+    this.persistWoodpeckerSessions();
+    return created;
+  }
+
+  private updateWoodpeckerSession(nextSession: WoodpeckerSession): void {
+    const key = this.currentWoodpeckerSessionKey;
+    if (!key) {
+      return;
+    }
+
+    const normalized: WoodpeckerSession = {
+      ...nextSession,
+      solvedIndexes: [...new Set(nextSession.solvedIndexes)].sort((a, b) => a - b),
+    };
+    this.woodpeckerSessionsByKey = {
+      ...this.woodpeckerSessionsByKey,
+      [key]: normalized,
+    };
+    this.woodpeckerSession.set(normalized);
+    this.persistWoodpeckerSessions();
+  }
+
+  private loadWoodpeckerSessions(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(Test.WOODPECKER_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== 'object') {
+        return;
+      }
+
+      const restored: Record<string, WoodpeckerSession> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        const normalized = this.normalizeWoodpeckerSession(value);
+        if (normalized) {
+          restored[key] = normalized;
+        }
+      }
+      this.woodpeckerSessionsByKey = restored;
+    } catch {
+      this.woodpeckerSessionsByKey = {};
+    }
+  }
+
+  private persistWoodpeckerSessions(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      localStorage.setItem(Test.WOODPECKER_STORAGE_KEY, JSON.stringify(this.woodpeckerSessionsByKey));
+    } catch {
+      // Ignore persistence errors (private mode / quota).
+    }
+  }
+
+  private normalizeWoodpeckerSession(value: unknown): WoodpeckerSession | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const candidate = value as Partial<WoodpeckerSession>;
+    const cycle = this.clamp(Number(candidate.cycle ?? 1), 1, Test.WOODPECKER_MAX_CYCLES);
+    const targetDays = Math.max(1, Math.trunc(Number(candidate.targetDays ?? Test.WOODPECKER_INITIAL_TARGET_DAYS)));
+    const cycleStartedAt = Number(candidate.cycleStartedAt ?? Date.now());
+    const gameCount = Math.max(0, Math.trunc(Number(candidate.gameCount ?? 0)));
+    const solvedIndexes = Array.isArray(candidate.solvedIndexes)
+      ? candidate.solvedIndexes
+          .map((entry) => Math.trunc(Number(entry)))
+          .filter((entry) => Number.isFinite(entry) && entry >= 0 && entry < gameCount)
+      : [];
+
+    return {
+      cycle,
+      targetDays,
+      cycleStartedAt: Number.isFinite(cycleStartedAt) ? cycleStartedAt : Date.now(),
+      solvedIndexes: [...new Set(solvedIndexes)].sort((a, b) => a - b),
+      completed: candidate.completed === true,
+      gameCount,
+    };
+  }
+
+  private getWoodpeckerSessionKey(item: PgnLibraryItem): string {
+    return `${item.name}|${item.games.length}|${this.hashText(item.pgn)}`;
+  }
+
+  private hashText(value: string): string {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+
+    return Math.abs(hash).toString(36);
   }
 
   private canHandleLibrarySwipe(): boolean {

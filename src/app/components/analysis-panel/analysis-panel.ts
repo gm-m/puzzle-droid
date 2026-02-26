@@ -50,6 +50,10 @@ export class AnalysisPanelComponent {
   @Input() hideEngine = false;
   @Input() puzzleMessage = '';
   @Input() showSurrender = false;
+  @Input() showWoodpeckerInfo = false;
+  @Input() woodpeckerCycleLabel = '';
+  @Input() woodpeckerProgressLabel = '';
+  @Input() woodpeckerTargetLabel = '';
   @Input() boardOrientation: 'white' | 'black' = 'white';
   @Input() turnColor: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;

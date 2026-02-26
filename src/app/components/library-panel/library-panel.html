@@ -51,6 +51,11 @@
         Ruota automaticamente la scacchiera in base al tratto
       </label>
 
+      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+        <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)" (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
+        Metodo Woodpecker (ripetizione a cicli)
+      </label>
+
       <section class="card-details" *ngIf="isExpanded(item.id)">
         <article class="library-game" *ngFor="let game of item.games; let gameIndex = index">
           <button type="button" class="game-select-button" (click)="onGameClick(item, game)">

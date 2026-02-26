@@ -224,6 +224,21 @@ button {
   }
 }
 
+.woodpecker-status {
+  border: 1px solid #fcd34d;
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  background: #fff7d6;
+  display: grid;
+  gap: 0.2rem;
+
+  p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: #78350f;
+  }
+}
+
 .surrender {
   justify-self: start;
   background: #b91c1c;

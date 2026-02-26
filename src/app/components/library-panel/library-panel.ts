@@ -17,6 +17,7 @@ export interface LibraryGameSelection {
   autoPlayFirstMove: boolean;
   autoAdvanceOnSuccess: boolean;
   autoRotateBoardOnTurn: boolean;
+  woodpeckerEnabled: boolean;
 }
 
 @Component({
@@ -36,6 +37,7 @@ export class LibraryPanelComponent {
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
+  private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -69,6 +71,7 @@ export class LibraryPanelComponent {
       autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
       autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),
+      woodpeckerEnabled: this.isPuzzleWoodpecker(item.id),
     });
   }
 
@@ -97,6 +100,15 @@ export class LibraryPanelComponent {
 
   isPuzzleAutoRotate(itemId: string): boolean {
     return this.puzzleAutoRotateByItem.get(itemId) ?? true;
+  }
+
+  onPuzzleWoodpeckerChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleWoodpeckerByItem.set(itemId, checked);
+  }
+
+  isPuzzleWoodpecker(itemId: string): boolean {
+    return this.puzzleWoodpeckerByItem.get(itemId) ?? false;
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {

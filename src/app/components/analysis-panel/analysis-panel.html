@@ -72,6 +72,11 @@
     <section class="puzzle-status">
       <h2>Modalità Puzzle</h2>
       <p>{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+      <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
+        <p>{{ woodpeckerCycleLabel }}</p>
+        <p>{{ woodpeckerProgressLabel }}</p>
+        <p>{{ woodpeckerTargetLabel }}</p>
+      </div>
       <button *ngIf="showSurrender" type="button" class="surrender" (click)="surrenderPuzzle.emit()">
         Arrenditi
       </button>
