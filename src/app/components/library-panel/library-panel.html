@@ -32,6 +32,10 @@
         </select>
       </label>
 
+      <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">
+        Dashboard Woodpecker
+      </button>
+
       <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
 
       <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">

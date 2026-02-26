@@ -2,12 +2,12 @@
   <header class="app-topbar">
     <div class="topbar-main">
       <button type="button" class="menu-trigger" aria-label="Apri menu" (click)="toggleMenu()">☰</button>
-      <div class="topbar-title-wrap">
+      <!-- <div class="topbar-title-wrap">
         <p class="topbar-kicker">Vista</p>
         <h1>{{ currentViewTitle() }}</h1>
-      </div>
+      </div> -->
     </div>
-    <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p>
+    <!-- <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p> -->
   </header>
 
   <aside class="side-menu" [class.open]="isMenuOpen()">
@@ -249,6 +249,7 @@
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"
         (itemRemoved)="onLibraryItemRemoved($event)"
+        (dashboardRequested)="onLibraryDashboardRequested($event)"
       ></app-library-panel>
     </ng-container>
 

@@ -39,6 +39,7 @@ export class LibraryPanelComponent {
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
   @Output() readonly gameSelected = new EventEmitter<LibraryGameSelection>();
   @Output() readonly itemRemoved = new EventEmitter<string>();
+  @Output() readonly dashboardRequested = new EventEmitter<string>();
 
   expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
@@ -101,6 +102,10 @@ export class LibraryPanelComponent {
 
     this.clearItemState(item.id);
     this.itemRemoved.emit(item.id);
+  }
+
+  onOpenDashboard(itemId: string): void {
+    this.dashboardRequested.emit(itemId);
   }
 
   onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {

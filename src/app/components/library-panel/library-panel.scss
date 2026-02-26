@@ -23,6 +23,22 @@
   }
 }
 
+.dashboard-button {
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #0ea5e9 12%, var(--surface-1));
+  color: color-mix(in srgb, #0369a1 60%, var(--text-primary));
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: color-mix(in srgb, #0ea5e9 20%, var(--surface-1));
+    border-color: #0284c7;
+  }
+}
+
 .puzzle-option {
   display: flex;
   align-items: center;

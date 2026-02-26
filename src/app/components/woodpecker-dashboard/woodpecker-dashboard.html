@@ -1,0 +1,153 @@
+<main class="dashboard-shell">
+  <header class="dashboard-header">
+    <div>
+      <p class="kicker">Woodpecker</p>
+      <h1>Dashboard progresso per PGN</h1>
+    </div>
+
+    <div class="header-actions">
+      <a class="nav-link" routerLink="/library">← Torna alla libreria</a>
+      <a class="nav-link" routerLink="/analysis">Vai ad analisi</a>
+    </div>
+  </header>
+
+  <ng-container *ngIf="data() as vm; else emptyState">
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <p>Ciclo corrente</p>
+        <h2>{{ vm.currentCycle }}</h2>
+        <small>Target {{ vm.targetDays }} giorni</small>
+      </article>
+
+      <article class="kpi-card">
+        <p>Accuracy</p>
+        <h2>{{ vm.accuracyPercent }}%</h2>
+        <small>su tutti i tentativi del PGN</small>
+      </article>
+
+      <article class="kpi-card">
+        <p>Streak</p>
+        <h2>{{ vm.currentStreak }}</h2>
+        <small>risoluzioni corrette consecutive</small>
+      </article>
+
+      <article class="kpi-card">
+        <p>Tempo medio</p>
+        <h2>{{ vm.averageSolveTimeSeconds }}s</h2>
+        <small>per tentativo</small>
+      </article>
+    </section>
+
+    <section class="status-row">
+      <div class="status-title">
+        <h2>{{ vm.pgnName }}</h2>
+        <p>ID: {{ vm.pgnId }}</p>
+      </div>
+      <div class="status-actions">
+        <button
+          type="button"
+          class="resume-button"
+          *ngIf="vm.hasResumeSession && vm.resumePuzzleIndex !== null"
+          (click)="resumeWoodpecker(vm)"
+        >
+          Riprendi
+        </button>
+        <span class="risk-pill" [ngClass]="riskClass(vm.deadlineRisk)">Rischio deadline: {{ vm.deadlineRisk }}</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Timeline sessioni e progresso per ciclo</h3>
+      <div class="timeline-grid" *ngIf="vm.cycleTimeline.length > 0; else noTimeline">
+        <article class="timeline-card" *ngFor="let cycle of vm.cycleTimeline; trackBy: trackByCycle">
+          <header>
+            <h4>Ciclo {{ cycle.cycle }}</h4>
+            <span class="risk-pill compact" [ngClass]="riskClass(cycle.deadlineRisk)">{{ cycle.deadlineRisk }}</span>
+          </header>
+
+          <p>Periodo: {{ formatDate(cycle.startedAt) }} → {{ formatDate(cycle.completedAt) }}</p>
+          <p>Progress: {{ cycle.solvedCount }}/{{ cycle.gameCount }} puzzle · {{ cycle.progressPercent }}%</p>
+          <p>Accuracy ciclo: {{ cycle.attempts > 0 ? ((cycle.correctAttempts / cycle.attempts) * 100 | number: '1.0-0') : 0 }}%</p>
+          <p>Tempo medio: {{ cycle.averageSolveTimeMs / 1000 | number: '1.0-1' }}s · Giorni rimanenti: {{ cycle.remainingDays }}</p>
+
+          <div class="progress-track">
+            <span class="progress-fill" [style.width.%]="cycle.progressPercent"></span>
+          </div>
+        </article>
+      </div>
+      <ng-template #noTimeline>
+        <p class="empty-message">Nessun ciclo registrato per questo PGN.</p>
+      </ng-template>
+    </section>
+
+    <section class="panel">
+      <h3>Puzzle sbagliati</h3>
+      <div class="failed-grid" *ngIf="vm.failedPuzzles.length > 0; else noFailedPuzzles">
+        <article class="failed-row" *ngFor="let failed of vm.failedPuzzles; trackBy: trackByFailedPuzzle">
+          <p>
+            Puzzle {{ failed.puzzleIndex + 1 }}
+            <small>Ultimo tentativo: {{ formatDate(failed.lastAttemptAt) }}</small>
+          </p>
+          <strong>{{ failed.wrongAttempts }} errori</strong>
+          <span>{{ failed.averageSolveTimeSeconds }}s medi</span>
+        </article>
+      </div>
+      <ng-template #noFailedPuzzles>
+        <p class="empty-message">Nessun puzzle sbagliato registrato per questo PGN.</p>
+      </ng-template>
+    </section>
+
+    <section class="panel split">
+      <article>
+        <h3>Miglioramento PGN (ultimi 14 giorni)</h3>
+        <div class="improvement-grid" *ngIf="vm.pgnImprovement.length > 0; else noPgnTrend">
+          <div class="improvement-row" *ngFor="let point of vm.pgnImprovement; trackBy: trackByPoint">
+            <p>{{ point.label }}</p>
+            <div class="bar-track">
+              <span class="bar-fill accent" [style.width.%]="point.accuracy"></span>
+            </div>
+            <strong>{{ point.accuracy }}%</strong>
+          </div>
+        </div>
+        <ng-template #noPgnTrend>
+          <p class="empty-message">Servono più tentativi per mostrare il trend del PGN.</p>
+        </ng-template>
+      </article>
+
+      <article>
+        <h3>Miglioramento globale (ultimi 14 giorni)</h3>
+        <div class="improvement-grid" *ngIf="vm.globalImprovement.length > 0; else noGlobalTrend">
+          <div class="improvement-row" *ngFor="let point of vm.globalImprovement; trackBy: trackByPoint">
+            <p>{{ point.label }}</p>
+            <div class="bar-track">
+              <span class="bar-fill" [style.width.%]="point.accuracy"></span>
+            </div>
+            <strong>{{ point.accuracy }}%</strong>
+          </div>
+        </div>
+        <ng-template #noGlobalTrend>
+          <p class="empty-message">Nessun dato globale disponibile.</p>
+        </ng-template>
+      </article>
+    </section>
+  </ng-container>
+
+  <ng-template #emptyState>
+    <section class="panel">
+      <h3>Nessun dato dashboard per questo PGN</h3>
+      <p class="empty-message">
+        Apri un PGN in modalità puzzle con Woodpecker e risolvi qualche esercizio per generare statistiche.
+      </p>
+
+      <div class="pgn-links" *ngIf="availablePgns().length > 0">
+        <a
+          class="nav-link"
+          *ngFor="let pgn of availablePgns(); trackBy: trackByPgn"
+          [routerLink]="['/woodpecker-dashboard', pgn.pgnId]"
+        >
+          {{ pgn.pgnName }}
+        </a>
+      </div>
+    </section>
+  </ng-template>
+</main>

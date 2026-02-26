@@ -52,5 +52,20 @@
     <div class="settings-actions">
       <button type="button" class="btn-reset" (click)="resetSettings()">Ripristina Predefinite</button>
     </div>
+
+    <div class="backup-card">
+      <h3>Backup e Restore</h3>
+      <p>Esporta/importa libreria, sessioni Woodpecker, analytics e impostazioni.</p>
+
+      <div class="backup-actions">
+        <button type="button" class="btn-backup" (click)="exportBackup()">Esporta backup JSON</button>
+        <label class="btn-import">
+          Importa backup JSON
+          <input type="file" accept="application/json,.json" (change)="onBackupFileSelected($event)" />
+        </label>
+      </div>
+
+      <p class="backup-feedback" *ngIf="backupFeedback">{{ backupFeedback }}</p>
+    </div>
   </div>
 </div>

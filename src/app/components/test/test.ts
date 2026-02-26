@@ -17,21 +17,14 @@ import { SettingsPanelComponent } from '../settings-panel/settings-panel';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
+import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '../../models/woodpecker.models';
+import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { StockfishService } from '../../services/stockfish.service';
 
 interface LibraryGameListEntry {
   id: string;
   index: number;
   title: string;
-}
-
-interface WoodpeckerSession {
-  cycle: number;
-  targetDays: number;
-  cycleStartedAt: number;
-  solvedIndexes: number[];
-  completed: boolean;
-  gameCount: number;
 }
 
 interface PersistedLibraryItem {
@@ -106,11 +99,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private currentLibrarySelection: LibraryGameSelection | null = null;
   private currentWoodpeckerSessionKey: string | null = null;
   private woodpeckerSessionsByKey: Record<string, WoodpeckerSession> = {};
+  private puzzleAttemptStartedAt: number | null = null;
   private touchStartX: number | null = null;
   private touchStartY: number | null = null;
   private touchStartFromLeftEdge = false;
   private touchStartedOnBoard = false;
   private routeParamsSubscription: Subscription | null = null;
+  private routeQueryParamsSubscription: Subscription | null = null;
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -120,6 +115,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private readonly stockfish: StockfishService,
     private readonly settingsService: SettingsService,
+    private readonly woodpeckerAnalytics: WoodpeckerAnalyticsService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
   ) {
@@ -131,6 +127,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.loadWoodpeckerSessions();
     this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
       this.syncViewFromRoute(params.get('view'));
+    });
+    this.routeQueryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
+      this.tryResumeWoodpeckerFromQuery(
+        params.get('resumeWoodpecker'),
+        params.get('pgnId'),
+        params.get('puzzleIndex'),
+      );
     });
     this.syncGameState();
     this.stockfish.setListener((event) => this.handleEngineEvent(event));
@@ -145,6 +148,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.routeParamsSubscription?.unsubscribe();
     this.routeParamsSubscription = null;
+    this.routeQueryParamsSubscription?.unsubscribe();
+    this.routeQueryParamsSubscription = null;
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     if (this.boardResizeObserver) {
@@ -179,6 +184,50 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       default:
         return 'Analisi';
     }
+  }
+
+  private tryResumeWoodpeckerFromQuery(
+    resumeWoodpecker: string | null,
+    pgnId: string | null,
+    rawPuzzleIndex: string | null,
+  ): void {
+    if (resumeWoodpecker !== '1' || !pgnId) {
+      return;
+    }
+
+    const item = this.libraryItems().find((entry) => entry.id === pgnId);
+    if (!item || item.games.length === 0) {
+      this.fenFeedback.set('Impossibile riprendere: PGN non trovato in libreria.');
+      return;
+    }
+
+    const parsedIndex = Number(rawPuzzleIndex ?? 0);
+    const targetIndex = this.clamp(
+      Number.isFinite(parsedIndex) ? Math.trunc(parsedIndex) : 0,
+      0,
+      Math.max(0, item.games.length - 1),
+    );
+    const targetGame = item.games[targetIndex] ?? item.games[0];
+    if (!targetGame) {
+      return;
+    }
+
+    this.selectLibraryGame(item, targetGame, targetIndex, {
+      mode: 'puzzle',
+      woodpeckerEnabled: true,
+      autoAdvanceOnSuccess: true,
+    });
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        resumeWoodpecker: null,
+        pgnId: null,
+        puzzleIndex: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   topBarEngineStatus(): string {
@@ -355,6 +404,11 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  onLibraryDashboardRequested(itemId: string): void {
+    this.isMenuOpen.set(false);
+    void this.router.navigate(['/woodpecker-dashboard', itemId]);
+  }
+
   onLibraryGameSelected(selection: LibraryGameSelection): void {
     try {
       this.chess.load(selection.initialFen);
@@ -384,11 +438,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       }
       this.stockfish.stop();
       this.puzzleMessage.set('Puzzle avviato.');
+      this.puzzleAttemptStartedAt = null;
     } else {
       this.isPuzzleMode.set(false);
       this.isPuzzleSurrendered.set(false);
       this.puzzleAutoRotateBoardOnTurn.set(false);
       this.puzzleMessage.set('');
+      this.puzzleAttemptStartedAt = null;
     }
 
     this.moveHistory.set([...fullHistory]);
@@ -404,6 +460,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
         this.schedulePuzzleAutoMove(0, 'Prima mossa in arrivo...');
       } else {
         this.puzzleMessage.set('Puzzle avviato. Fai la prima mossa corretta.');
+        this.markPuzzleAttemptStart();
       }
     }
   }
@@ -444,6 +501,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.currentLibraryGameTitle.set('');
     this.currentWoodpeckerSessionKey = null;
     this.woodpeckerSession.set(null);
+    this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.chess.reset();
     this.historyInitialFen = Test.STARTING_FEN;
@@ -480,6 +538,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.currentLibraryGameTitle.set('');
     this.currentWoodpeckerSessionKey = null;
     this.woodpeckerSession.set(null);
+    this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
@@ -602,6 +661,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
+    this.puzzleAttemptStartedAt = null;
     this.isPuzzleSurrendered.set(true);
     this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     this.analyzePosition();
@@ -800,6 +860,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const history = this.moveHistory();
     const cursor = this.moveCursor();
     const expectedUci = history[cursor];
+    const location = this.getCurrentLibraryGameLocation();
 
     if (!expectedUci) {
       this.handlePuzzleSolved();
@@ -814,8 +875,10 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const tacticalTheme = this.detectTacticalTheme(expectedUci);
+
     if (move.from !== expectedMove.from || move.to !== expectedMove.to) {
-      this.puzzleMessage.set('Mossa sbagliata, riprova.');
+      this.handlePuzzleIncorrectAttempt(location, expectedUci, tacticalTheme, 'Mossa sbagliata, riprova.');
       this.syncGameState();
       return;
     }
@@ -826,7 +889,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       promotion: expectedMove.promotion ?? 'q',
     });
     if (!result) {
-      this.puzzleMessage.set('Mossa non valida in questa posizione.');
+      this.handlePuzzleIncorrectAttempt(location, expectedUci, tacticalTheme, 'Mossa non valida in questa posizione.');
       this.syncGameState();
       return;
     }
@@ -837,7 +900,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.syncGameState();
 
     if (newCursor >= history.length) {
-      this.handlePuzzleSolved();
+      this.handlePuzzleSolved(expectedUci, tacticalTheme);
       return;
     }
 
@@ -889,6 +952,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.puzzleMessage.set('Tocca a te.');
+      this.markPuzzleAttemptStart();
     }, Test.PUZZLE_AUTO_MOVE_DELAY_MS);
   }
 
@@ -906,12 +970,14 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private handlePuzzleSolved(): void {
+  private handlePuzzleSolved(solvedUci?: string, theme: TacticalTheme = 'Manovra'): void {
     const location = this.getCurrentLibraryGameLocation();
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
-      this.handleWoodpeckerSolved(location);
+      this.handleWoodpeckerSolved(location, solvedUci, theme);
       return;
     }
+
+    this.puzzleAttemptStartedAt = null;
 
     const hasNextGame = Boolean(location && location.gameIndex < location.item.games.length - 1);
     const shouldAutoAdvance =
@@ -940,12 +1006,40 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.puzzleMessage.set('Puzzle risolto!');
   }
 
-  private handleWoodpeckerSolved(location: { item: PgnLibraryItem; gameIndex: number }): void {
+  private handlePuzzleIncorrectAttempt(
+    location: { item: PgnLibraryItem; gameIndex: number } | null,
+    expectedUci: string,
+    theme: TacticalTheme,
+    fallbackMessage: string,
+  ): void {
+    const elapsedMs = this.consumePuzzleAttemptElapsedMs();
+    if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
+      this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs);
+      return;
+    }
+
+    this.puzzleMessage.set(fallbackMessage);
+    this.markPuzzleAttemptStart();
+  }
+
+  private handleWoodpeckerSolved(
+    location: { item: PgnLibraryItem; gameIndex: number },
+    solvedUci?: string,
+    theme: TacticalTheme = 'Manovra',
+  ): void {
     const session = this.woodpeckerSession();
     if (!session) {
       this.puzzleMessage.set('Puzzle risolto!');
       return;
     }
+
+    const elapsedMs = this.consumePuzzleAttemptElapsedMs();
+    const updatedStats = this.updatePuzzleStatsOnSuccess(session, location.gameIndex, elapsedMs);
+    const failedQueue = session.failedQueue.filter((entry) => entry !== location.gameIndex);
+    const puzzleStatsByIndex = {
+      ...session.puzzleStatsByIndex,
+      [String(location.gameIndex)]: updatedStats,
+    };
 
     const solvedSet = new Set(session.solvedIndexes);
     solvedSet.add(location.gameIndex);
@@ -953,15 +1047,29 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const solvedCount = solvedIndexes.length;
     const total = session.gameCount;
 
-    if (solvedCount >= total) {
+    if (solvedUci) {
+      this.recordWoodpeckerAttempt(location, true, theme, elapsedMs, {
+        ...session,
+        solvedIndexes,
+        failedQueue,
+        puzzleStatsByIndex,
+      });
+    }
+
+    const readyForCycleCompletion = solvedCount >= total && failedQueue.length === 0;
+
+    if (readyForCycleCompletion) {
       const reachedFinalCycle = session.cycle >= Test.WOODPECKER_MAX_CYCLES || session.targetDays <= 1;
       if (reachedFinalCycle) {
         this.updateWoodpeckerSession({
           ...session,
           solvedIndexes,
+          failedQueue,
+          puzzleStatsByIndex,
           completed: true,
         });
         this.puzzleMessage.set('Woodpecker completato! Set risolto fino al ciclo finale.');
+        this.puzzleAttemptStartedAt = null;
         return;
       }
 
@@ -973,46 +1081,109 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
         targetDays: nextTargetDays,
         cycleStartedAt: Date.now(),
         solvedIndexes: [],
+        failedQueue: [],
+        puzzleStatsByIndex,
         completed: false,
       });
       this.puzzleMessage.set(
-        `Ciclo ${session.cycle} completato. Pausa consigliata di almeno 1 giorno. Nuovo obiettivo: ${nextTargetDays} giorni.`,
+        `Ciclo ${session.cycle} completato. Nuovo obiettivo: ${nextTargetDays} giorni.`,
       );
+      this.puzzleAttemptStartedAt = null;
       return;
     }
 
-    this.updateWoodpeckerSession({
+    const updatedSession: WoodpeckerSession = {
       ...session,
       solvedIndexes,
+      failedQueue,
+      puzzleStatsByIndex,
       completed: false,
-    });
+    };
+    this.updateWoodpeckerSession(updatedSession);
 
     const remaining = total - solvedCount;
+    const pendingReviews = failedQueue.length;
     const shouldAutoAdvance =
       this.currentLibrarySelection?.autoAdvanceOnSuccess === true &&
       this.isPuzzleMode() &&
       !this.isPuzzleSurrendered() &&
-      remaining > 0;
+      (remaining > 0 || pendingReviews > 0);
 
     if (!shouldAutoAdvance) {
       this.puzzleMessage.set(
-        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Rimanenti: ${remaining}.`,
+        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Review SRS: ${pendingReviews}.`,
       );
+      this.puzzleAttemptStartedAt = null;
       return;
     }
 
-    const nextIndex = this.findNextWoodpeckerUnsolvedIndex(location.gameIndex, solvedSet, total);
+    const nextIndex = this.findNextWoodpeckerReviewIndex(location.gameIndex, updatedSession, total);
     if (nextIndex === null) {
       this.puzzleMessage.set(
-        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Rimanenti: ${remaining}.`,
+        `Puzzle risolto! Woodpecker ciclo ${session.cycle}: ${solvedCount}/${total}. Review SRS: ${pendingReviews}.`,
       );
+      this.puzzleAttemptStartedAt = null;
       return;
     }
 
     this.scheduleNextLibraryGameSelection(location.item, nextIndex, `Corretto! Woodpecker: ${solvedCount}/${total}.`);
   }
 
-  private findNextWoodpeckerUnsolvedIndex(fromIndex: number, solvedSet: Set<number>, gameCount: number): number | null {
+  private handleWoodpeckerFailed(
+    location: { item: PgnLibraryItem; gameIndex: number },
+    expectedUci: string,
+    theme: TacticalTheme,
+    elapsedMs: number,
+  ): void {
+    const session = this.woodpeckerSession();
+    if (!session) {
+      this.puzzleMessage.set('Mossa sbagliata, riprova.');
+      this.markPuzzleAttemptStart();
+      return;
+    }
+
+    const updatedStats = this.updatePuzzleStatsOnFailure(session, location.gameIndex, elapsedMs);
+    const failedQueue = Array.from(new Set([...session.failedQueue, location.gameIndex])).sort((a, b) => a - b);
+    const solvedIndexes = session.solvedIndexes.filter((index) => index !== location.gameIndex);
+    const updatedSession: WoodpeckerSession = {
+      ...session,
+      solvedIndexes,
+      failedQueue,
+      puzzleStatsByIndex: {
+        ...session.puzzleStatsByIndex,
+        [String(location.gameIndex)]: updatedStats,
+      },
+      completed: false,
+    };
+
+    this.updateWoodpeckerSession(updatedSession);
+    this.recordWoodpeckerAttempt(location, false, theme, elapsedMs, updatedSession);
+    this.puzzleMessage.set(
+      `Mossa sbagliata. Puzzle inserito nella review SRS (${failedQueue.length} in coda). Riprova.`,
+    );
+    this.markPuzzleAttemptStart();
+  }
+
+  private findNextWoodpeckerReviewIndex(fromIndex: number, session: WoodpeckerSession, gameCount: number): number | null {
+    const now = Date.now();
+    const dueQueue = session.failedQueue.filter((index) => {
+      if (index === fromIndex || index < 0 || index >= gameCount) {
+        return false;
+      }
+
+      const stats = session.puzzleStatsByIndex[String(index)];
+      return !stats || stats.dueAt <= now;
+    });
+    if (dueQueue.length > 0) {
+      return dueQueue[0] ?? null;
+    }
+
+    const pendingQueue = session.failedQueue.filter((index) => index !== fromIndex && index >= 0 && index < gameCount);
+    if (pendingQueue.length > 0) {
+      return pendingQueue[0] ?? null;
+    }
+
+    const solvedSet = new Set(session.solvedIndexes);
     for (let offset = 1; offset <= gameCount; offset += 1) {
       const candidate = (fromIndex + offset) % gameCount;
       if (!solvedSet.has(candidate)) {
@@ -1021,6 +1192,156 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return null;
+  }
+
+  private updatePuzzleStatsOnSuccess(session: WoodpeckerSession, puzzleIndex: number, elapsedMs: number): WoodpeckerPuzzleStats {
+    const now = Date.now();
+    const key = String(puzzleIndex);
+    const previous = this.getPuzzleStats(session, puzzleIndex);
+    const nextTotalAttempts = previous.totalAttempts + 1;
+    const nextTotalSolve = previous.totalSolveTimeMs + elapsedMs;
+    const speedFactor = elapsedMs <= 15000 ? 1.25 : elapsedMs <= 45000 ? 1 : 0.8;
+    const nextEase = this.clamp(previous.ease + (elapsedMs <= 15000 ? 0.1 : elapsedMs > 90000 ? -0.15 : 0.02), 1.3, 2.8);
+    const nextInterval = Math.max(1, Math.round(Math.max(1, previous.intervalDays) * nextEase * speedFactor));
+
+    return {
+      ...previous,
+      totalAttempts: nextTotalAttempts,
+      correctAttempts: previous.correctAttempts + 1,
+      totalSolveTimeMs: nextTotalSolve,
+      averageSolveTimeMs: Math.round(nextTotalSolve / nextTotalAttempts),
+      currentStreak: previous.currentStreak + 1,
+      bestStreak: Math.max(previous.bestStreak, previous.currentStreak + 1),
+      ease: nextEase,
+      intervalDays: nextInterval,
+      dueAt: now + nextInterval * Test.DAY_MS,
+      lastAttemptAt: now,
+      wrongAttempts: previous.wrongAttempts,
+    };
+  }
+
+  private updatePuzzleStatsOnFailure(session: WoodpeckerSession, puzzleIndex: number, elapsedMs: number): WoodpeckerPuzzleStats {
+    const now = Date.now();
+    const previous = this.getPuzzleStats(session, puzzleIndex);
+    const nextTotalAttempts = previous.totalAttempts + 1;
+    const nextTotalSolve = previous.totalSolveTimeMs + elapsedMs;
+
+    return {
+      ...previous,
+      totalAttempts: nextTotalAttempts,
+      wrongAttempts: previous.wrongAttempts + 1,
+      totalSolveTimeMs: nextTotalSolve,
+      averageSolveTimeMs: Math.round(nextTotalSolve / nextTotalAttempts),
+      currentStreak: 0,
+      ease: Math.max(1.3, previous.ease - 0.2),
+      intervalDays: 1,
+      dueAt: now + 15 * 60 * 1000,
+      lastAttemptAt: now,
+      correctAttempts: previous.correctAttempts,
+      bestStreak: previous.bestStreak,
+    };
+  }
+
+  private getPuzzleStats(session: WoodpeckerSession, puzzleIndex: number): WoodpeckerPuzzleStats {
+    const key = String(puzzleIndex);
+    const existing = session.puzzleStatsByIndex[key];
+    if (existing) {
+      return {
+        totalAttempts: Math.max(0, Math.trunc(Number(existing.totalAttempts ?? 0))),
+        correctAttempts: Math.max(0, Math.trunc(Number(existing.correctAttempts ?? 0))),
+        wrongAttempts: Math.max(0, Math.trunc(Number(existing.wrongAttempts ?? 0))),
+        totalSolveTimeMs: Math.max(0, Math.trunc(Number(existing.totalSolveTimeMs ?? 0))),
+        averageSolveTimeMs: Math.max(0, Math.trunc(Number(existing.averageSolveTimeMs ?? 0))),
+        currentStreak: Math.max(0, Math.trunc(Number(existing.currentStreak ?? 0))),
+        bestStreak: Math.max(0, Math.trunc(Number(existing.bestStreak ?? 0))),
+        ease: this.clamp(Number(existing.ease ?? 2.1), 1.3, 2.8),
+        intervalDays: Math.max(1, Math.trunc(Number(existing.intervalDays ?? 1))),
+        dueAt: Number.isFinite(Number(existing.dueAt)) ? Number(existing.dueAt) : Date.now(),
+        lastAttemptAt: Number.isFinite(Number(existing.lastAttemptAt)) ? Number(existing.lastAttemptAt) : 0,
+      };
+    }
+
+    return {
+      totalAttempts: 0,
+      correctAttempts: 0,
+      wrongAttempts: 0,
+      totalSolveTimeMs: 0,
+      averageSolveTimeMs: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+      ease: 2.1,
+      intervalDays: 1,
+      dueAt: Date.now(),
+      lastAttemptAt: 0,
+    };
+  }
+
+  private recordWoodpeckerAttempt(
+    location: { item: PgnLibraryItem; gameIndex: number },
+    correct: boolean,
+    theme: TacticalTheme,
+    elapsedMs: number,
+    session: WoodpeckerSession,
+  ): void {
+    this.woodpeckerAnalytics.recordAttempt({
+      pgnId: location.item.id,
+      pgnName: location.item.name,
+      puzzleIndex: location.gameIndex,
+      correct,
+      elapsedMs,
+      cycle: session.cycle,
+      targetDays: session.targetDays,
+      theme,
+      session,
+    });
+  }
+
+  private detectTacticalTheme(expectedUci: string): TacticalTheme {
+    const parsed = this.parseUciMove(expectedUci);
+    if (!parsed) {
+      return 'Manovra';
+    }
+
+    if (parsed.promotion) {
+      return 'Promozione';
+    }
+
+    const isWhiteCastle = parsed.from === 'e1' && (parsed.to === 'g1' || parsed.to === 'c1');
+    const isBlackCastle = parsed.from === 'e8' && (parsed.to === 'g8' || parsed.to === 'c8');
+    if (isWhiteCastle || isBlackCastle) {
+      return 'Arrocco';
+    }
+
+    const legalMoves = this.chess.moves({ verbose: true }) as ChessMove[];
+    const matchedMove = legalMoves.find((candidate) => {
+      const candidatePromotion = typeof candidate.promotion === 'string' ? candidate.promotion : undefined;
+      return candidate.from === parsed.from && candidate.to === parsed.to && candidatePromotion === parsed.promotion;
+    });
+
+    if (!matchedMove) {
+      return 'Manovra';
+    }
+
+    if (matchedMove.san.includes('+') || matchedMove.san.includes('#')) {
+      return 'Scacco';
+    }
+
+    if (typeof matchedMove.captured === 'string' && matchedMove.captured.length > 0) {
+      return 'Cattura';
+    }
+
+    return 'Manovra';
+  }
+
+  private markPuzzleAttemptStart(): void {
+    this.puzzleAttemptStartedAt = Date.now();
+  }
+
+  private consumePuzzleAttemptElapsedMs(): number {
+    const now = Date.now();
+    const startedAt = this.puzzleAttemptStartedAt ?? now;
+    this.puzzleAttemptStartedAt = null;
+    return Math.max(0, now - startedAt);
   }
 
   private scheduleNextLibraryGameSelection(item: PgnLibraryItem, targetIndex: number, pendingMessage: string): void {
@@ -1059,7 +1380,17 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.selectLibraryGame(location.item, targetGame, targetIndex);
   }
 
-  private selectLibraryGame(item: PgnLibraryItem, targetGame: PgnLibraryGame, targetIndex: number): void {
+  private selectLibraryGame(
+    item: PgnLibraryItem,
+    targetGame: PgnLibraryGame,
+    targetIndex: number,
+    overrides?: Partial<
+      Pick<
+        LibraryGameSelection,
+        'mode' | 'autoPlayFirstMove' | 'autoAdvanceOnSuccess' | 'autoRotateBoardOnTurn' | 'woodpeckerEnabled'
+      >
+    >,
+  ): void {
     const reference = this.currentLibrarySelection;
     const fullUciHistory = targetGame.positions.at(-1)?.uciHistory ?? [];
 
@@ -1067,13 +1398,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       itemId: item.id,
       gameId: targetGame.id,
       gameTitle: this.formatLibraryGameTitle(targetGame, targetIndex),
-      mode: reference?.mode ?? item.mode,
+      mode: overrides?.mode ?? reference?.mode ?? item.mode,
       initialFen: targetGame.initialFen,
       fullUciHistory: [...fullUciHistory],
-      autoPlayFirstMove: reference?.autoPlayFirstMove ?? false,
-      autoAdvanceOnSuccess: reference?.autoAdvanceOnSuccess ?? true,
-      autoRotateBoardOnTurn: reference?.autoRotateBoardOnTurn ?? true,
-      woodpeckerEnabled: reference?.woodpeckerEnabled ?? false,
+      autoPlayFirstMove: overrides?.autoPlayFirstMove ?? reference?.autoPlayFirstMove ?? false,
+      autoAdvanceOnSuccess: overrides?.autoAdvanceOnSuccess ?? reference?.autoAdvanceOnSuccess ?? true,
+      autoRotateBoardOnTurn: overrides?.autoRotateBoardOnTurn ?? reference?.autoRotateBoardOnTurn ?? true,
+      woodpeckerEnabled: overrides?.woodpeckerEnabled ?? reference?.woodpeckerEnabled ?? false,
     });
   }
 
@@ -1152,7 +1483,11 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private ensureWoodpeckerSession(key: string, gameCount: number): WoodpeckerSession {
     const existing = this.woodpeckerSessionsByKey[key];
     if (existing && existing.gameCount === gameCount) {
-      return existing;
+      return {
+        ...existing,
+        failedQueue: Array.isArray(existing.failedQueue) ? existing.failedQueue : [],
+        puzzleStatsByIndex: existing.puzzleStatsByIndex ?? {},
+      };
     }
 
     const created: WoodpeckerSession = {
@@ -1162,6 +1497,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       solvedIndexes: [],
       completed: false,
       gameCount,
+      failedQueue: [],
+      puzzleStatsByIndex: {},
     };
     this.woodpeckerSessionsByKey = {
       ...this.woodpeckerSessionsByKey,
@@ -1180,6 +1517,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const normalized: WoodpeckerSession = {
       ...nextSession,
       solvedIndexes: [...new Set(nextSession.solvedIndexes)].sort((a, b) => a - b),
+      failedQueue: [...new Set(nextSession.failedQueue)].sort((a, b) => a - b),
+      puzzleStatsByIndex: nextSession.puzzleStatsByIndex ?? {},
     };
     this.woodpeckerSessionsByKey = {
       ...this.woodpeckerSessionsByKey,
@@ -1333,6 +1672,15 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
           .map((entry) => Math.trunc(Number(entry)))
           .filter((entry) => Number.isFinite(entry) && entry >= 0 && entry < gameCount)
       : [];
+    const failedQueue = Array.isArray(candidate.failedQueue)
+      ? candidate.failedQueue
+          .map((entry) => Math.trunc(Number(entry)))
+          .filter((entry) => Number.isFinite(entry) && entry >= 0 && entry < gameCount)
+      : [];
+    const puzzleStatsByIndex =
+      candidate.puzzleStatsByIndex && typeof candidate.puzzleStatsByIndex === 'object'
+        ? (candidate.puzzleStatsByIndex as Record<string, WoodpeckerPuzzleStats>)
+        : {};
 
     return {
       cycle,
@@ -1341,6 +1689,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       solvedIndexes: [...new Set(solvedIndexes)].sort((a, b) => a - b),
       completed: candidate.completed === true,
       gameCount,
+      failedQueue: [...new Set(failedQueue)].sort((a, b) => a - b),
+      puzzleStatsByIndex,
     };
   }
 
