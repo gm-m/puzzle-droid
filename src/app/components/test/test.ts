@@ -12,7 +12,7 @@ import {
   type LibraryModeChange,
 } from '../library-panel/library-panel';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
-import type { PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
 import { StockfishService } from '../../services/stockfish.service';
 
 interface LibraryGameListEntry {
@@ -30,6 +30,13 @@ interface WoodpeckerSession {
   gameCount: number;
 }
 
+interface PersistedLibraryItem {
+  id: string;
+  name: string;
+  pgn: string;
+  mode: LibraryMode;
+}
+
 @Component({
   selector: 'app-test',
   imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent],
@@ -40,6 +47,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
+  private static readonly LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
@@ -64,6 +72,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   readonly depth = signal(8);
   readonly multiPv = signal(1);
+  readonly skillLevel = signal(20);
   readonly showEvalBar = signal(true);
   readonly fenFeedback = signal('');
   readonly puzzleMessage = signal('');
@@ -101,6 +110,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   constructor(private readonly stockfish: StockfishService) {}
 
   ngOnInit(): void {
+    this.loadLibraryItems();
     this.loadWoodpeckerSessions();
     this.syncGameState();
     this.stockfish.setListener((event) => this.handleEngineEvent(event));
@@ -279,12 +289,14 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     );
 
     this.libraryItems.update((items) => [...parsedItems, ...items]);
+    this.persistLibraryItems();
   }
 
   onLibraryModeChanged(change: LibraryModeChange): void {
     this.libraryItems.update((items) =>
       items.map((item) => (item.id === change.id ? { ...item, mode: change.mode } : item)),
     );
+    this.persistLibraryItems();
   }
 
   onLibraryGameSelected(selection: LibraryGameSelection): void {
@@ -443,6 +455,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const hasStarted = this.stockfish.analyze(this.chess.fen(), {
       depth: this.depth(),
       multiPv: this.multiPv(),
+      skillLevel: this.skillLevel(),
     });
 
     if (!hasStarted) {
@@ -457,6 +470,11 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   onMultiPvChange(multiPv: number): void {
     this.multiPv.set(this.clamp(multiPv, 1, 5));
+    this.analyzePosition();
+  }
+
+  onSkillLevelChange(skillLevel: number): void {
+    this.skillLevel.set(this.clamp(skillLevel, 0, 20));
     this.analyzePosition();
   }
 
@@ -1073,6 +1091,94 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.persistWoodpeckerSessions();
   }
 
+  private loadLibraryItems(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(Test.LIBRARY_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      const restored = parsed
+        .map((entry, index) => this.normalizePersistedLibraryItem(entry, index))
+        .filter((item): item is PersistedLibraryItem => item !== null)
+        .map((item) => {
+          const games = this.parsePgnGames(item.pgn, item.id);
+          const firstGame = games[0];
+
+          return {
+            id: item.id,
+            name: item.name,
+            pgn: item.pgn,
+            mode: item.mode,
+            games,
+            event: firstGame?.event,
+            white: firstGame?.white,
+            black: firstGame?.black,
+            result: firstGame?.result,
+          } as PgnLibraryItem;
+        });
+
+      this.libraryItems.set(restored);
+    } catch {
+      this.libraryItems.set([]);
+    }
+  }
+
+  private persistLibraryItems(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    const serialized: PersistedLibraryItem[] = this.libraryItems().map((item) => ({
+      id: item.id,
+      name: item.name,
+      pgn: item.pgn,
+      mode: item.mode,
+    }));
+
+    try {
+      localStorage.setItem(Test.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
+    } catch {
+      // Ignore persistence errors (private mode / quota).
+    }
+  }
+
+  private normalizePersistedLibraryItem(value: unknown, index: number): PersistedLibraryItem | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const candidate = value as Partial<PersistedLibraryItem>;
+    const rawPgn = typeof candidate.pgn === 'string' ? candidate.pgn.trim() : '';
+    if (!rawPgn) {
+      return null;
+    }
+
+    const name =
+      typeof candidate.name === 'string' && candidate.name.trim().length > 0
+        ? candidate.name.trim()
+        : `PGN importato ${index + 1}`;
+
+    return {
+      id:
+        typeof candidate.id === 'string' && candidate.id.trim().length > 0
+          ? candidate.id.trim()
+          : `${Date.now()}-${index}-${name}`,
+      name,
+      pgn: rawPgn,
+      mode: candidate.mode === 'puzzle' ? 'puzzle' : 'view',
+    };
+  }
+
   private loadWoodpeckerSessions(): void {
     if (typeof localStorage === 'undefined') {
       return;
@@ -1378,14 +1484,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const headers = this.parsePgnHeaders(pgn);
     const initialFen = this.resolveInitialFen(headers['FEN']);
 
-    const chess = new Chess();
-    try {
-      chess.loadPgn(pgn, { strict: false });
-    } catch {
-      return null;
-    }
-
-    const moves = chess.history({ verbose: true });
+    const moves = this.parseMovesWithFallback(pgn) ?? [];
     const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex);
 
     return {
@@ -1397,6 +1496,51 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       initialFen,
       positions,
     };
+  }
+
+  private parseMovesWithFallback(pgn: string): ChessMove[] | null {
+    const sanitized = this.sanitizePgnForParser(pgn);
+    const candidates = sanitized && sanitized !== pgn ? [pgn, sanitized] : [pgn];
+
+    for (const candidate of candidates) {
+      const chess = new Chess();
+
+      try {
+        chess.loadPgn(candidate, { strict: false });
+        return chess.history({ verbose: true });
+      } catch {
+        // Try next fallback candidate.
+      }
+    }
+
+    return null;
+  }
+
+  private sanitizePgnForParser(pgn: string): string {
+    const normalized = pgn.replace(/\r\n?/g, '\n');
+    const lines = normalized.split('\n');
+
+    const headerLines = lines.filter((line) => /^\[[^\]]+\]$/.test(line.trim()));
+    const movetextLines = lines.filter((line) => !/^\[[^\]]+\]$/.test(line.trim()));
+
+    let movetext = movetextLines.join(' ');
+    movetext = movetext.replace(/\{[^}]*\}/g, ' ');
+
+    while (/\([^()]*\)/.test(movetext)) {
+      movetext = movetext.replace(/\([^()]*\)/g, ' ');
+    }
+
+    movetext = movetext.replace(/\$\d+/g, ' ');
+    movetext = movetext.replace(/[\u2000-\u206F\u2E00-\u2E7F]/g, ' ');
+    movetext = movetext.replace(/[^\x20-\x7E]/g, ' ');
+    movetext = movetext.replace(/\s+/g, ' ').trim();
+
+    const headerBlock = headerLines.join('\n').trim();
+    if (!movetext) {
+      return headerBlock;
+    }
+
+    return `${headerBlock}\n\n${movetext}`.trim();
   }
 
   private buildPositionsFromMoves(

@@ -6,12 +6,14 @@ const STOCKFISH_WORKER_URL = '/stockfish/stockfish-17.1-lite-single-03e3232.js';
 interface AnalyzeOptions {
   depth: number;
   multiPv: number;
+  skillLevel: number;
 }
 
 interface PendingAnalyze {
   fen: string;
   depth: number;
   multiPv: number;
+  skillLevel: number;
 }
 
 @Injectable({
@@ -23,6 +25,7 @@ export class StockfishService {
   private readonly lines = new Map<number, EngineLine>();
   private whitePerspectiveFactor = 1;
   private pendingAnalyze: PendingAnalyze | null = null;
+  private isSearchRunning = false;
 
   setListener(listener: (event: StockfishEvent) => void): void {
     this.listener = listener;
@@ -57,7 +60,9 @@ export class StockfishService {
 
     const depth = this.clamp(options.depth, 1, 30);
     const multiPv = this.clamp(options.multiPv, 1, 5);
-    this.pendingAnalyze = { fen, depth, multiPv };
+    const skillLevel = this.clamp(options.skillLevel, 0, 20);
+    this.pendingAnalyze = { fen, depth, multiPv, skillLevel };
+    this.isSearchRunning = false;
 
     this.lines.clear();
     this.listener?.({ type: 'line', lines: [] });
@@ -70,12 +75,14 @@ export class StockfishService {
 
   stop(): void {
     this.pendingAnalyze = null;
+    this.isSearchRunning = false;
     this.engine?.postMessage('stop');
     this.lines.clear();
     this.listener?.({ type: 'line', lines: [] });
   }
 
   destroy(): void {
+    this.isSearchRunning = false;
     this.engine?.postMessage('stop');
     this.engine?.terminate();
     this.engine = undefined;
@@ -89,12 +96,21 @@ export class StockfishService {
     }
 
     if (message.startsWith('bestmove')) {
+      if (!this.isSearchRunning) {
+        return;
+      }
+
+      this.isSearchRunning = false;
       const bestMove = message.split(' ')[1] ?? '-';
       this.listener?.({ type: 'bestmove', bestMove });
       return;
     }
 
     if (!message.startsWith('info')) {
+      return;
+    }
+
+    if (!this.isSearchRunning) {
       return;
     }
 
@@ -113,11 +129,13 @@ export class StockfishService {
       return;
     }
 
-    const { fen, depth, multiPv } = this.pendingAnalyze;
+    const { fen, depth, multiPv, skillLevel } = this.pendingAnalyze;
     this.pendingAnalyze = null;
     this.whitePerspectiveFactor = this.getWhitePerspectiveFactor(fen);
+    this.isSearchRunning = true;
 
     this.engine.postMessage(`setoption name MultiPV value ${multiPv}`);
+    this.engine.postMessage(`setoption name Skill Level value ${skillLevel}`);
     this.engine.postMessage(`position fen ${fen}`);
     this.engine.postMessage(`go depth ${depth}`);
   }

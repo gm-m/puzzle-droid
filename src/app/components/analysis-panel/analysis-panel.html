@@ -49,6 +49,11 @@
             Multiple lines
             <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
           </label>
+
+          <label>
+            Skill level
+            <input type="number" min="0" max="20" [value]="skillLevel" (input)="onSkillLevelInput($event)" />
+          </label>
         </div>
 
         <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">

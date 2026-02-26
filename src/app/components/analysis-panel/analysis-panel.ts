@@ -31,6 +31,7 @@ export class AnalysisPanelComponent {
   @Input() fen = '';
   @Input() depth = 8;
   @Input() multiPv = 1;
+  @Input() skillLevel = 20;
   @Input() showEvalBar = true;
   @Input() lines: EngineLine[] = [];
   @Input() libraryGameTitle = '';
@@ -66,6 +67,7 @@ export class AnalysisPanelComponent {
   @Output() readonly reset = new EventEmitter<void>();
   @Output() readonly depthChanged = new EventEmitter<number>();
   @Output() readonly multiPvChanged = new EventEmitter<number>();
+  @Output() readonly skillLevelChanged = new EventEmitter<number>();
   @Output() readonly toggleEvalBar = new EventEmitter<void>();
   @Output() readonly firstMove = new EventEmitter<void>();
   @Output() readonly previousMove = new EventEmitter<void>();
@@ -99,6 +101,13 @@ export class AnalysisPanelComponent {
     const value = Number((event.target as HTMLInputElement).value);
     if (Number.isFinite(value)) {
       this.multiPvChanged.emit(value);
+    }
+  }
+
+  onSkillLevelInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(value)) {
+      this.skillLevelChanged.emit(value);
     }
   }
 

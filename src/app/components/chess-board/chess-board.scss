@@ -8,3 +8,9 @@
   user-select: none;
   box-shadow: 0 8px 24px rgba(20, 20, 20, 0.2);
 }
+
+@media (max-width: 900px) {
+  .board {
+    overflow: visible;
+  }
+}
