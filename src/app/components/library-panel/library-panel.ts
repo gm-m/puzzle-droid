@@ -20,6 +20,12 @@ export interface LibraryGameSelection {
   woodpeckerEnabled: boolean;
 }
 
+interface LibraryFilteredGameEntry {
+  game: PgnLibraryGame;
+  index: number;
+  title: string;
+}
+
 @Component({
   selector: 'app-library-panel',
   imports: [CommonModule],
@@ -32,12 +38,14 @@ export class LibraryPanelComponent {
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
   @Output() readonly gameSelected = new EventEmitter<LibraryGameSelection>();
+  @Output() readonly itemRemoved = new EventEmitter<string>();
 
   expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
   private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
+  private readonly gameFilterByItem = new Map<string, string>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -58,13 +66,50 @@ export class LibraryPanelComponent {
     return this.expandedItemId === id;
   }
 
-  onGameClick(item: PgnLibraryItem, game: PgnLibraryGame): void {
+  onItemGameFilterInput(itemId: string, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.gameFilterByItem.set(itemId, value);
+  }
+
+  itemGameFilter(itemId: string): string {
+    return this.gameFilterByItem.get(itemId) ?? '';
+  }
+
+  filteredGameEntries(item: PgnLibraryItem): LibraryFilteredGameEntry[] {
+    const query = this.itemGameFilter(item.id).trim().toLowerCase();
+
+    return item.games
+      .map((game, index) => ({
+        game,
+        index,
+        title: this.gameTitle(index, item),
+      }))
+      .filter((entry) => !query || entry.title.toLowerCase().includes(query));
+  }
+
+  onRemoveItem(item: PgnLibraryItem): void {
+    const confirmed =
+      typeof window === 'undefined' ||
+      window.confirm(`Rimuovere "${item.name}" dalla libreria? Questa azione non elimina il file dal disco.`);
+    if (!confirmed) {
+      return;
+    }
+
+    if (this.expandedItemId === item.id) {
+      this.expandedItemId = null;
+    }
+
+    this.clearItemState(item.id);
+    this.itemRemoved.emit(item.id);
+  }
+
+  onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {
     const fullUciHistory = game.positions.at(-1)?.uciHistory ?? [];
 
     this.gameSelected.emit({
       itemId: item.id,
       gameId: game.id,
-      gameTitle: this.gameTitle(item.games.indexOf(game), item),
+      gameTitle: this.gameTitle(gameIndex, item),
       mode: item.mode,
       initialFen: game.initialFen,
       fullUciHistory: [...fullUciHistory],
@@ -109,6 +154,14 @@ export class LibraryPanelComponent {
 
   isPuzzleWoodpecker(itemId: string): boolean {
     return this.puzzleWoodpeckerByItem.get(itemId) ?? false;
+  }
+
+  private clearItemState(itemId: string): void {
+    this.puzzleAutoFirstMoveByItem.delete(itemId);
+    this.puzzleAutoAdvanceByItem.delete(itemId);
+    this.puzzleAutoRotateByItem.delete(itemId);
+    this.puzzleWoodpeckerByItem.delete(itemId);
+    this.gameFilterByItem.delete(itemId);
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {

@@ -299,6 +299,16 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.persistLibraryItems();
   }
 
+  onLibraryItemRemoved(itemId: string): void {
+    const removingCurrentSelection = this.currentLibrarySelection?.itemId === itemId;
+    this.libraryItems.update((items) => items.filter((item) => item.id !== itemId));
+    this.persistLibraryItems();
+
+    if (removingCurrentSelection) {
+      this.resetBoard();
+    }
+  }
+
   onLibraryGameSelected(selection: LibraryGameSelection): void {
     try {
       this.chess.load(selection.initialFen);

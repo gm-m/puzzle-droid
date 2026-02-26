@@ -32,6 +32,8 @@
         </select>
       </label>
 
+      <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
+
       <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
         <input
           type="checkbox"
@@ -57,11 +59,26 @@
       </label>
 
       <section class="card-details" *ngIf="isExpanded(item.id)">
-        <article class="library-game" *ngFor="let game of item.games; let gameIndex = index">
-          <button type="button" class="game-select-button" (click)="onGameClick(item, game)">
-            {{ gameTitle(gameIndex, item) }}
-          </button>
-        </article>
+        <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
+          Filtra partite
+          <input
+            [id]="'item-game-filter-' + item.id"
+            type="text"
+            [value]="itemGameFilter(item.id)"
+            placeholder="Es. Carlsen, Partita 12, 1-0"
+            (input)="onItemGameFilterInput(item.id, $event)"
+          />
+        </label>
+
+        <ng-container *ngIf="filteredGameEntries(item) as entries">
+          <article class="library-game" *ngFor="let entry of entries">
+            <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
+              {{ entry.title }}
+            </button>
+          </article>
+
+          <p class="game-filter-empty" *ngIf="entries.length === 0">Nessuna partita trovata con questo filtro.</p>
+        </ng-container>
       </section>
     </article>
   </div>
