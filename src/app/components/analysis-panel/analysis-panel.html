@@ -88,15 +88,21 @@
       <h2>Modalità Puzzle</h2>
       <p>{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
       <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
-        <p>{{ woodpeckerCycleLabel }}</p>
-        <p>{{ woodpeckerProgressLabel }}</p>
-        <p>{{ woodpeckerDayLabel }}</p>
-        <p>{{ woodpeckerCalendarLabel }}</p>
+        <div class="woodpecker-status-head">
+          <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
+          <button
+            type="button"
+            class="woodpecker-info-trigger"
+            aria-label="Mostra dettagli ciclo Woodpecker"
+            (click)="openWoodpeckerInfoModal()"
+          >
+            i
+          </button>
+        </div>
         <div class="woodpecker-progress" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" aria-valuemin="0" aria-valuemax="100">
           <span class="woodpecker-progress-fill" [style.width.%]="woodpeckerProgressPercent"></span>
         </div>
         <p class="woodpecker-progress-value">{{ woodpeckerProgressPercent }}%</p>
-        <p>{{ woodpeckerTargetLabel }}</p>
       </div>
       <button *ngIf="showSurrender" type="button" class="surrender" (click)="surrenderPuzzle.emit()">
         Arrenditi
@@ -104,11 +110,23 @@
     </section>
   </ng-template>
 
-  <section class="board-controls" *ngIf="showMoveArea">
-    <button type="button" (click)="rotateBoard.emit()">
-      Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
-    </button>
-  </section>
+  <div class="woodpecker-modal-backdrop" *ngIf="isWoodpeckerInfoModalOpen" (click)="closeWoodpeckerInfoModal()">
+    <section class="woodpecker-modal" role="dialog" aria-modal="true" aria-label="Dettagli ciclo Woodpecker" (click)="$event.stopPropagation()">
+      <header>
+        <h3>Dettagli ciclo Woodpecker</h3>
+        <button type="button" class="woodpecker-modal-close" aria-label="Chiudi dettagli" (click)="closeWoodpeckerInfoModal()">
+          ✕
+        </button>
+      </header>
+      <div class="woodpecker-modal-content">
+        <p>{{ woodpeckerCycleLabel }}</p>
+        <p>{{ woodpeckerProgressLabel }}</p>
+        <p>{{ woodpeckerDayLabel }}</p>
+        <p>{{ woodpeckerCalendarLabel }}</p>
+        <p>{{ woodpeckerTargetLabel }}</p>
+      </div>
+    </section>
+  </div>
 
   <section class="move-list" *ngIf="showMoveArea && showMoveList && moves.length > 0">
     <h2>Mosse giocate</h2>
@@ -142,26 +160,58 @@
     </ol>
   </section>
 
-  <div class="history-nav" *ngIf="showMoveArea">
-    <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
-      |&lt;
-    </button>
-    <button
-      type="button"
-      class="history-icon-button"
-      [disabled]="!canGoBack"
-      aria-label="Mossa precedente"
-      (click)="previousMove.emit()"
-    >
-      &lt;
-    </button>
-    <span class="cursor">{{ moveCursorLabel }}</span>
-    <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
-      &gt;
-    </button>
-    <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
-      &gt;|
-    </button>
+  <div class="history-nav-shell" *ngIf="showMoveArea">
+    <div class="history-nav">
+      <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
+        |&lt;
+      </button>
+      <button
+        type="button"
+        class="history-icon-button"
+        [disabled]="!canGoBack"
+        aria-label="Mossa precedente"
+        (click)="previousMove.emit()"
+      >
+        &lt;
+      </button>
+      <span class="cursor">{{ moveCursorLabel }}</span>
+      <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
+        &gt;
+      </button>
+      <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
+        &gt;|
+      </button>
+
+      <button
+        type="button"
+        class="quick-menu-trigger"
+        aria-label="Apri impostazioni rapide"
+        (click)="toggleQuickMenu()"
+      >
+        ☰
+      </button>
+    </div>
+
+    <section class="quick-menu" *ngIf="isQuickMenuOpen">
+      <label class="quick-option" [class.disabled]="hideEngine">
+        <input
+          type="checkbox"
+          [checked]="showBestMoveArrow"
+          [disabled]="hideEngine"
+          (change)="onBestMoveArrowChange($event)"
+        />
+        Mostra freccia best move
+      </label>
+
+      <label class="quick-option">
+        <input type="checkbox" [checked]="!showEvalBar" (change)="onHideEvalBarChange($event)" />
+        Nascondi eval bar
+      </label>
+
+      <button type="button" class="quick-action" (click)="onRotateBoardFromQuickMenu()">
+        Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
+      </button>
+    </section>
   </div>
 
   <div class="library-game-nav" *ngIf="showMoveArea && showLibraryGameNavigation">
@@ -169,30 +219,4 @@
     <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
   </div>
 
-  <button
-    *ngIf="showMoveArea"
-    type="button"
-    class="quick-menu-trigger"
-    aria-label="Apri impostazioni rapide"
-    (click)="toggleQuickMenu()"
-  >
-    ☰
-  </button>
-
-  <section class="quick-menu" *ngIf="showMoveArea && isQuickMenuOpen">
-    <label class="quick-option" [class.disabled]="hideEngine">
-      <input
-        type="checkbox"
-        [checked]="showBestMoveArrow"
-        [disabled]="hideEngine"
-        (change)="onBestMoveArrowChange($event)"
-      />
-      Mostra freccia best move
-    </label>
-
-    <label class="quick-option">
-      <input type="checkbox" [checked]="!showEvalBar" (change)="onHideEvalBarChange($event)" />
-      Nascondi eval bar
-    </label>
-  </section>
 </aside>

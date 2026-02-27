@@ -83,7 +83,14 @@
     <section class="panel">
       <h3>Puzzle sbagliati</h3>
       <div class="failed-grid" *ngIf="vm.failedPuzzles.length > 0; else noFailedPuzzles">
-        <article class="failed-row" *ngFor="let failed of vm.failedPuzzles; trackBy: trackByFailedPuzzle">
+        <article
+          class="failed-row clickable"
+          *ngFor="let failed of vm.failedPuzzles; trackBy: trackByFailedPuzzle"
+          role="button"
+          tabindex="0"
+          (click)="openFailedPuzzle(vm, failed.puzzleIndex)"
+          (keydown.enter)="openFailedPuzzle(vm, failed.puzzleIndex)"
+        >
           <p>
             Puzzle {{ failed.puzzleIndex + 1 }}
             <small>Ultimo tentativo: {{ formatDate(failed.lastAttemptAt) }}</small>

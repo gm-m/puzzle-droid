@@ -74,6 +74,7 @@ export class AnalysisPanelComponent {
 
   isEngineSettingsOpen = false;
   isQuickMenuOpen = false;
+  isWoodpeckerInfoModalOpen = false;
 
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
@@ -104,6 +105,19 @@ export class AnalysisPanelComponent {
 
   toggleQuickMenu(): void {
     this.isQuickMenuOpen = !this.isQuickMenuOpen;
+  }
+
+  openWoodpeckerInfoModal(): void {
+    this.isWoodpeckerInfoModalOpen = true;
+  }
+
+  closeWoodpeckerInfoModal(): void {
+    this.isWoodpeckerInfoModalOpen = false;
+  }
+
+  onRotateBoardFromQuickMenu(): void {
+    this.rotateBoard.emit();
+    this.isQuickMenuOpen = false;
   }
 
   onDepthInput(event: Event): void {

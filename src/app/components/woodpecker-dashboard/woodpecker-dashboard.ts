@@ -60,6 +60,16 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  openFailedPuzzle(vm: WoodpeckerDashboardData, puzzleIndex: number): void {
+    void this.router.navigate(['/analysis'], {
+      queryParams: {
+        resumeWoodpecker: 1,
+        pgnId: vm.pgnId,
+        puzzleIndex,
+      },
+    });
+  }
+
   formatDate(value: number | null): string {
     if (!value) {
       return '-';

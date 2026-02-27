@@ -263,6 +263,19 @@
     color: var(--text-primary);
     font-size: 0.85rem;
   }
+
+  &.clickable {
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: #38bdf8;
+      box-shadow: 0 6px 18px rgba(14, 165, 233, 0.16);
+      transform: translateY(-1px);
+      outline: none;
+    }
+  }
 }
 
 .theme-row,
