@@ -29,14 +29,12 @@
         </label>
 
         <div class="opened-item-actions">
-          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)" (click)="onResumeItem(item.id)">Riprendi</button>
-          <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
-          <button
-            type="button"
-            class="remove-item-button"
-            *ngIf="hasWoodpeckerSession(item.id)"
-            (click)="onDeleteWoodpeckerSession(item.id)"
-          >
+          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)"
+            (click)="onResumeItem(item.id)">Riprendi</button>
+          <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard
+            Woodpecker</button>
+          <button type="button" class="remove-item-button" *ngIf="hasWoodpeckerSession(item.id)"
+            (click)="onDeleteWoodpeckerSession(item.id)">
             Elimina sessione Woodpecker
           </button>
           <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
@@ -44,85 +42,64 @@
 
         <label class="woodpecker-target-days" *ngIf="item.mode === 'puzzle'">
           Durata ciclo iniziale (giorni)
-          <input
-            type="number"
-            min="1"
-            max="365"
-            [value]="woodpeckerInitialTargetDays(item)"
-            (input)="onWoodpeckerTargetDaysInput(item.id, $event)"
-          />
+          <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
+            (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
         </label>
 
         <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-          <input
-            type="checkbox"
-            [checked]="isPuzzleAutoFirstMove(item.id)"
-            (change)="onPuzzleAutoFirstMoveChange(item.id, $event)"
-          />
+          <input type="checkbox" [checked]="isPuzzleAutoFirstMove(item.id)"
+            (change)="onPuzzleAutoFirstMoveChange(item.id, $event)" />
           Auto-esegui la prima mossa all'apertura partita
         </label>
 
         <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-          <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)" (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
+          <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)"
+            (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
           Vai al puzzle successivo quando risolto
         </label>
 
         <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-          <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)" (change)="onPuzzleAutoRotateChange(item.id, $event)" />
+          <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)"
+            (change)="onPuzzleAutoRotateChange(item.id, $event)" />
           Ruota automaticamente la scacchiera in base al tratto
         </label>
 
         <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-          <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)" (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
+          <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)"
+            (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
           Metodo Woodpecker (ripetizione a cicli)
         </label>
       </section>
 
       <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
         Filtra partite
-        <input
-          [id]="'item-game-filter-' + item.id"
-          type="text"
-          [value]="itemGameFilter(item.id)"
-          placeholder="Es. Carlsen, Partita 12, 1-0"
-          (input)="onItemGameFilterInput(item.id, $event)"
-        />
+        <input [id]="'item-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"
+          placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)" />
       </label>
 
       <div class="header-filters">
         <label>
           Bianco
-          <input
-            type="text"
-            [value]="headerFilterValue(item.id, 'white')"
-            placeholder="Es. Carlsen"
-            (input)="onHeaderFilterInput(item.id, 'white', $event)"
-          />
+          <input type="text" [value]="headerFilterValue(item.id, 'white')" placeholder="Es. Carlsen"
+            (input)="onHeaderFilterInput(item.id, 'white', $event)" />
         </label>
 
         <label>
           Nero
-          <input
-            type="text"
-            [value]="headerFilterValue(item.id, 'black')"
-            placeholder="Es. Nakamura"
-            (input)="onHeaderFilterInput(item.id, 'black', $event)"
-          />
+          <input type="text" [value]="headerFilterValue(item.id, 'black')" placeholder="Es. Nakamura"
+            (input)="onHeaderFilterInput(item.id, 'black', $event)" />
         </label>
 
         <label>
           Evento
-          <input
-            type="text"
-            [value]="headerFilterValue(item.id, 'event')"
-            placeholder="Es. Candidates"
-            (input)="onHeaderFilterInput(item.id, 'event', $event)"
-          />
+          <input type="text" [value]="headerFilterValue(item.id, 'event')" placeholder="Es. Candidates"
+            (input)="onHeaderFilterInput(item.id, 'event', $event)" />
         </label>
 
         <label>
           Risultato
-          <select [value]="headerFilterValue(item.id, 'result')" (change)="onHeaderFilterInput(item.id, 'result', $event)">
+          <select [value]="headerFilterValue(item.id, 'result')"
+            (change)="onHeaderFilterInput(item.id, 'result', $event)">
             <option value="">Tutti</option>
             <option *ngFor="let result of resultOptions(item)" [value]="result">{{ result }}</option>
           </select>
@@ -171,43 +148,53 @@
   <ng-template #itemsOverview>
     <div class="library-grid" *ngIf="items.length > 0; else emptyState">
       <article class="game-card" *ngFor="let item of items">
-        <div class="card-title-wrap">
-          <h2>{{ item.name }}</h2>
-          <p><strong>Partite:</strong> {{ item.games.length }}</p>
-          <p><strong>Evento:</strong> {{ item.event || '-' }}</p>
-          <p><strong>Bianco:</strong> {{ item.white || '-' }}</p>
-          <p><strong>Nero:</strong> {{ item.black || '-' }}</p>
-          <p><strong>Risultato:</strong> {{ item.result || '-' }}</p>
+        <header class="card-header">
+          <div class="title-row">
+            <h2 class="card-title" [title]="item.name">{{ item.name }}</h2>
+            <span class="games-badge">{{ item.games.length }} partite</span>
+          </div>
+        </header>
+
+        <div class="card-meta">
+          <div class="meta-item"><span class="meta-label">Evento</span> <span class="meta-value"
+              [title]="item.event || '-'">{{ item.event || '-' }}</span></div>
+          <div class="meta-item"><span class="meta-label">Risultato</span> <span class="meta-value">{{ item.result ||
+              '-' }}</span></div>
+          <div class="meta-item"><span class="meta-label">Bianco</span> <span class="meta-value"
+              [title]="item.white || '-'">{{ item.white || '-' }}</span></div>
+          <div class="meta-item"><span class="meta-label">Nero</span> <span class="meta-value"
+              [title]="item.black || '-'">{{ item.black || '-' }}</span></div>
         </div>
 
-        <div class="card-actions">
-          <button type="button" class="open-item-button" (click)="onOpenItem(item.id)">Apri</button>
-          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)" (click)="onResumeItem(item.id)">Riprendi</button>
-          <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
-          <button
-            type="button"
-            class="remove-item-button"
-            *ngIf="hasWoodpeckerSession(item.id)"
-            (click)="onDeleteWoodpeckerSession(item.id)"
-          >
-            Elimina sessione
-          </button>
-          <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
-          <button type="button" class="toggle-inline-list" (click)="toggleItemExpansion(item.id)">
-            {{ isExpanded(item.id) ? 'Chiudi elenco rapido' : 'Apri elenco rapido' }}
-          </button>
+        <div class="card-actions-wrapper">
+          <div class="card-primary-actions">
+            <button type="button" class="btn-primary" (click)="onOpenItem(item.id)">Apri PGN</button>
+            <button type="button" class="btn-success" *ngIf="hasResumeSession(item.id)"
+              (click)="onResumeItem(item.id)">Riprendi</button>
+            <button type="button" class="btn-secondary" (click)="toggleItemExpansion(item.id)">
+              {{ isExpanded(item.id) ? 'Nascondi' : 'Anteprima' }} partite
+            </button>
+          </div>
+
+          <div class="card-secondary-actions">
+            <button type="button" class="btn-outline-info" (click)="onOpenDashboard(item.id)">Dashboard
+              Woodpecker</button>
+            <div class="card-danger-actions">
+              <button type="button" class="btn-text-danger" *ngIf="hasWoodpeckerSession(item.id)"
+                (click)="onDeleteWoodpeckerSession(item.id)" title="Elimina sessione Woodpecker">
+                Rim. sess.
+              </button>
+              <button type="button" class="btn-text-danger" (click)="onRemoveItem(item)"
+                title="Rimuovi file PGN">Rimuovi PGN</button>
+            </div>
+          </div>
         </div>
 
         <section class="card-details" *ngIf="isExpanded(item.id)">
           <label class="game-filter" [attr.for]="'item-inline-game-filter-' + item.id">
             Filtra partite
-            <input
-              [id]="'item-inline-game-filter-' + item.id"
-              type="text"
-              [value]="itemGameFilter(item.id)"
-              placeholder="Es. Carlsen, Partita 12, 1-0"
-              (input)="onItemGameFilterInput(item.id, $event)"
-            />
+            <input [id]="'item-inline-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"
+              placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)" />
           </label>
 
           <ng-container *ngIf="filteredGameEntries(item) as entries">
