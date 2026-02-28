@@ -246,6 +246,7 @@
       <app-library-panel
         [items]="libraryItems()"
         [openedItemId]="libraryOpenedItemId()"
+        [woodpeckerSessionInfoByItemId]="libraryWoodpeckerSessionInfoByItemId()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"
@@ -253,6 +254,9 @@
         (dashboardRequested)="onLibraryDashboardRequested($event)"
         (openRequested)="onLibraryOpenRequested($event)"
         (closeRequested)="onLibraryCloseRequested()"
+        (resumeRequested)="onLibraryResumeRequested($event)"
+        (woodpeckerSessionDeleteRequested)="onLibraryWoodpeckerSessionDeleteRequested($event)"
+        (woodpeckerTargetDaysChanged)="onLibraryWoodpeckerTargetDaysChanged($event)"
       ></app-library-panel>
     </ng-container>
 

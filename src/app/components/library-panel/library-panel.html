@@ -29,9 +29,29 @@
         </label>
 
         <div class="opened-item-actions">
+          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)" (click)="onResumeItem(item.id)">Riprendi</button>
           <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
+          <button
+            type="button"
+            class="remove-item-button"
+            *ngIf="hasWoodpeckerSession(item.id)"
+            (click)="onDeleteWoodpeckerSession(item.id)"
+          >
+            Elimina sessione Woodpecker
+          </button>
           <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
         </div>
+
+        <label class="woodpecker-target-days" *ngIf="item.mode === 'puzzle'">
+          Durata ciclo iniziale (giorni)
+          <input
+            type="number"
+            min="1"
+            max="365"
+            [value]="woodpeckerInitialTargetDays(item)"
+            (input)="onWoodpeckerTargetDaysInput(item.id, $event)"
+          />
+        </label>
 
         <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
           <input
@@ -68,6 +88,46 @@
           (input)="onItemGameFilterInput(item.id, $event)"
         />
       </label>
+
+      <div class="header-filters">
+        <label>
+          Bianco
+          <input
+            type="text"
+            [value]="headerFilterValue(item.id, 'white')"
+            placeholder="Es. Carlsen"
+            (input)="onHeaderFilterInput(item.id, 'white', $event)"
+          />
+        </label>
+
+        <label>
+          Nero
+          <input
+            type="text"
+            [value]="headerFilterValue(item.id, 'black')"
+            placeholder="Es. Nakamura"
+            (input)="onHeaderFilterInput(item.id, 'black', $event)"
+          />
+        </label>
+
+        <label>
+          Evento
+          <input
+            type="text"
+            [value]="headerFilterValue(item.id, 'event')"
+            placeholder="Es. Candidates"
+            (input)="onHeaderFilterInput(item.id, 'event', $event)"
+          />
+        </label>
+
+        <label>
+          Risultato
+          <select [value]="headerFilterValue(item.id, 'result')" (change)="onHeaderFilterInput(item.id, 'result', $event)">
+            <option value="">Tutti</option>
+            <option *ngFor="let result of resultOptions(item)" [value]="result">{{ result }}</option>
+          </select>
+        </label>
+      </div>
 
       <ng-container *ngIf="filteredGameEntries(item) as entries">
         <div class="games-table-wrap" *ngIf="entries.length > 0; else emptyFilteredList">
@@ -122,9 +182,44 @@
 
         <div class="card-actions">
           <button type="button" class="open-item-button" (click)="onOpenItem(item.id)">Apri</button>
+          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)" (click)="onResumeItem(item.id)">Riprendi</button>
           <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
+          <button
+            type="button"
+            class="remove-item-button"
+            *ngIf="hasWoodpeckerSession(item.id)"
+            (click)="onDeleteWoodpeckerSession(item.id)"
+          >
+            Elimina sessione
+          </button>
           <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
+          <button type="button" class="toggle-inline-list" (click)="toggleItemExpansion(item.id)">
+            {{ isExpanded(item.id) ? 'Chiudi elenco rapido' : 'Apri elenco rapido' }}
+          </button>
         </div>
+
+        <section class="card-details" *ngIf="isExpanded(item.id)">
+          <label class="game-filter" [attr.for]="'item-inline-game-filter-' + item.id">
+            Filtra partite
+            <input
+              [id]="'item-inline-game-filter-' + item.id"
+              type="text"
+              [value]="itemGameFilter(item.id)"
+              placeholder="Es. Carlsen, Partita 12, 1-0"
+              (input)="onItemGameFilterInput(item.id, $event)"
+            />
+          </label>
+
+          <ng-container *ngIf="filteredGameEntries(item) as entries">
+            <article class="library-game" *ngFor="let entry of entries; trackBy: trackByGameEntry">
+              <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
+                {{ entry.title }}
+              </button>
+            </article>
+
+            <p class="game-filter-empty" *ngIf="entries.length === 0">Nessuna partita trovata con questo filtro.</p>
+          </ng-container>
+        </section>
       </article>
     </div>
   </ng-template>

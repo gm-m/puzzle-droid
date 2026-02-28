@@ -20,12 +20,36 @@ export interface LibraryGameSelection {
   woodpeckerEnabled: boolean;
 }
 
+export interface LibraryWoodpeckerSessionInfo {
+  hasSession: boolean;
+  resumePuzzleIndex: number | null;
+}
+
+export interface LibraryResumeRequest {
+  itemId: string;
+  puzzleIndex: number;
+}
+
+export interface LibraryWoodpeckerTargetDaysChange {
+  itemId: string;
+  targetDays: number;
+}
+
 interface LibraryFilteredGameEntry {
   game: PgnLibraryGame;
   index: number;
   title: string;
   moveCount: number;
 }
+
+interface LibraryHeaderFilters {
+  white: string;
+  black: string;
+  event: string;
+  result: string;
+}
+
+const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
   selector: 'app-library-panel',
@@ -36,6 +60,7 @@ interface LibraryFilteredGameEntry {
 export class LibraryPanelComponent {
   @Input() items: PgnLibraryItem[] = [];
   @Input() openedItemId: string | null = null;
+  @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
@@ -44,12 +69,17 @@ export class LibraryPanelComponent {
   @Output() readonly dashboardRequested = new EventEmitter<string>();
   @Output() readonly openRequested = new EventEmitter<string>();
   @Output() readonly closeRequested = new EventEmitter<void>();
+  @Output() readonly resumeRequested = new EventEmitter<LibraryResumeRequest>();
+  @Output() readonly woodpeckerSessionDeleteRequested = new EventEmitter<string>();
+  @Output() readonly woodpeckerTargetDaysChanged = new EventEmitter<LibraryWoodpeckerTargetDaysChange>();
 
+  expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
   private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
   private readonly gameFilterByItem = new Map<string, string>();
+  private readonly headerFiltersByItem = new Map<string, LibraryHeaderFilters>();
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -78,6 +108,14 @@ export class LibraryPanelComponent {
     this.closeRequested.emit();
   }
 
+  toggleItemExpansion(itemId: string): void {
+    this.expandedItemId = this.expandedItemId === itemId ? null : itemId;
+  }
+
+  isExpanded(itemId: string): boolean {
+    return this.expandedItemId === itemId;
+  }
+
   onItemGameFilterInput(itemId: string, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.gameFilterByItem.set(itemId, value);
@@ -87,8 +125,32 @@ export class LibraryPanelComponent {
     return this.gameFilterByItem.get(itemId) ?? '';
   }
 
+  onHeaderFilterInput(itemId: string, key: keyof LibraryHeaderFilters, event: Event): void {
+    const rawValue = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    const next = {
+      ...this.itemHeaderFilters(itemId),
+      [key]: rawValue,
+    };
+    this.headerFiltersByItem.set(itemId, next);
+  }
+
+  headerFilterValue(itemId: string, key: keyof LibraryHeaderFilters): string {
+    return this.itemHeaderFilters(itemId)[key];
+  }
+
+  resultOptions(item: PgnLibraryItem): string[] {
+    return [...new Set(item.games.map((game) => (game.result ?? '').trim()).filter((value) => value.length > 0))].sort((a, b) =>
+      a.localeCompare(b),
+    );
+  }
+
   filteredGameEntries(item: PgnLibraryItem): LibraryFilteredGameEntry[] {
     const query = this.itemGameFilter(item.id).trim().toLowerCase();
+    const headerFilters = this.itemHeaderFilters(item.id);
+    const whiteFilter = headerFilters.white.trim().toLowerCase();
+    const blackFilter = headerFilters.black.trim().toLowerCase();
+    const eventFilter = headerFilters.event.trim().toLowerCase();
+    const resultFilter = headerFilters.result.trim();
 
     return item.games
       .map((game, index) => ({
@@ -112,7 +174,27 @@ export class LibraryPanelComponent {
           .join(' ')
           .toLowerCase();
 
-        return haystack.includes(query);
+        if (query && !haystack.includes(query)) {
+          return false;
+        }
+
+        if (whiteFilter && !(entry.game.white ?? '').toLowerCase().includes(whiteFilter)) {
+          return false;
+        }
+
+        if (blackFilter && !(entry.game.black ?? '').toLowerCase().includes(blackFilter)) {
+          return false;
+        }
+
+        if (eventFilter && !(entry.game.event ?? '').toLowerCase().includes(eventFilter)) {
+          return false;
+        }
+
+        if (resultFilter && (entry.game.result ?? '*') !== resultFilter) {
+          return false;
+        }
+
+        return true;
       });
   }
 
@@ -130,6 +212,48 @@ export class LibraryPanelComponent {
 
   onOpenDashboard(itemId: string): void {
     this.dashboardRequested.emit(itemId);
+  }
+
+  hasResumeSession(itemId: string): boolean {
+    return this.resumePuzzleIndex(itemId) !== null;
+  }
+
+  hasWoodpeckerSession(itemId: string): boolean {
+    return this.woodpeckerSessionInfoByItemId[itemId]?.hasSession === true;
+  }
+
+  onResumeItem(itemId: string): void {
+    const puzzleIndex = this.resumePuzzleIndex(itemId);
+    if (puzzleIndex === null) {
+      return;
+    }
+
+    this.resumeRequested.emit({ itemId, puzzleIndex });
+  }
+
+  onDeleteWoodpeckerSession(itemId: string): void {
+    this.woodpeckerSessionDeleteRequested.emit(itemId);
+  }
+
+  woodpeckerInitialTargetDays(item: PgnLibraryItem): number {
+    const candidate = Number(item.woodpeckerInitialTargetDays ?? DEFAULT_WOODPECKER_TARGET_DAYS);
+    if (!Number.isFinite(candidate)) {
+      return DEFAULT_WOODPECKER_TARGET_DAYS;
+    }
+
+    return Math.max(1, Math.trunc(candidate));
+  }
+
+  onWoodpeckerTargetDaysInput(itemId: string, event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+
+    this.woodpeckerTargetDaysChanged.emit({
+      itemId,
+      targetDays: Math.max(1, Math.trunc(value)),
+    });
   }
 
   onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {
@@ -191,6 +315,10 @@ export class LibraryPanelComponent {
     this.puzzleAutoRotateByItem.delete(itemId);
     this.puzzleWoodpeckerByItem.delete(itemId);
     this.gameFilterByItem.delete(itemId);
+    this.headerFiltersByItem.delete(itemId);
+    if (this.expandedItemId === itemId) {
+      this.expandedItemId = null;
+    }
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {
@@ -203,6 +331,26 @@ export class LibraryPanelComponent {
 
   trackByGameEntry(_: number, entry: LibraryFilteredGameEntry): string {
     return entry.game.id;
+  }
+
+  private itemHeaderFilters(itemId: string): LibraryHeaderFilters {
+    return (
+      this.headerFiltersByItem.get(itemId) ?? {
+        white: '',
+        black: '',
+        event: '',
+        result: '',
+      }
+    );
+  }
+
+  private resumePuzzleIndex(itemId: string): number | null {
+    const value = this.woodpeckerSessionInfoByItemId[itemId]?.resumePuzzleIndex;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return Math.max(0, Math.trunc(value));
   }
 
 }

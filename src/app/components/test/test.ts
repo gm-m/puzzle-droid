@@ -12,6 +12,9 @@ import {
   LibraryPanelComponent,
   type LibraryGameSelection,
   type LibraryModeChange,
+  type LibraryResumeRequest,
+  type LibraryWoodpeckerSessionInfo,
+  type LibraryWoodpeckerTargetDaysChange,
 } from '../library-panel/library-panel';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel';
 import { SettingsService } from '../../services/settings.service';
@@ -32,6 +35,7 @@ interface PersistedLibraryItem {
   name: string;
   pgn: string;
   mode: LibraryMode;
+  woodpeckerInitialTargetDays?: number;
 }
 
 type AppView = 'analysis' | 'library' | 'settings';
@@ -376,6 +380,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
           name: file.name,
           pgn,
           mode: 'view',
+          woodpeckerInitialTargetDays: Test.WOODPECKER_INITIAL_TARGET_DAYS,
           games,
           event: firstGame?.event,
           white: firstGame?.white,
@@ -444,6 +449,115 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   onLibraryDashboardRequested(itemId: string): void {
     this.isMenuOpen.set(false);
     void this.router.navigate(['/woodpecker-dashboard', itemId]);
+  }
+
+  onLibraryResumeRequested(request: LibraryResumeRequest): void {
+    const item = this.libraryItems().find((entry) => entry.id === request.itemId);
+    if (!item || item.games.length === 0) {
+      return;
+    }
+
+    const puzzleIndex = this.clamp(request.puzzleIndex, 0, Math.max(0, item.games.length - 1));
+    void this.router.navigate(['/analysis'], {
+      queryParams: {
+        resumeWoodpecker: 1,
+        pgnId: request.itemId,
+        puzzleIndex,
+      },
+    });
+  }
+
+  onLibraryWoodpeckerSessionDeleteRequested(itemId: string): void {
+    const item = this.libraryItems().find((entry) => entry.id === itemId);
+    if (!item) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === 'undefined' ||
+      window.confirm(`Eliminare la sessione Woodpecker per "${item.name}"? Il progresso del ciclo corrente andrà perso.`);
+    if (!confirmed) {
+      return;
+    }
+
+    const legacyKey = this.getWoodpeckerSessionKey(item);
+    const directKey = item.id;
+    const nextSessions = { ...this.woodpeckerSessionsByKey };
+    delete nextSessions[legacyKey];
+    delete nextSessions[directKey];
+    this.woodpeckerSessionsByKey = nextSessions;
+
+    if (this.currentWoodpeckerSessionKey === legacyKey || this.currentWoodpeckerSessionKey === directKey) {
+      this.currentWoodpeckerSessionKey = null;
+      this.woodpeckerSession.set(null);
+      this.syncWoodpeckerSessionForSelection();
+    }
+
+    this.persistWoodpeckerSessions();
+  }
+
+  onLibraryWoodpeckerTargetDaysChanged(change: LibraryWoodpeckerTargetDaysChange): void {
+    const targetDays = Math.max(1, Math.trunc(change.targetDays));
+    this.libraryItems.update((items) =>
+      items.map((item) => (item.id === change.itemId ? { ...item, woodpeckerInitialTargetDays: targetDays } : item)),
+    );
+    this.persistLibraryItems();
+
+    const item = this.libraryItems().find((entry) => entry.id === change.itemId);
+    if (!item) {
+      return;
+    }
+
+    const legacyKey = this.getWoodpeckerSessionKey(item);
+    const directKey = item.id;
+    let didUpdateAnySession = false;
+    const nextSessions = { ...this.woodpeckerSessionsByKey };
+
+    for (const key of [legacyKey, directKey]) {
+      const session = nextSessions[key];
+      if (!session) {
+        continue;
+      }
+
+      nextSessions[key] = {
+        ...session,
+        targetDays,
+      };
+      didUpdateAnySession = true;
+    }
+
+    if (didUpdateAnySession) {
+      this.woodpeckerSessionsByKey = nextSessions;
+      this.persistWoodpeckerSessions();
+    }
+
+    if (this.currentLibrarySelection?.itemId !== change.itemId || !this.isWoodpeckerEnabledForCurrentSelection()) {
+      return;
+    }
+
+    const session = this.woodpeckerSession();
+    if (!session) {
+      return;
+    }
+
+    this.updateWoodpeckerSession({
+      ...session,
+      targetDays,
+    });
+  }
+
+  libraryWoodpeckerSessionInfoByItemId(): Record<string, LibraryWoodpeckerSessionInfo> {
+    const byItem: Record<string, LibraryWoodpeckerSessionInfo> = {};
+
+    for (const item of this.libraryItems()) {
+      const session = this.getWoodpeckerSessionForItem(item);
+      byItem[item.id] = {
+        hasSession: session !== null,
+        resumePuzzleIndex: this.resumePuzzleIndexFromSession(session),
+      };
+    }
+
+    return byItem;
   }
 
   onLibraryGameSelected(selection: LibraryGameSelection): void {
@@ -1514,10 +1628,12 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     const key = this.getWoodpeckerSessionKey(location.item);
     this.currentWoodpeckerSessionKey = key;
-    this.woodpeckerSession.set(this.ensureWoodpeckerSession(key, location.item.games.length));
+    this.woodpeckerSession.set(
+      this.ensureWoodpeckerSession(key, location.item.games.length, this.getWoodpeckerInitialTargetDays(location.item)),
+    );
   }
 
-  private ensureWoodpeckerSession(key: string, gameCount: number): WoodpeckerSession {
+  private ensureWoodpeckerSession(key: string, gameCount: number, initialTargetDays: number): WoodpeckerSession {
     const existing = this.woodpeckerSessionsByKey[key];
     if (existing && existing.gameCount === gameCount) {
       return {
@@ -1529,7 +1645,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     const created: WoodpeckerSession = {
       cycle: 1,
-      targetDays: Test.WOODPECKER_INITIAL_TARGET_DAYS,
+      targetDays: initialTargetDays,
       cycleStartedAt: Date.now(),
       solvedIndexes: [],
       completed: false,
@@ -1593,6 +1709,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
             name: item.name,
             pgn: item.pgn,
             mode: item.mode,
+            woodpeckerInitialTargetDays: this.getNormalizedTargetDays(item.woodpeckerInitialTargetDays),
             games,
             event: firstGame?.event,
             white: firstGame?.white,
@@ -1617,6 +1734,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       name: item.name,
       pgn: item.pgn,
       mode: item.mode,
+      woodpeckerInitialTargetDays: this.getNormalizedTargetDays(item.woodpeckerInitialTargetDays),
     }));
 
     try {
@@ -1650,6 +1768,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       name,
       pgn: rawPgn,
       mode: candidate.mode === 'puzzle' ? 'puzzle' : 'view',
+      woodpeckerInitialTargetDays: this.getNormalizedTargetDays(candidate.woodpeckerInitialTargetDays),
     };
   }
 
@@ -1733,6 +1852,51 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private getWoodpeckerSessionKey(item: PgnLibraryItem): string {
     return `${item.name}|${item.games.length}|${this.hashText(item.pgn)}`;
+  }
+
+  private hasWoodpeckerSessionForItem(item: PgnLibraryItem): boolean {
+    return this.getWoodpeckerSessionForItem(item) !== null;
+  }
+
+  private getWoodpeckerSessionForItem(item: PgnLibraryItem): WoodpeckerSession | null {
+    const legacyKey = this.getWoodpeckerSessionKey(item);
+    const legacySession = this.woodpeckerSessionsByKey[legacyKey];
+    if (legacySession && legacySession.gameCount > 0) {
+      return legacySession;
+    }
+
+    const directSession = this.woodpeckerSessionsByKey[item.id];
+    if (directSession && directSession.gameCount > 0) {
+      return directSession;
+    }
+
+    return null;
+  }
+
+  private resumePuzzleIndexFromSession(session: WoodpeckerSession | null): number | null {
+    if (!session || session.completed || session.gameCount <= 0) {
+      return null;
+    }
+
+    if (session.solvedIndexes.length > 0) {
+      const highestSolved = Math.max(...session.solvedIndexes);
+      return this.clamp(highestSolved + 1, 0, Math.max(0, session.gameCount - 1));
+    }
+
+    return 0;
+  }
+
+  private getWoodpeckerInitialTargetDays(item: PgnLibraryItem): number {
+    return this.getNormalizedTargetDays(item.woodpeckerInitialTargetDays);
+  }
+
+  private getNormalizedTargetDays(value: unknown): number {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return Test.WOODPECKER_INITIAL_TARGET_DAYS;
+    }
+
+    return Math.max(1, Math.trunc(numeric));
   }
 
   private hashText(value: string): string {

@@ -3,6 +3,24 @@
   gap: 1.25rem;
 }
 
+.woodpecker-target-days {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+
+  input {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface-1);
+    max-width: 180px;
+  }
+}
+
 .library-header {
   display: flex;
   flex-wrap: wrap;
@@ -21,6 +39,16 @@
     color: var(--text-primary);
     font-weight: 800;
   }
+}
+
+.resume-button {
+  border: 1px solid #16a34a;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #22c55e 14%, var(--surface-1));
+  color: color-mix(in srgb, #14532d 65%, var(--text-primary));
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
 }
 
 .dashboard-button {
@@ -131,6 +159,39 @@
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
   }
+
+  select {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface-1);
+  }
+}
+
+.header-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+
+  label {
+    display: grid;
+    gap: 0.3rem;
+    color: var(--text-muted);
+    font-size: 0.83rem;
+    font-weight: 700;
+  }
+
+  input,
+  select {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font: inherit;
+  }
 }
 
 .game-filter-empty {
@@ -206,6 +267,16 @@
   color: var(--text-primary);
   font-weight: 700;
   padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.toggle-inline-list {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
 
