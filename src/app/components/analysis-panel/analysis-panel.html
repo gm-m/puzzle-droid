@@ -75,6 +75,19 @@
           <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
         </form>
 
+        <form class="fen-controls" (submit)="onPgnSubmit($event, pgnInput.value)">
+          <label>
+            Carica posizione da PGN
+            <textarea
+              #pgnInput
+              rows="4"
+              placeholder="Incolla una partita PGN: verrà caricata la posizione finale"
+            ></textarea>
+          </label>
+          <button type="submit">Applica PGN</button>
+          <p *ngIf="pgnFeedback" class="fen-feedback">{{ pgnFeedback }}</p>
+        </form>
+
         <div class="actions">
           <button type="button" (click)="analyze.emit()">Analyze</button>
           <button type="button" (click)="reset.emit()">Reset</button>
@@ -174,7 +187,6 @@
       >
         &lt;
       </button>
-      <span class="cursor">{{ moveCursorLabel }}</span>
       <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
         &gt;
       </button>

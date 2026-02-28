@@ -79,6 +79,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly skillLevel = signal(20);
   readonly showEvalBar = signal(true);
   readonly fenFeedback = signal('');
+  readonly pgnFeedback = signal('');
   readonly puzzleMessage = signal('');
   readonly boardOrientation = signal<'white' | 'black'>('white');
   readonly showBestMoveArrow = signal(false);
@@ -602,6 +603,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.moveCursor.set(0);
     this.puzzleReplayLimit.set(selection.mode === 'puzzle' ? 0 : fullHistory.length);
     this.fenFeedback.set('Partita caricata dalla libreria.');
+    this.pgnFeedback.set('');
     this.syncGameState();
     this.setActiveView('analysis');
     this.analyzePosition();
@@ -664,6 +666,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.moveCursor.set(0);
     this.puzzleReplayLimit.set(0);
     this.fenFeedback.set('');
+    this.pgnFeedback.set('');
     this.syncGameState();
     this.analyzePosition();
   }
@@ -700,6 +703,63 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.moveCursor.set(0);
     this.puzzleReplayLimit.set(0);
     this.fenFeedback.set('Posizione caricata.');
+    this.pgnFeedback.set('');
+    this.syncGameState();
+    this.analyzePosition();
+  }
+
+  applyPgn(rawPgn: string): void {
+    const pgn = rawPgn.trim();
+    if (!pgn) {
+      this.pgnFeedback.set('Incolla un PGN valido.');
+      return;
+    }
+
+    const game = this.parsePgnGames(pgn, 'analysis-import')[0];
+    if (!game) {
+      this.pgnFeedback.set('PGN non valido o senza mosse.');
+      return;
+    }
+
+    const fullHistory = [...(game.positions.at(-1)?.uciHistory ?? [])];
+
+    try {
+      if (game.initialFen === Test.STARTING_FEN) {
+        this.chess.reset();
+      } else {
+        this.chess.load(game.initialFen);
+      }
+
+      for (const uci of fullHistory) {
+        const parsedMove = this.parseUciMove(uci);
+        if (!parsedMove || !this.chess.move(parsedMove)) {
+          throw new Error('invalid-pgn-sequence');
+        }
+      }
+    } catch {
+      this.pgnFeedback.set('Impossibile caricare il PGN.');
+      return;
+    }
+
+    this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
+    this.isPuzzleAutoPlaying.set(false);
+    this.currentLibrarySelection = null;
+    this.currentLibraryGameTitle.set('');
+    this.currentWoodpeckerSessionKey = null;
+    this.woodpeckerSession.set(null);
+    this.puzzleAttemptStartedAt = null;
+    this.closeLibraryGamePicker();
+    this.historyInitialFen = game.initialFen;
+    this.isPuzzleMode.set(false);
+    this.isPuzzleSurrendered.set(false);
+    this.puzzleAutoRotateBoardOnTurn.set(false);
+    this.puzzleMessage.set('');
+    this.moveHistory.set(fullHistory);
+    this.moveCursor.set(fullHistory.length);
+    this.puzzleReplayLimit.set(fullHistory.length);
+    this.fenFeedback.set('');
+    this.pgnFeedback.set('Posizione del PGN caricata.');
     this.syncGameState();
     this.analyzePosition();
   }
@@ -920,8 +980,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     return Boolean(location && location.gameIndex < location.item.games.length - 1);
   }
 
-  moveCursorLabel(): string {
-    return `${this.moveCursor()}/${this.moveHistory().length}`;
+  moveHistorySan(): string[] {
+    return this.toSanHistory(this.historyInitialFen, this.moveHistory());
   }
 
   showWoodpeckerInfo(): boolean {
@@ -2124,6 +2184,34 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private toUci(from: Key, to: Key, promotion?: string): string {
     return `${from}${to}${promotion ?? ''}`;
+  }
+
+  private toSanHistory(initialFen: string, uciHistory: string[]): string[] {
+    const replay = new Chess();
+
+    try {
+      if (initialFen === Test.STARTING_FEN) {
+        replay.reset();
+      } else {
+        replay.load(initialFen);
+      }
+    } catch {
+      replay.reset();
+    }
+
+    const sanMoves: string[] = [];
+    for (const uci of uciHistory) {
+      const parsedMove = this.parseUciMove(uci);
+      if (!parsedMove) {
+        sanMoves.push(uci);
+        continue;
+      }
+
+      const result = replay.move(parsedMove);
+      sanMoves.push(result?.san ?? uci);
+    }
+
+    return sanMoves;
   }
 
   private parsePgnGames(pgn: string, itemId: string): PgnLibraryGame[] {

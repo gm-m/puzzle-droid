@@ -117,22 +117,16 @@
                 <th>Evento</th>
                 <th>Risultato</th>
                 <th>Mosse</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let entry of entries; trackBy: trackByGameEntry">
+              <tr *ngFor="let entry of entries; trackBy: trackByGameEntry" (click)="onGameClick(item, entry.game, entry.index)" style="cursor: pointer;">
                 <td>{{ entry.index + 1 }}</td>
                 <td>{{ entry.game.white || '-' }}</td>
                 <td>{{ entry.game.black || '-' }}</td>
                 <td>{{ entry.game.event || '-' }}</td>
                 <td>{{ entry.game.result || '*' }}</td>
                 <td>{{ entry.moveCount }}</td>
-                <td>
-                  <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
-                    Carica
-                  </button>
-                </td>
               </tr>
             </tbody>
           </table>

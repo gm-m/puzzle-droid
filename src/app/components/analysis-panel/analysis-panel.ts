@@ -52,11 +52,11 @@ export class AnalysisPanelComponent {
   @Input() showMoveArea = true;
   @Input() showMoveList = true;
   @Input() moveListMaxHeight = 0;
-  @Input() moveCursorLabel = '0/0';
   @Input() moves: string[] = [];
   @Input() moveCursor = 0;
   @Input() fenInputValue = '';
   @Input() fenFeedback = '';
+  @Input() pgnFeedback = '';
   @Input() hideEngine = false;
   @Input() puzzleMessage = '';
   @Input() showSurrender = false;
@@ -91,6 +91,7 @@ export class AnalysisPanelComponent {
   @Output() readonly moveJumpRequested = new EventEmitter<number>();
   @Output() readonly lineSelected = new EventEmitter<LineMoveSelection>();
   @Output() readonly fenApplied = new EventEmitter<string>();
+  @Output() readonly pgnApplied = new EventEmitter<string>();
   @Output() readonly surrenderPuzzle = new EventEmitter<void>();
   @Output() readonly rotateBoard = new EventEmitter<void>();
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
@@ -162,6 +163,11 @@ export class AnalysisPanelComponent {
   onFenSubmit(event: Event, rawFen: string): void {
     event.preventDefault();
     this.fenApplied.emit(rawFen);
+  }
+
+  onPgnSubmit(event: Event, rawPgn: string): void {
+    event.preventDefault();
+    this.pgnApplied.emit(rawPgn);
   }
 
   onBestMoveArrowChange(event: Event): void {
