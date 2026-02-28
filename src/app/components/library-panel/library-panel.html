@@ -9,9 +9,108 @@
 
   <p class="hint">Carica file PGN, apri una card e seleziona una partita per avviarla sulla scacchiera.</p>
 
-  <div class="library-grid" *ngIf="items.length > 0; else emptyState">
-    <article class="game-card" *ngFor="let item of items">
-      <button type="button" class="card-toggle" (click)="toggleItemExpansion(item.id)">
+  <ng-container *ngIf="openedItem() as item; else itemsOverview">
+    <section class="opened-item-screen">
+      <header class="opened-item-header">
+        <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">← Torna ai PGN</button>
+        <div>
+          <h2>{{ item.name }}</h2>
+          <p>{{ item.games.length }} partite disponibili</p>
+        </div>
+      </header>
+
+      <section class="opened-item-controls">
+        <label class="mode-select">
+          Modalità
+          <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
+            <option value="view">Visualizzazione</option>
+            <option value="puzzle">Puzzle</option>
+          </select>
+        </label>
+
+        <div class="opened-item-actions">
+          <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
+          <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
+        </div>
+
+        <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+          <input
+            type="checkbox"
+            [checked]="isPuzzleAutoFirstMove(item.id)"
+            (change)="onPuzzleAutoFirstMoveChange(item.id, $event)"
+          />
+          Auto-esegui la prima mossa all'apertura partita
+        </label>
+
+        <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+          <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)" (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
+          Vai al puzzle successivo quando risolto
+        </label>
+
+        <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+          <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)" (change)="onPuzzleAutoRotateChange(item.id, $event)" />
+          Ruota automaticamente la scacchiera in base al tratto
+        </label>
+
+        <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
+          <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)" (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
+          Metodo Woodpecker (ripetizione a cicli)
+        </label>
+      </section>
+
+      <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
+        Filtra partite
+        <input
+          [id]="'item-game-filter-' + item.id"
+          type="text"
+          [value]="itemGameFilter(item.id)"
+          placeholder="Es. Carlsen, Partita 12, 1-0"
+          (input)="onItemGameFilterInput(item.id, $event)"
+        />
+      </label>
+
+      <ng-container *ngIf="filteredGameEntries(item) as entries">
+        <div class="games-table-wrap" *ngIf="entries.length > 0; else emptyFilteredList">
+          <table class="games-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Bianco</th>
+                <th>Nero</th>
+                <th>Evento</th>
+                <th>Risultato</th>
+                <th>Mosse</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of entries; trackBy: trackByGameEntry">
+                <td>{{ entry.index + 1 }}</td>
+                <td>{{ entry.game.white || '-' }}</td>
+                <td>{{ entry.game.black || '-' }}</td>
+                <td>{{ entry.game.event || '-' }}</td>
+                <td>{{ entry.game.result || '*' }}</td>
+                <td>{{ entry.moveCount }}</td>
+                <td>
+                  <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
+                    Carica
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <ng-template #emptyFilteredList>
+        <p class="game-filter-empty">Nessuna partita trovata con questo filtro.</p>
+      </ng-template>
+    </section>
+  </ng-container>
+
+  <ng-template #itemsOverview>
+    <div class="library-grid" *ngIf="items.length > 0; else emptyState">
+      <article class="game-card" *ngFor="let item of items">
         <div class="card-title-wrap">
           <h2>{{ item.name }}</h2>
           <p><strong>Partite:</strong> {{ item.games.length }}</p>
@@ -21,71 +120,14 @@
           <p><strong>Risultato:</strong> {{ item.result || '-' }}</p>
         </div>
 
-        <span class="toggle-label">{{ isExpanded(item.id) ? 'Chiudi' : 'Apri' }}</span>
-      </button>
-
-      <label class="mode-select">
-        Modalità
-        <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
-          <option value="view">Visualizzazione</option>
-          <option value="puzzle">Puzzle</option>
-        </select>
-      </label>
-
-      <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">
-        Dashboard Woodpecker
-      </button>
-
-      <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
-
-      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-        <input
-          type="checkbox"
-          [checked]="isPuzzleAutoFirstMove(item.id)"
-          (change)="onPuzzleAutoFirstMoveChange(item.id, $event)"
-        />
-        Auto-esegui la prima mossa all'apertura partita
-      </label>
-
-      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-        <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)" (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
-        Vai al puzzle successivo quando risolto
-      </label>
-
-      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-        <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)" (change)="onPuzzleAutoRotateChange(item.id, $event)" />
-        Ruota automaticamente la scacchiera in base al tratto
-      </label>
-
-      <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-        <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)" (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
-        Metodo Woodpecker (ripetizione a cicli)
-      </label>
-
-      <section class="card-details" *ngIf="isExpanded(item.id)">
-        <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
-          Filtra partite
-          <input
-            [id]="'item-game-filter-' + item.id"
-            type="text"
-            [value]="itemGameFilter(item.id)"
-            placeholder="Es. Carlsen, Partita 12, 1-0"
-            (input)="onItemGameFilterInput(item.id, $event)"
-          />
-        </label>
-
-        <ng-container *ngIf="filteredGameEntries(item) as entries">
-          <article class="library-game" *ngFor="let entry of entries">
-            <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
-              {{ entry.title }}
-            </button>
-          </article>
-
-          <p class="game-filter-empty" *ngIf="entries.length === 0">Nessuna partita trovata con questo filtro.</p>
-        </ng-container>
-      </section>
-    </article>
-  </div>
+        <div class="card-actions">
+          <button type="button" class="open-item-button" (click)="onOpenItem(item.id)">Apri</button>
+          <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard Woodpecker</button>
+          <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
+        </div>
+      </article>
+    </div>
+  </ng-template>
 
   <ng-template #emptyState>
     <div class="empty-state">Nessun PGN caricato.</div>

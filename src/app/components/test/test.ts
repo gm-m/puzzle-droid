@@ -86,6 +86,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly puzzleAutoRotateBoardOnTurn = signal(true);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
+  readonly libraryOpenedItemId = signal<string | null>(null);
   readonly currentLibraryGameTitle = signal('');
   readonly isLibraryGamePickerOpen = signal(false);
   readonly libraryGameFilter = signal('');
@@ -129,6 +130,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       this.syncViewFromRoute(params.get('view'));
     });
     this.routeQueryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
+      this.syncOpenedLibraryItemFromQuery(params.get('libraryItem'));
       this.tryResumeWoodpeckerFromQuery(
         params.get('resumeWoodpecker'),
         params.get('pgnId'),
@@ -396,12 +398,47 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   onLibraryItemRemoved(itemId: string): void {
     const removingCurrentSelection = this.currentLibrarySelection?.itemId === itemId;
+    const removingOpenedItem = this.libraryOpenedItemId() === itemId;
     this.libraryItems.update((items) => items.filter((item) => item.id !== itemId));
     this.persistLibraryItems();
+
+    if (removingOpenedItem) {
+      this.libraryOpenedItemId.set(null);
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { libraryItem: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
 
     if (removingCurrentSelection) {
       this.resetBoard();
     }
+  }
+
+  onLibraryOpenRequested(itemId: string): void {
+    if (!this.libraryItems().some((item) => item.id === itemId)) {
+      return;
+    }
+
+    this.isMenuOpen.set(false);
+    this.libraryOpenedItemId.set(itemId);
+
+    void this.router.navigate(['/library'], {
+      queryParams: { libraryItem: itemId },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onLibraryCloseRequested(): void {
+    this.libraryOpenedItemId.set(null);
+
+    void this.router.navigate(['/library'], {
+      queryParams: { libraryItem: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   onLibraryDashboardRequested(itemId: string): void {
@@ -1710,6 +1747,27 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private canHandleLibrarySwipe(): boolean {
     return this.activeView() === 'analysis' && this.currentLibrarySelection !== null && !this.isLibraryGamePickerOpen();
+  }
+
+  private syncOpenedLibraryItemFromQuery(rawItemId: string | null): void {
+    if (!rawItemId) {
+      this.libraryOpenedItemId.set(null);
+      return;
+    }
+
+    const itemExists = this.libraryItems().some((item) => item.id === rawItemId);
+    if (!itemExists) {
+      this.libraryOpenedItemId.set(null);
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { libraryItem: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      return;
+    }
+
+    this.libraryOpenedItemId.set(rawItemId);
   }
 
   private syncViewFromRoute(rawView: string | null): void {

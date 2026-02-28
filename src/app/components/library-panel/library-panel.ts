@@ -24,6 +24,7 @@ interface LibraryFilteredGameEntry {
   game: PgnLibraryGame;
   index: number;
   title: string;
+  moveCount: number;
 }
 
 @Component({
@@ -34,14 +35,16 @@ interface LibraryFilteredGameEntry {
 })
 export class LibraryPanelComponent {
   @Input() items: PgnLibraryItem[] = [];
+  @Input() openedItemId: string | null = null;
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
   @Output() readonly gameSelected = new EventEmitter<LibraryGameSelection>();
   @Output() readonly itemRemoved = new EventEmitter<string>();
   @Output() readonly dashboardRequested = new EventEmitter<string>();
+  @Output() readonly openRequested = new EventEmitter<string>();
+  @Output() readonly closeRequested = new EventEmitter<void>();
 
-  expandedItemId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
@@ -59,12 +62,20 @@ export class LibraryPanelComponent {
     this.modeChanged.emit({ id, mode });
   }
 
-  toggleItemExpansion(id: string): void {
-    this.expandedItemId = this.expandedItemId === id ? null : id;
+  openedItem(): PgnLibraryItem | null {
+    if (!this.openedItemId) {
+      return null;
+    }
+
+    return this.items.find((item) => item.id === this.openedItemId) ?? null;
   }
 
-  isExpanded(id: string): boolean {
-    return this.expandedItemId === id;
+  onOpenItem(itemId: string): void {
+    this.openRequested.emit(itemId);
+  }
+
+  onCloseOpenedItem(): void {
+    this.closeRequested.emit();
   }
 
   onItemGameFilterInput(itemId: string, event: Event): void {
@@ -84,8 +95,25 @@ export class LibraryPanelComponent {
         game,
         index,
         title: this.gameTitle(index, item),
+        moveCount: Math.max(0, game.positions.length - 1),
       }))
-      .filter((entry) => !query || entry.title.toLowerCase().includes(query));
+      .filter((entry) => {
+        if (!query) {
+          return true;
+        }
+
+        const haystack = [
+          entry.title,
+          entry.game.white ?? '',
+          entry.game.black ?? '',
+          entry.game.event ?? '',
+          entry.game.result ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return haystack.includes(query);
+      });
   }
 
   onRemoveItem(item: PgnLibraryItem): void {
@@ -94,10 +122,6 @@ export class LibraryPanelComponent {
       window.confirm(`Rimuovere "${item.name}" dalla libreria? Questa azione non elimina il file dal disco.`);
     if (!confirmed) {
       return;
-    }
-
-    if (this.expandedItemId === item.id) {
-      this.expandedItemId = null;
     }
 
     this.clearItemState(item.id);
@@ -175,6 +199,10 @@ export class LibraryPanelComponent {
     const black = game?.black || '?';
     const result = game?.result || '*';
     return `Partita ${index + 1}: ${white} vs ${black} (${result})`;
+  }
+
+  trackByGameEntry(_: number, entry: LibraryFilteredGameEntry): string {
+    return entry.game.id;
   }
 
 }

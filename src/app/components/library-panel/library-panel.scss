@@ -174,6 +174,91 @@
   gap: 1.25rem;
 }
 
+.opened-item-screen {
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  background: var(--surface-1);
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.opened-item-header {
+  display: grid;
+  gap: 0.45rem;
+
+  h2 {
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+}
+
+.back-to-library {
+  justify-self: start;
+  border: 1px solid var(--border-color);
+  border-radius: 0.55rem;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.opened-item-controls {
+  border: 1px solid var(--border-color);
+  border-radius: 0.8rem;
+  background: var(--surface-2);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.opened-item-actions,
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.games-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: 0.8rem;
+  overflow: auto;
+  background: var(--surface-1);
+}
+
+.games-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+
+  th,
+  td {
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--surface-2);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
 .game-card {
   border: 1px solid var(--border-color);
   border-radius: 1rem;
@@ -219,6 +304,16 @@
 .card-title-wrap {
   display: grid;
   gap: 0.35rem;
+}
+
+.open-item-button {
+  border: 1px solid #2563eb;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #2563eb 12%, var(--surface-1));
+  color: color-mix(in srgb, #1d4ed8 65%, var(--text-primary));
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
 }
 
 .toggle-label {

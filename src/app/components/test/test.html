@@ -245,11 +245,14 @@
     <ng-container *ngIf="activeView() === 'library'">
       <app-library-panel
         [items]="libraryItems()"
+        [openedItemId]="libraryOpenedItemId()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"
         (itemRemoved)="onLibraryItemRemoved($event)"
         (dashboardRequested)="onLibraryDashboardRequested($event)"
+        (openRequested)="onLibraryOpenRequested($event)"
+        (closeRequested)="onLibraryCloseRequested()"
       ></app-library-panel>
     </ng-container>
 
