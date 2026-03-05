@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
@@ -307,6 +307,33 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   onContentTouchCancel(): void {
     this.resetTouchState();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent): void {
+    if (this.activeView() !== 'analysis' || !this.isDesktopViewport() || this.isPuzzleActive() || this.isMenuOpen()) {
+      return;
+    }
+
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (this.isEditableTarget(target)) {
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      this.previousMove();
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      this.nextMove();
+    }
   }
 
   onLibraryGameFilterInput(event: Event): void {
@@ -872,9 +899,23 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
-    this.puzzleAttemptStartedAt = null;
+    const location = this.getCurrentLibraryGameLocation();
+    const expectedUci = this.moveHistory()[this.moveCursor()] ?? '';
+    const elapsedMs = this.consumePuzzleAttemptElapsedMs();
+    const theme = this.detectTacticalTheme(expectedUci);
+    const shouldMarkWoodpeckerFailure = this.isWoodpeckerEnabledForCurrentSelection() && location !== null;
+
+    if (shouldMarkWoodpeckerFailure && location) {
+      this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs, {
+        restartAttempt: false,
+        message: 'Ti sei arreso: puzzle segnato come errato e aggiunto alla review SRS.',
+      });
+    }
+
     this.isPuzzleSurrendered.set(true);
-    this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
+    if (!shouldMarkWoodpeckerFailure) {
+      this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
+    }
     this.analyzePosition();
   }
 
@@ -1345,11 +1386,14 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     expectedUci: string,
     theme: TacticalTheme,
     elapsedMs: number,
+    options?: { restartAttempt?: boolean; message?: string },
   ): void {
     const session = this.woodpeckerSession();
     if (!session) {
-      this.puzzleMessage.set('Mossa sbagliata, riprova.');
-      this.markPuzzleAttemptStart();
+      this.puzzleMessage.set(options?.message ?? 'Mossa sbagliata, riprova.');
+      if (options?.restartAttempt !== false) {
+        this.markPuzzleAttemptStart();
+      }
       return;
     }
 
@@ -1370,9 +1414,27 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.updateWoodpeckerSession(updatedSession);
     this.recordWoodpeckerAttempt(location, false, theme, elapsedMs, updatedSession);
     this.puzzleMessage.set(
-      `Mossa sbagliata. Puzzle inserito nella review SRS (${failedQueue.length} in coda). Riprova.`,
+      options?.message ?? `Mossa sbagliata. Puzzle inserito nella review SRS (${failedQueue.length} in coda). Riprova.`,
     );
-    this.markPuzzleAttemptStart();
+    if (options?.restartAttempt !== false) {
+      this.markPuzzleAttemptStart();
+    }
+  }
+
+  private isDesktopViewport(): boolean {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return true;
+    }
+
+    return window.matchMedia('(min-width: 901px)').matches;
+  }
+
+  private isEditableTarget(target: HTMLElement | null): boolean {
+    if (!target) {
+      return false;
+    }
+
+    return Boolean(target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]'));
   }
 
   private findNextWoodpeckerReviewIndex(fromIndex: number, session: WoodpeckerSession, gameCount: number): number | null {
