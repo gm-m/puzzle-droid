@@ -34,6 +34,14 @@
     </div>
 
     <div class="setting-group checkbox-group">
+      <label class="setting-label" for="board-3d">Stile 3D</label>
+      <label class="switch">
+        <input id="board-3d" type="checkbox" [checked]="settings().is3d" (change)="on3dChange($event)">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-group checkbox-group">
       <label class="setting-label" for="show-coords">Mostra Coordinate</label>
       <label class="switch">
         <input id="show-coords" type="checkbox" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">

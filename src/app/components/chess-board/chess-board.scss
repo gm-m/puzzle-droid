@@ -9,6 +9,15 @@
   box-shadow: 0 8px 24px rgba(20, 20, 20, 0.2);
 }
 
+.board.is-3d {
+  aspect-ratio: auto;
+  height: auto;
+  padding-bottom: 92.96875%;
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 ::ng-deep {
   .cg-wrap coords {
     font-size: 11px;

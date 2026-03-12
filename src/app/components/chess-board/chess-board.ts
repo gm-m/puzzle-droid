@@ -34,6 +34,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() showCoordinates = true;
   @Input() boardTheme: 'brown' | 'green' | 'blue' | 'grey' = 'brown';
   @Input() pieceSet: 'cburnett' | 'merida' | 'alpha' | 'kosal' = 'cburnett';
+  @Input() is3d = false;
   @Input() highlightLastMove = true;
 
   @Output() moved = new EventEmitter<BoardMove>();
@@ -48,6 +49,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       fen: this.fen,
       orientation: this.orientation,
       turnColor: this.turnColor,
+      addPieceZIndex: this.is3d,
       coordinates: this.showCoordinates,
       highlight: {
         lastMove: this.highlightLastMove,
@@ -81,12 +83,14 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       changes['orientation'] ||
       changes['bestMoveArrow'] ||
       changes['showCoordinates'] ||
+      changes['is3d'] ||
       changes['highlightLastMove']
     ) {
       this.boardApi.set({
         fen: this.fen,
         orientation: this.orientation,
         turnColor: this.turnColor,
+        addPieceZIndex: this.is3d,
         coordinates: this.showCoordinates,
         highlight: {
           lastMove: this.highlightLastMove,

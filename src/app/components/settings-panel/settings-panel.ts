@@ -32,6 +32,11 @@ export class SettingsPanelComponent {
     this.updateSetting('pieceSet', value);
   }
 
+  on3dChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.updateSetting('is3d', checked);
+  }
+
   onDarkModeChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.updateSetting('darkMode', checked);

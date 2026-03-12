@@ -1,0 +1,62 @@
+body.is3d .board.is-3d {
+  position: relative;
+  margin-top: 2%;
+}
+
+body.is3d .board.is-3d .cg-wrap {
+  height: 97.5840336%;
+  overflow: visible;
+}
+
+body.is3d .board.is-3d cg-board {
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+body.is3d .board.is-3d cg-board::before {
+  content: '';
+  position: absolute;
+  top: -0.7307%;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  height: 103.2%;
+  background-image: var(--board-3d-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  pointer-events: none;
+}
+
+body.is3d .board.is-3d piece {
+  width: 16.741%;
+  height: 23.563%;
+  left: -1.85%;
+  top: -9.1%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 8px 8px rgb(15 23 42 / 0.28));
+}
+
+body.is3d .board.is-3d .cg-wrap coords {
+  color: #fff !important;
+  text-shadow: 0 1px 2px #000 !important;
+}
+
+body.is3d .board.is-3d piece.king.white { background-image: var(--piece-white-king-image); }
+body.is3d .board.is-3d piece.queen.white { background-image: var(--piece-white-queen-image); }
+body.is3d .board.is-3d piece.rook.white { background-image: var(--piece-white-rook-image); }
+body.is3d .board.is-3d piece.bishop.white { background-image: var(--piece-white-bishop-image); }
+body.is3d .board.is-3d piece.knight.white { background-image: var(--piece-white-knight-image); }
+body.is3d .board.is-3d piece.pawn.white { background-image: var(--piece-white-pawn-image); }
+body.is3d .board.is-3d piece.king.black { background-image: var(--piece-black-king-image); }
+body.is3d .board.is-3d piece.queen.black { background-image: var(--piece-black-queen-image); }
+body.is3d .board.is-3d piece.rook.black { background-image: var(--piece-black-rook-image); }
+body.is3d .board.is-3d piece.bishop.black { background-image: var(--piece-black-bishop-image); }
+body.is3d .board.is-3d piece.knight.black { background-image: var(--piece-black-knight-image); }
+body.is3d .board.is-3d piece.pawn.black { background-image: var(--piece-black-pawn-image); }
+
+body.is3d .board.is-3d .orientation-black piece.bishop.white { background-image: var(--piece-white-bishop-flipped-image); }
+body.is3d .board.is-3d .orientation-black piece.knight.white { background-image: var(--piece-white-knight-flipped-image); }
+body.is3d .board.is-3d .orientation-white piece.bishop.black { background-image: var(--piece-black-bishop-flipped-image); }
+body.is3d .board.is-3d .orientation-white piece.knight.black { background-image: var(--piece-black-knight-flipped-image); }

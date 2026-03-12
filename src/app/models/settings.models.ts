@@ -1,6 +1,7 @@
 export interface AppSettings {
   boardTheme: 'brown' | 'green' | 'blue' | 'grey';
   pieceSet: 'cburnett' | 'merida' | 'alpha' | 'kosal';
+  is3d: boolean;
   darkMode: boolean;
   showCoordinates: boolean;
   highlightLastMove: boolean;
@@ -10,6 +11,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   boardTheme: 'brown',
   pieceSet: 'cburnett',
+  is3d: false,
   darkMode: false,
   showCoordinates: true,
   highlightLastMove: true,
