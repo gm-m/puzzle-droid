@@ -36,6 +36,26 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+## GitHub Pages deployment
+
+This repository is configured to deploy automatically to GitHub Pages using the `gh-pages` branch.
+
+To generate a production build locally with the correct base URL for GitHub Pages, run:
+
+```bash
+npm run build:gh-pages
+```
+
+To enable the hosted site on GitHub:
+
+1. Push the repository to GitHub.
+2. Open `Settings > Pages` in the GitHub repository.
+3. Set the source to `Deploy from a branch`.
+4. Select the `gh-pages` branch and the `/ (root)` folder.
+5. Save the configuration.
+
+The workflow in `.github/workflows/deploy-gh-pages.yml` will publish the Angular build to `gh-pages` after each push to `main` or `master`, and it also creates a `404.html` fallback so Angular routes continue to work on GitHub Pages.
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
