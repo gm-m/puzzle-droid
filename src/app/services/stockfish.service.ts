@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import type { EngineLine, StockfishEvent } from '../models/engine.models';
 
-const STOCKFISH_WORKER_URL = '/stockfish/stockfish-17.1-lite-single-03e3232.js';
+const STOCKFISH_WORKER_PATH = 'stockfish/stockfish-17.1-lite-single-03e3232.js';
 
 interface AnalyzeOptions {
   depth: number;
@@ -37,7 +37,7 @@ export class StockfishService {
     }
 
     try {
-      this.engine = new Worker(STOCKFISH_WORKER_URL);
+      this.engine = new Worker(this.resolveWorkerUrl());
     } catch {
       this.listener?.({ type: 'error', message: 'Engine non disponibile' });
       return;
@@ -185,5 +185,13 @@ export class StockfishService {
 
   private clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, Math.trunc(value)));
+  }
+
+  private resolveWorkerUrl(): string {
+    if (typeof document === 'undefined') {
+      return STOCKFISH_WORKER_PATH;
+    }
+
+    return new URL(STOCKFISH_WORKER_PATH, document.baseURI).toString();
   }
 }
