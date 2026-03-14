@@ -908,6 +908,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     if (shouldMarkWoodpeckerFailure && location) {
       this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs, {
         restartAttempt: false,
+        skipped: true,
         message: 'Ti sei arreso: puzzle segnato come errato e aggiunto alla review SRS.',
       });
     }
@@ -1044,7 +1045,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return '';
     }
 
-    return `${session.solvedIndexes.length}/${session.gameCount} puzzle completati nel ciclo corrente`;
+    return `${session.solvedIndexes.length}/${session.gameCount} puzzle completati · review queue ${session.failedQueue.length}`;
   }
 
   woodpeckerTargetLabel(): string {
@@ -1386,7 +1387,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     expectedUci: string,
     theme: TacticalTheme,
     elapsedMs: number,
-    options?: { restartAttempt?: boolean; message?: string },
+    options?: { restartAttempt?: boolean; message?: string; skipped?: boolean },
   ): void {
     const session = this.woodpeckerSession();
     if (!session) {
@@ -1397,7 +1398,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const updatedStats = this.updatePuzzleStatsOnFailure(session, location.gameIndex, elapsedMs);
+    const updatedStats = this.updatePuzzleStatsOnFailure(session, location.gameIndex, elapsedMs, options?.skipped === true);
     const failedQueue = Array.from(new Set([...session.failedQueue, location.gameIndex])).sort((a, b) => a - b);
     const solvedIndexes = session.solvedIndexes.filter((index) => index !== location.gameIndex);
     const updatedSession: WoodpeckerSession = {
@@ -1412,7 +1413,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     };
 
     this.updateWoodpeckerSession(updatedSession);
-    this.recordWoodpeckerAttempt(location, false, theme, elapsedMs, updatedSession);
+    this.recordWoodpeckerAttempt(location, false, theme, elapsedMs, updatedSession, options?.skipped === true);
     this.puzzleMessage.set(
       options?.message ?? `Mossa sbagliata. Puzzle inserito nella review SRS (${failedQueue.length} in coda). Riprova.`,
     );
@@ -1489,11 +1490,19 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       intervalDays: nextInterval,
       dueAt: now + nextInterval * Test.DAY_MS,
       lastAttemptAt: now,
+      lastElapsedMs: elapsedMs,
+      lastOutcome: 'solved',
       wrongAttempts: previous.wrongAttempts,
+      skippedAttempts: previous.skippedAttempts,
     };
   }
 
-  private updatePuzzleStatsOnFailure(session: WoodpeckerSession, puzzleIndex: number, elapsedMs: number): WoodpeckerPuzzleStats {
+  private updatePuzzleStatsOnFailure(
+    session: WoodpeckerSession,
+    puzzleIndex: number,
+    elapsedMs: number,
+    skipped = false,
+  ): WoodpeckerPuzzleStats {
     const now = Date.now();
     const previous = this.getPuzzleStats(session, puzzleIndex);
     const nextTotalAttempts = previous.totalAttempts + 1;
@@ -1502,7 +1511,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     return {
       ...previous,
       totalAttempts: nextTotalAttempts,
-      wrongAttempts: previous.wrongAttempts + 1,
+      wrongAttempts: previous.wrongAttempts + (skipped ? 0 : 1),
+      skippedAttempts: previous.skippedAttempts + (skipped ? 1 : 0),
       totalSolveTimeMs: nextTotalSolve,
       averageSolveTimeMs: Math.round(nextTotalSolve / nextTotalAttempts),
       currentStreak: 0,
@@ -1510,6 +1520,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       intervalDays: 1,
       dueAt: now + 15 * 60 * 1000,
       lastAttemptAt: now,
+      lastElapsedMs: elapsedMs,
+      lastOutcome: 'failed',
       correctAttempts: previous.correctAttempts,
       bestStreak: previous.bestStreak,
     };
@@ -1523,6 +1535,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
         totalAttempts: Math.max(0, Math.trunc(Number(existing.totalAttempts ?? 0))),
         correctAttempts: Math.max(0, Math.trunc(Number(existing.correctAttempts ?? 0))),
         wrongAttempts: Math.max(0, Math.trunc(Number(existing.wrongAttempts ?? 0))),
+        skippedAttempts: Math.max(0, Math.trunc(Number(existing.skippedAttempts ?? 0))),
         totalSolveTimeMs: Math.max(0, Math.trunc(Number(existing.totalSolveTimeMs ?? 0))),
         averageSolveTimeMs: Math.max(0, Math.trunc(Number(existing.averageSolveTimeMs ?? 0))),
         currentStreak: Math.max(0, Math.trunc(Number(existing.currentStreak ?? 0))),
@@ -1531,6 +1544,9 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
         intervalDays: Math.max(1, Math.trunc(Number(existing.intervalDays ?? 1))),
         dueAt: Number.isFinite(Number(existing.dueAt)) ? Number(existing.dueAt) : Date.now(),
         lastAttemptAt: Number.isFinite(Number(existing.lastAttemptAt)) ? Number(existing.lastAttemptAt) : 0,
+        lastElapsedMs: Math.max(0, Math.trunc(Number(existing.lastElapsedMs ?? 0))),
+        lastOutcome:
+          existing.lastOutcome === 'solved' || existing.lastOutcome === 'failed' ? existing.lastOutcome : 'none',
       };
     }
 
@@ -1538,6 +1554,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       totalAttempts: 0,
       correctAttempts: 0,
       wrongAttempts: 0,
+      skippedAttempts: 0,
       totalSolveTimeMs: 0,
       averageSolveTimeMs: 0,
       currentStreak: 0,
@@ -1546,6 +1563,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       intervalDays: 1,
       dueAt: Date.now(),
       lastAttemptAt: 0,
+      lastElapsedMs: 0,
+      lastOutcome: 'none',
     };
   }
 
@@ -1555,6 +1574,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     theme: TacticalTheme,
     elapsedMs: number,
     session: WoodpeckerSession,
+    skipped = false,
   ): void {
     this.woodpeckerAnalytics.recordAttempt({
       pgnId: location.item.id,
@@ -1566,6 +1586,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       targetDays: session.targetDays,
       theme,
       session,
+      skipped,
     });
   }
 

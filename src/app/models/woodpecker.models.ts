@@ -1,9 +1,62 @@
 export type TacticalTheme = 'Scacco' | 'Cattura' | 'Promozione' | 'Arrocco' | 'Manovra';
 
+export type WoodpeckerPuzzleCycleStatus = 'unseen' | 'solved' | 'slow' | 'failed';
+
+export interface WoodpeckerPuzzleStatusSummary {
+  puzzleIndex: number;
+  status: WoodpeckerPuzzleCycleStatus;
+  attempts: number;
+  wrongAttempts: number;
+  skippedAttempts: number;
+  averageSolveTimeSeconds: number;
+  lastElapsedSeconds: number;
+  dueAt: number;
+  lastAttemptAt: number;
+}
+
+export interface WoodpeckerStatusCounts {
+  unseen: number;
+  solved: number;
+  slow: number;
+  failed: number;
+}
+
+export interface WoodpeckerRoundPuzzleMetric {
+  puzzleIndex: number;
+  attempts: number;
+  wrongAttempts: number;
+  skippedAttempts: number;
+  totalSolveTimeMs: number;
+  averageSolveTimeMs: number;
+  lastElapsedMs: number;
+  dueAt: number;
+  lastAttemptAt: number;
+  status: WoodpeckerPuzzleCycleStatus;
+}
+
+export interface WoodpeckerCycleDelta {
+  accuracyPercent: number;
+  totalSolveTimeMs: number;
+  wrongAttempts: number;
+  skippedAttempts: number;
+}
+
+export interface HardSetPuzzleSummary {
+  puzzleIndex: number;
+  status: WoodpeckerPuzzleCycleStatus;
+  wrongAttempts: number;
+  skippedAttempts: number;
+  averageSolveTimeSeconds: number;
+  dueAt: number;
+  lastAttemptAt: number;
+  reasons: string[];
+}
+
 export interface WoodpeckerPuzzleStats {
   totalAttempts: number;
   correctAttempts: number;
   wrongAttempts: number;
+  skippedAttempts: number;
   totalSolveTimeMs: number;
   averageSolveTimeMs: number;
   currentStreak: number;
@@ -12,6 +65,8 @@ export interface WoodpeckerPuzzleStats {
   intervalDays: number;
   dueAt: number;
   lastAttemptAt: number;
+  lastElapsedMs: number;
+  lastOutcome: 'solved' | 'failed' | 'none';
 }
 
 export interface WoodpeckerSession {
@@ -35,10 +90,18 @@ export interface WoodpeckerCycleSnapshot {
   attempts: number;
   correctAttempts: number;
   wrongAttempts: number;
+  skippedAttempts: number;
   totalSolveTimeMs: number;
   averageSolveTimeMs: number;
+  accuracyPercent: number;
   progressPercent: number;
   remainingDays: number;
+  hardSetCount: number;
+  statusCounts: WoodpeckerStatusCounts;
+  slowestPuzzles: WoodpeckerPuzzleStatusSummary[];
+  hardestPuzzles: WoodpeckerPuzzleStatusSummary[];
+  deltaFromPrevious: WoodpeckerCycleDelta | null;
+  puzzleMetrics: Record<string, WoodpeckerRoundPuzzleMetric>;
   deadlineRisk: 'basso' | 'medio' | 'alto';
 }
 
@@ -52,6 +115,7 @@ export interface WoodpeckerAttemptLog {
   cycle: number;
   targetDays: number;
   theme: TacticalTheme;
+  skipped: boolean;
 }
 
 export interface WoodpeckerPuzzlePerformance {
@@ -59,6 +123,7 @@ export interface WoodpeckerPuzzlePerformance {
   theme: TacticalTheme;
   correctAttempts: number;
   wrongAttempts: number;
+  skippedAttempts: number;
   totalSolveTimeMs: number;
   averageSolveTimeMs: number;
   lastElapsedMs: number;
@@ -71,6 +136,7 @@ export interface WoodpeckerPgnAnalytics {
   totalAttempts: number;
   correctAttempts: number;
   wrongAttempts: number;
+  skippedAttempts: number;
   totalSolveTimeMs: number;
   currentStreak: number;
   bestStreak: number;
@@ -90,6 +156,7 @@ export interface ImprovementPoint {
 export interface FailedPuzzleSummary {
   puzzleIndex: number;
   wrongAttempts: number;
+  skippedAttempts: number;
   averageSolveTimeSeconds: number;
   lastAttemptAt: number;
 }
@@ -105,6 +172,9 @@ export interface WoodpeckerDashboardData {
   deadlineRisk: 'basso' | 'medio' | 'alto';
   cycleTimeline: WoodpeckerCycleSnapshot[];
   failedPuzzles: FailedPuzzleSummary[];
+  hardSetQueue: HardSetPuzzleSummary[];
+  currentCyclePuzzles: WoodpeckerPuzzleStatusSummary[];
+  currentCycleStatusCounts: WoodpeckerStatusCounts;
   hasResumeSession: boolean;
   resumePuzzleIndex: number | null;
   pgnImprovement: ImprovementPoint[];

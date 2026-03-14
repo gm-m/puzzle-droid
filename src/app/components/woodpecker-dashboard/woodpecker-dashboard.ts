@@ -1,7 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import type { ImprovementPoint, WoodpeckerCycleSnapshot, WoodpeckerDashboardData } from '../../models/woodpecker.models';
+import type {
+  HardSetPuzzleSummary,
+  ImprovementPoint,
+  WoodpeckerCycleSnapshot,
+  WoodpeckerDashboardData,
+  WoodpeckerPuzzleCycleStatus,
+  WoodpeckerPuzzleStatusSummary,
+} from '../../models/woodpecker.models';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { Subscription } from 'rxjs';
 
@@ -44,6 +51,54 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
 
   riskClass(risk: 'basso' | 'medio' | 'alto'): string {
     return `risk-${risk}`;
+  }
+
+  statusClass(status: WoodpeckerPuzzleCycleStatus): string {
+    return `status-${status}`;
+  }
+
+  statusLabel(status: WoodpeckerPuzzleCycleStatus): string {
+    switch (status) {
+      case 'solved':
+        return 'risolto';
+      case 'slow':
+        return 'risolto lentamente';
+      case 'failed':
+        return 'sbagliato';
+      default:
+        return 'mai visto';
+    }
+  }
+
+  deltaClass(value: number, reverse = false): string {
+    if (value === 0) {
+      return 'delta-neutral';
+    }
+
+    const positive = reverse ? value < 0 : value > 0;
+    return positive ? 'delta-positive' : 'delta-negative';
+  }
+
+  formatDeltaPercent(value: number): string {
+    return `${value > 0 ? '+' : ''}${value}%`;
+  }
+
+  formatDeltaSeconds(deltaMs: number): string {
+    const seconds = deltaMs / 1000;
+    return `${seconds > 0 ? '+' : ''}${seconds.toFixed(1)}s`;
+  }
+
+  formatDueDate(value: number): string {
+    if (!value) {
+      return '-';
+    }
+
+    return new Intl.DateTimeFormat('it-IT', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
   }
 
   resumeWoodpecker(vm: WoodpeckerDashboardData): void {
@@ -92,6 +147,14 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
 
   trackByFailedPuzzle(_: number, failed: { puzzleIndex: number }): number {
     return failed.puzzleIndex;
+  }
+
+  trackByPuzzleSummary(_: number, puzzle: WoodpeckerPuzzleStatusSummary): number {
+    return puzzle.puzzleIndex;
+  }
+
+  trackByHardSet(_: number, puzzle: HardSetPuzzleSummary): number {
+    return puzzle.puzzleIndex;
   }
 
   trackByPgn(_: number, pgn: { pgnId: string; pgnName: string }): string {

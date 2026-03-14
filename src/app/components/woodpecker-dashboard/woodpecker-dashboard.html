@@ -57,6 +57,28 @@
     </section>
 
     <section class="panel">
+      <h3>Stato puzzle nel ciclo corrente</h3>
+      <div class="status-chip-grid">
+        <article class="status-chip status-unseen">
+          <span>Mai visto</span>
+          <strong>{{ vm.currentCycleStatusCounts.unseen }}</strong>
+        </article>
+        <article class="status-chip status-solved">
+          <span>Risolto</span>
+          <strong>{{ vm.currentCycleStatusCounts.solved }}</strong>
+        </article>
+        <article class="status-chip status-slow">
+          <span>Risolto lentamente</span>
+          <strong>{{ vm.currentCycleStatusCounts.slow }}</strong>
+        </article>
+        <article class="status-chip status-failed">
+          <span>Sbagliato</span>
+          <strong>{{ vm.currentCycleStatusCounts.failed }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
       <h3>Timeline sessioni e progresso per ciclo</h3>
       <div class="timeline-grid" *ngIf="vm.cycleTimeline.length > 0; else noTimeline">
         <article class="timeline-card" *ngFor="let cycle of vm.cycleTimeline; trackBy: trackByCycle">
@@ -67,8 +89,44 @@
 
           <p>Periodo: {{ formatDate(cycle.startedAt) }} → {{ formatDate(cycle.completedAt) }}</p>
           <p>Progress: {{ cycle.solvedCount }}/{{ cycle.gameCount }} puzzle · {{ cycle.progressPercent }}%</p>
-          <p>Accuracy ciclo: {{ cycle.attempts > 0 ? ((cycle.correctAttempts / cycle.attempts) * 100 | number: '1.0-0') : 0 }}%</p>
-          <p>Tempo medio: {{ cycle.averageSolveTimeMs / 1000 | number: '1.0-1' }}s · Giorni rimanenti: {{ cycle.remainingDays }}</p>
+          <p>Accuracy ciclo: {{ cycle.accuracyPercent }}% · Errori: {{ cycle.wrongAttempts }} · Saltati: {{ cycle.skippedAttempts }}</p>
+          <p>Tempo totale: {{ cycle.totalSolveTimeMs / 1000 | number: '1.0-1' }}s · Tempo medio: {{ cycle.averageSolveTimeMs / 1000 | number: '1.0-1' }}s</p>
+          <p>Hard set: {{ cycle.hardSetCount }} · Giorni rimanenti: {{ cycle.remainingDays }}</p>
+
+          <div class="cycle-delta-row" *ngIf="cycle.deltaFromPrevious as delta">
+            <span class="delta-pill" [ngClass]="deltaClass(delta.accuracyPercent)">Δ accuracy {{ formatDeltaPercent(delta.accuracyPercent) }}</span>
+            <span class="delta-pill" [ngClass]="deltaClass(delta.totalSolveTimeMs, true)">Δ tempo {{ formatDeltaSeconds(delta.totalSolveTimeMs) }}</span>
+            <span class="delta-pill" [ngClass]="deltaClass(delta.wrongAttempts, true)">Δ errori {{ delta.wrongAttempts > 0 ? '+' : '' }}{{ delta.wrongAttempts }}</span>
+            <span class="delta-pill" [ngClass]="deltaClass(delta.skippedAttempts, true)">Δ saltati {{ delta.skippedAttempts > 0 ? '+' : '' }}{{ delta.skippedAttempts }}</span>
+          </div>
+
+          <div class="timeline-metrics">
+            <div>
+              <p class="timeline-subtitle">Puzzle più lenti</p>
+              <ul class="mini-list" *ngIf="cycle.slowestPuzzles.length > 0; else noSlowCyclePuzzles">
+                <li *ngFor="let puzzle of cycle.slowestPuzzles; trackBy: trackByPuzzleSummary">
+                  <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
+                  <strong>{{ puzzle.lastElapsedSeconds }}s</strong>
+                </li>
+              </ul>
+              <ng-template #noSlowCyclePuzzles>
+                <p class="empty-message compact">Nessun dato tempi.</p>
+              </ng-template>
+            </div>
+
+            <div>
+              <p class="timeline-subtitle">Puzzle più sbagliati</p>
+              <ul class="mini-list" *ngIf="cycle.hardestPuzzles.length > 0; else noHardCyclePuzzles">
+                <li *ngFor="let puzzle of cycle.hardestPuzzles; trackBy: trackByPuzzleSummary">
+                  <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
+                  <strong>{{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip</strong>
+                </li>
+              </ul>
+              <ng-template #noHardCyclePuzzles>
+                <p class="empty-message compact">Nessun puzzle critico nel ciclo.</p>
+              </ng-template>
+            </div>
+          </div>
 
           <div class="progress-track">
             <span class="progress-fill" [style.width.%]="cycle.progressPercent"></span>
@@ -77,6 +135,32 @@
       </div>
       <ng-template #noTimeline>
         <p class="empty-message">Nessun ciclo registrato per questo PGN.</p>
+      </ng-template>
+    </section>
+
+    <section class="panel">
+      <h3>Hard set / review queue</h3>
+      <div class="failed-grid" *ngIf="vm.hardSetQueue.length > 0; else noHardSetQueue">
+        <article
+          class="failed-row clickable"
+          *ngFor="let puzzle of vm.hardSetQueue; trackBy: trackByHardSet"
+          role="button"
+          tabindex="0"
+          (click)="openFailedPuzzle(vm, puzzle.puzzleIndex)"
+          (keydown.enter)="openFailedPuzzle(vm, puzzle.puzzleIndex)"
+        >
+          <p>
+            Puzzle {{ puzzle.puzzleIndex + 1 }}
+            <small>Due: {{ formatDueDate(puzzle.dueAt) }} · Ultimo tentativo: {{ formatDate(puzzle.lastAttemptAt) }}</small>
+          </p>
+          <span class="status-pill" [ngClass]="statusClass(puzzle.status)">{{ statusLabel(puzzle.status) }}</span>
+          <strong>{{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip</strong>
+          <span>{{ puzzle.averageSolveTimeSeconds }}s medi</span>
+          <small class="reason-list">{{ puzzle.reasons.join(' · ') }}</small>
+        </article>
+      </div>
+      <ng-template #noHardSetQueue>
+        <p class="empty-message">La coda hard set è vuota: nessun puzzle in review SRS al momento.</p>
       </ng-template>
     </section>
 
@@ -95,12 +179,30 @@
             Puzzle {{ failed.puzzleIndex + 1 }}
             <small>Ultimo tentativo: {{ formatDate(failed.lastAttemptAt) }}</small>
           </p>
-          <strong>{{ failed.wrongAttempts }} errori</strong>
+          <strong>{{ failed.wrongAttempts }} errori · {{ failed.skippedAttempts }} skip</strong>
           <span>{{ failed.averageSolveTimeSeconds }}s medi</span>
         </article>
       </div>
       <ng-template #noFailedPuzzles>
         <p class="empty-message">Nessun puzzle sbagliato registrato per questo PGN.</p>
+      </ng-template>
+    </section>
+
+    <section class="panel">
+      <h3>Stato dettagliato dei puzzle del ciclo</h3>
+      <div class="cycle-puzzle-grid" *ngIf="vm.currentCyclePuzzles.length > 0; else noCyclePuzzles">
+        <article class="cycle-puzzle-card" *ngFor="let puzzle of vm.currentCyclePuzzles; trackBy: trackByPuzzleSummary">
+          <div class="cycle-puzzle-head">
+            <strong>Puzzle {{ puzzle.puzzleIndex + 1 }}</strong>
+            <span class="status-pill" [ngClass]="statusClass(puzzle.status)">{{ statusLabel(puzzle.status) }}</span>
+          </div>
+          <p>Tentativi: {{ puzzle.attempts }} · Errori: {{ puzzle.wrongAttempts }} · Saltati: {{ puzzle.skippedAttempts }}</p>
+          <p>Ultimo tempo: {{ puzzle.lastElapsedSeconds }}s · Media: {{ puzzle.averageSolveTimeSeconds }}s</p>
+          <p>Ultimo tentativo: {{ formatDate(puzzle.lastAttemptAt) }} · Due: {{ formatDueDate(puzzle.dueAt) }}</p>
+        </article>
+      </div>
+      <ng-template #noCyclePuzzles>
+        <p class="empty-message">Avvia un ciclo Woodpecker per vedere lo stato puzzle per puzzle.</p>
       </ng-template>
     </section>
 

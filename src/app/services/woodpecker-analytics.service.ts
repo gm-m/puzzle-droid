@@ -1,15 +1,21 @@
 import { Injectable } from '@angular/core';
 import {
   type FailedPuzzleSummary,
+  type HardSetPuzzleSummary,
   type ImprovementPoint,
   type PuzzleDroidBackupBundle,
   type TacticalTheme,
   type WoodpeckerAttemptLog,
+  type WoodpeckerCycleDelta,
   type WoodpeckerCycleSnapshot,
   type WoodpeckerDashboardData,
+  type WoodpeckerPuzzleCycleStatus,
   type WoodpeckerPgnAnalytics,
   type WoodpeckerPuzzlePerformance,
+  type WoodpeckerPuzzleStatusSummary,
+  type WoodpeckerRoundPuzzleMetric,
   type WoodpeckerSession,
+  type WoodpeckerStatusCounts,
 } from '../models/woodpecker.models';
 
 const SETTINGS_STORAGE_KEY = 'puzzle-droid-settings-v1';
@@ -17,6 +23,8 @@ const LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
 const WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
 const WOODPECKER_ANALYTICS_STORAGE_KEY = 'puzzle-droid-woodpecker-analytics-v1';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WOODPECKER_SLOW_SOLVE_MS = 45_000;
+const HARD_SET_STALE_DAYS = 7;
 
 export interface RecordAttemptInput {
   pgnId: string;
@@ -28,6 +36,7 @@ export interface RecordAttemptInput {
   targetDays: number;
   theme: TacticalTheme;
   session: WoodpeckerSession | null;
+  skipped: boolean;
 }
 
 @Injectable({
@@ -51,6 +60,7 @@ export class WoodpeckerAnalyticsService {
       cycle: Math.max(1, Math.trunc(input.cycle)),
       targetDays: Math.max(1, Math.trunc(input.targetDays)),
       theme: input.theme,
+      skipped: input.skipped === true,
     };
 
     entry.pgnName = input.pgnName;
@@ -62,6 +72,9 @@ export class WoodpeckerAnalyticsService {
       entry.correctAttempts += 1;
       entry.currentStreak += 1;
       entry.bestStreak = Math.max(entry.bestStreak, entry.currentStreak);
+    } else if (attempt.skipped) {
+      entry.skippedAttempts += 1;
+      entry.currentStreak = 0;
     } else {
       entry.wrongAttempts += 1;
       entry.currentStreak = 0;
@@ -79,16 +92,18 @@ export class WoodpeckerAnalyticsService {
       lastElapsedMs: elapsedMs,
       totalSolveTimeMs: puzzle.totalSolveTimeMs + elapsedMs,
       correctAttempts: puzzle.correctAttempts + (attempt.correct ? 1 : 0),
-      wrongAttempts: puzzle.wrongAttempts + (attempt.correct ? 0 : 1),
+      wrongAttempts: puzzle.wrongAttempts + (attempt.correct || attempt.skipped ? 0 : 1),
+      skippedAttempts: puzzle.skippedAttempts + (attempt.skipped ? 1 : 0),
       averageSolveTimeMs: 0,
     };
-    const puzzleAttempts = nextPuzzle.correctAttempts + nextPuzzle.wrongAttempts;
+    const puzzleAttempts = nextPuzzle.correctAttempts + nextPuzzle.wrongAttempts + nextPuzzle.skippedAttempts;
     nextPuzzle.averageSolveTimeMs = puzzleAttempts > 0 ? Math.round(nextPuzzle.totalSolveTimeMs / puzzleAttempts) : 0;
     entry.puzzlePerformance[puzzleKey] = nextPuzzle;
 
     const cycleKey = String(attempt.cycle);
     const previousCycle = entry.cycleSnapshots[cycleKey] ?? this.createCycleSnapshot(attempt.cycle, attempt.targetDays, now);
-    entry.cycleSnapshots[cycleKey] = this.updateCycleSnapshot(previousCycle, attempt, input.session, now);
+    const previousCycleForDelta = entry.cycleSnapshots[String(attempt.cycle - 1)] ?? null;
+    entry.cycleSnapshots[cycleKey] = this.updateCycleSnapshot(previousCycle, previousCycleForDelta, attempt, input.session, now);
 
     this.analyticsByPgnId = {
       ...this.analyticsByPgnId,
@@ -108,8 +123,11 @@ export class WoodpeckerAnalyticsService {
     const averageSolveTimeMs = entry.totalAttempts > 0 ? Math.round(entry.totalSolveTimeMs / entry.totalAttempts) : 0;
     const cycleTimeline = Object.values(entry.cycleSnapshots).sort((a, b) => a.cycle - b.cycle);
     const activeCycle = cycleTimeline.at(-1);
-    const failedPuzzles = this.buildFailedPuzzles(entry.puzzlePerformance);
     const session = this.findSessionByPgnId(pgnId);
+    const currentCyclePuzzles = this.buildCurrentCyclePuzzles(session);
+    const failedPuzzles = this.buildCurrentCycleFailedPuzzles(currentCyclePuzzles);
+    const currentCycleStatusCounts = this.countStatuses(currentCyclePuzzles);
+    const hardSetQueue = this.buildHardSetQueue(session, currentCyclePuzzles);
     const resumePuzzleIndex = this.computeResumePuzzleIndex(entry, session);
     const hasResumeSession = Boolean(session && !session.completed && session.gameCount > 0 && resumePuzzleIndex !== null);
 
@@ -124,6 +142,9 @@ export class WoodpeckerAnalyticsService {
       deadlineRisk: activeCycle?.deadlineRisk ?? 'basso',
       cycleTimeline,
       failedPuzzles,
+      hardSetQueue,
+      currentCyclePuzzles,
+      currentCycleStatusCounts,
       hasResumeSession,
       resumePuzzleIndex,
       pgnImprovement: this.buildImprovement(entry.attempts),
@@ -185,6 +206,7 @@ export class WoodpeckerAnalyticsService {
         totalAttempts: 0,
         correctAttempts: 0,
         wrongAttempts: 0,
+        skippedAttempts: 0,
         totalSolveTimeMs: 0,
         currentStreak: 0,
         bestStreak: 0,
@@ -209,6 +231,7 @@ export class WoodpeckerAnalyticsService {
       theme,
       correctAttempts: 0,
       wrongAttempts: 0,
+      skippedAttempts: 0,
       totalSolveTimeMs: 0,
       averageSolveTimeMs: 0,
       lastElapsedMs: 0,
@@ -227,27 +250,47 @@ export class WoodpeckerAnalyticsService {
       attempts: 0,
       correctAttempts: 0,
       wrongAttempts: 0,
+      skippedAttempts: 0,
       totalSolveTimeMs: 0,
       averageSolveTimeMs: 0,
+      accuracyPercent: 0,
       progressPercent: 0,
       remainingDays: targetDays,
+      hardSetCount: 0,
+      statusCounts: {
+        unseen: 0,
+        solved: 0,
+        slow: 0,
+        failed: 0,
+      },
+      slowestPuzzles: [],
+      hardestPuzzles: [],
+      deltaFromPrevious: null,
+      puzzleMetrics: {},
       deadlineRisk: 'basso',
     };
   }
 
   private updateCycleSnapshot(
     previous: WoodpeckerCycleSnapshot,
+    previousCycle: WoodpeckerCycleSnapshot | null,
     attempt: WoodpeckerAttemptLog,
     session: WoodpeckerSession | null,
     now: number,
   ): WoodpeckerCycleSnapshot {
     const attempts = previous.attempts + 1;
     const correctAttempts = previous.correctAttempts + (attempt.correct ? 1 : 0);
-    const wrongAttempts = previous.wrongAttempts + (attempt.correct ? 0 : 1);
+    const wrongAttempts = previous.wrongAttempts + (attempt.correct || attempt.skipped ? 0 : 1);
+    const skippedAttempts = previous.skippedAttempts + (attempt.skipped ? 1 : 0);
     const totalSolveTimeMs = previous.totalSolveTimeMs + attempt.elapsedMs;
     const solvedCount = session?.solvedIndexes.length ?? previous.solvedCount;
     const gameCount = session?.gameCount ?? previous.gameCount;
     const progressPercent = gameCount > 0 ? Math.round((solvedCount / gameCount) * 100) : previous.progressPercent;
+    const puzzleMetrics = this.buildPuzzleMetrics(session, gameCount);
+    const puzzleSummaries = this.toPuzzleSummaries(puzzleMetrics);
+    const statusCounts = this.countStatuses(puzzleSummaries);
+    const hardSetCount = session?.failedQueue.length ?? previous.hardSetCount;
+    const accuracyPercent = attempts > 0 ? Math.round((correctAttempts / attempts) * 100) : 0;
 
     const cycleStartedAt = session?.cycleStartedAt ?? previous.startedAt;
     const elapsedDays = Math.floor(Math.max(0, now - cycleStartedAt) / DAY_MS) + 1;
@@ -263,11 +306,49 @@ export class WoodpeckerAnalyticsService {
       attempts,
       correctAttempts,
       wrongAttempts,
+      skippedAttempts,
       totalSolveTimeMs,
       averageSolveTimeMs: attempts > 0 ? Math.round(totalSolveTimeMs / attempts) : 0,
+      accuracyPercent,
       progressPercent,
       remainingDays,
+      hardSetCount,
+      statusCounts,
+      slowestPuzzles: [...puzzleSummaries]
+        .filter((puzzle) => puzzle.attempts > 0)
+        .sort((a, b) => b.lastElapsedSeconds - a.lastElapsedSeconds || b.averageSolveTimeSeconds - a.averageSolveTimeSeconds)
+        .slice(0, 5),
+      hardestPuzzles: [...puzzleSummaries]
+        .filter((puzzle) => puzzle.wrongAttempts > 0 || puzzle.skippedAttempts > 0)
+        .sort(
+          (a, b) =>
+            b.wrongAttempts - a.wrongAttempts ||
+            b.skippedAttempts - a.skippedAttempts ||
+            b.lastAttemptAt - a.lastAttemptAt,
+        )
+        .slice(0, 5),
+      deltaFromPrevious: previousCycle
+        ? this.buildCycleDelta(previousCycle, {
+            accuracyPercent,
+            totalSolveTimeMs,
+            wrongAttempts,
+            skippedAttempts,
+          })
+        : null,
+      puzzleMetrics,
       deadlineRisk: this.computeDeadlineRisk(progressPercent, remainingDays, session?.targetDays ?? previous.targetDays),
+    };
+  }
+
+  private buildCycleDelta(
+    previousCycle: WoodpeckerCycleSnapshot,
+    current: Pick<WoodpeckerCycleDelta, 'accuracyPercent' | 'totalSolveTimeMs' | 'wrongAttempts' | 'skippedAttempts'>,
+  ): WoodpeckerCycleDelta {
+    return {
+      accuracyPercent: current.accuracyPercent - previousCycle.accuracyPercent,
+      totalSolveTimeMs: current.totalSolveTimeMs - previousCycle.totalSolveTimeMs,
+      wrongAttempts: current.wrongAttempts - previousCycle.wrongAttempts,
+      skippedAttempts: current.skippedAttempts - previousCycle.skippedAttempts,
     };
   }
 
@@ -305,16 +386,184 @@ export class WoodpeckerAnalyticsService {
       }));
   }
 
-  private buildFailedPuzzles(puzzlePerformance: Record<string, WoodpeckerPuzzlePerformance>): FailedPuzzleSummary[] {
-    return Object.values(puzzlePerformance)
-      .filter((puzzle) => puzzle.wrongAttempts > 0)
-      .sort((a, b) => b.wrongAttempts - a.wrongAttempts || b.lastAttemptAt - a.lastAttemptAt)
+  private buildCurrentCycleFailedPuzzles(currentCyclePuzzles: WoodpeckerPuzzleStatusSummary[]): FailedPuzzleSummary[] {
+    return currentCyclePuzzles
+      .filter(
+        (puzzle) =>
+          puzzle.status !== 'unseen' &&
+          (puzzle.wrongAttempts > 0 || puzzle.skippedAttempts > 0),
+      )
+      .sort((a, b) => b.wrongAttempts - a.wrongAttempts || b.skippedAttempts - a.skippedAttempts || b.lastAttemptAt - a.lastAttemptAt)
       .map((puzzle) => ({
         puzzleIndex: puzzle.puzzleIndex,
         wrongAttempts: puzzle.wrongAttempts,
-        averageSolveTimeSeconds: Number((puzzle.averageSolveTimeMs / 1000).toFixed(1)),
+        skippedAttempts: puzzle.skippedAttempts,
+        averageSolveTimeSeconds: puzzle.averageSolveTimeSeconds,
         lastAttemptAt: puzzle.lastAttemptAt,
       }));
+  }
+
+  private buildCurrentCyclePuzzles(session: WoodpeckerSession | null): WoodpeckerPuzzleStatusSummary[] {
+    if (!session || session.gameCount <= 0) {
+      return [];
+    }
+
+    const puzzleMetrics = this.buildPuzzleMetrics(session, session.gameCount);
+    return this.toPuzzleSummaries(puzzleMetrics);
+  }
+
+  private buildPuzzleMetrics(session: WoodpeckerSession | null, gameCount: number): Record<string, WoodpeckerRoundPuzzleMetric> {
+    if (!session || gameCount <= 0) {
+      return {};
+    }
+
+    const solvedSet = new Set(session.solvedIndexes);
+    const failedSet = new Set(session.failedQueue);
+    const metrics: Record<string, WoodpeckerRoundPuzzleMetric> = {};
+
+    for (let index = 0; index < gameCount; index += 1) {
+      const stats = this.getSessionPuzzleStats(session, index);
+      metrics[String(index)] = {
+        puzzleIndex: index,
+        attempts: stats.totalAttempts,
+        wrongAttempts: stats.wrongAttempts,
+        skippedAttempts: stats.skippedAttempts,
+        totalSolveTimeMs: stats.totalSolveTimeMs,
+        averageSolveTimeMs: stats.averageSolveTimeMs,
+        lastElapsedMs: stats.lastElapsedMs,
+        dueAt: stats.dueAt,
+        lastAttemptAt: stats.lastAttemptAt,
+        status: this.resolvePuzzleStatus(index, stats, session.cycleStartedAt, solvedSet, failedSet),
+      };
+    }
+
+    return metrics;
+  }
+
+  private toPuzzleSummaries(puzzleMetrics: Record<string, WoodpeckerRoundPuzzleMetric>): WoodpeckerPuzzleStatusSummary[] {
+    return Object.values(puzzleMetrics)
+      .sort((a, b) => a.puzzleIndex - b.puzzleIndex)
+      .map((metric) => ({
+        puzzleIndex: metric.puzzleIndex,
+        status: metric.status,
+        attempts: metric.attempts,
+        wrongAttempts: metric.wrongAttempts,
+        skippedAttempts: metric.skippedAttempts,
+        averageSolveTimeSeconds: Number((metric.averageSolveTimeMs / 1000).toFixed(1)),
+        lastElapsedSeconds: Number((metric.lastElapsedMs / 1000).toFixed(1)),
+        dueAt: metric.dueAt,
+        lastAttemptAt: metric.lastAttemptAt,
+      }));
+  }
+
+  private buildHardSetQueue(
+    session: WoodpeckerSession | null,
+    currentCyclePuzzles: WoodpeckerPuzzleStatusSummary[],
+  ): HardSetPuzzleSummary[] {
+    if (!session || session.failedQueue.length === 0) {
+      return [];
+    }
+
+    const now = Date.now();
+    const byIndex = new Map(currentCyclePuzzles.map((puzzle) => [puzzle.puzzleIndex, puzzle]));
+
+    return session.failedQueue
+      .map((puzzleIndex) => {
+        const summary = byIndex.get(puzzleIndex);
+        const stats = this.getSessionPuzzleStats(session, puzzleIndex);
+        const reasons: string[] = [];
+        if (stats.wrongAttempts > 1) {
+          reasons.push('sbagliato più volte');
+        }
+        if (stats.lastElapsedMs >= WOODPECKER_SLOW_SOLVE_MS) {
+          reasons.push('risolto lentamente');
+        }
+        if (stats.lastAttemptAt > 0 && now - stats.lastAttemptAt >= HARD_SET_STALE_DAYS * DAY_MS) {
+          reasons.push('torna dopo molti giorni');
+        }
+        if (stats.skippedAttempts > 0) {
+          reasons.push('saltato / arreso');
+        }
+        if (reasons.length === 0) {
+          reasons.push('in coda SRS');
+        }
+
+        return {
+          puzzleIndex,
+          status: summary?.status ?? 'failed',
+          wrongAttempts: stats.wrongAttempts,
+          skippedAttempts: stats.skippedAttempts,
+          averageSolveTimeSeconds: Number((stats.averageSolveTimeMs / 1000).toFixed(1)),
+          dueAt: stats.dueAt,
+          lastAttemptAt: stats.lastAttemptAt,
+          reasons,
+        } satisfies HardSetPuzzleSummary;
+      })
+      .sort((a, b) => a.dueAt - b.dueAt || b.wrongAttempts - a.wrongAttempts || b.lastAttemptAt - a.lastAttemptAt);
+  }
+
+  private countStatuses(puzzles: WoodpeckerPuzzleStatusSummary[]): WoodpeckerStatusCounts {
+    return puzzles.reduce<WoodpeckerStatusCounts>(
+      (acc, puzzle) => {
+        acc[puzzle.status] += 1;
+        return acc;
+      },
+      {
+        unseen: 0,
+        solved: 0,
+        slow: 0,
+        failed: 0,
+      },
+    );
+  }
+
+  private resolvePuzzleStatus(
+    puzzleIndex: number,
+    stats: WoodpeckerSession['puzzleStatsByIndex'][string],
+    cycleStartedAt: number,
+    solvedSet: Set<number>,
+    failedSet: Set<number>,
+  ): WoodpeckerPuzzleCycleStatus {
+    const attemptedInCurrentCycle = stats.lastAttemptAt >= cycleStartedAt && stats.lastAttemptAt > 0;
+    const hasRecordedFailure = stats.wrongAttempts > 0 || stats.skippedAttempts > 0;
+
+    if (attemptedInCurrentCycle && stats.lastOutcome === 'solved') {
+      return stats.lastElapsedMs >= WOODPECKER_SLOW_SOLVE_MS ? 'slow' : 'solved';
+    }
+
+    if (failedSet.has(puzzleIndex)) {
+      return 'failed';
+    }
+
+    if (attemptedInCurrentCycle && (stats.lastOutcome === 'failed' || hasRecordedFailure)) {
+      return 'failed';
+    }
+
+    if (solvedSet.has(puzzleIndex)) {
+      return stats.lastElapsedMs >= WOODPECKER_SLOW_SOLVE_MS ? 'slow' : 'solved';
+    }
+
+    return 'unseen';
+  }
+
+  private getSessionPuzzleStats(session: WoodpeckerSession, puzzleIndex: number): WoodpeckerSession['puzzleStatsByIndex'][string] {
+    const raw = session.puzzleStatsByIndex[String(puzzleIndex)] ?? null;
+    return {
+      totalAttempts: Math.max(0, Math.trunc(Number(raw?.totalAttempts ?? 0))),
+      correctAttempts: Math.max(0, Math.trunc(Number(raw?.correctAttempts ?? 0))),
+      wrongAttempts: Math.max(0, Math.trunc(Number(raw?.wrongAttempts ?? 0))),
+      skippedAttempts: Math.max(0, Math.trunc(Number(raw?.skippedAttempts ?? 0))),
+      totalSolveTimeMs: Math.max(0, Math.trunc(Number(raw?.totalSolveTimeMs ?? 0))),
+      averageSolveTimeMs: Math.max(0, Math.trunc(Number(raw?.averageSolveTimeMs ?? 0))),
+      currentStreak: Math.max(0, Math.trunc(Number(raw?.currentStreak ?? 0))),
+      bestStreak: Math.max(0, Math.trunc(Number(raw?.bestStreak ?? 0))),
+      ease: Number(raw?.ease ?? 2.1),
+      intervalDays: Math.max(1, Math.trunc(Number(raw?.intervalDays ?? 1))),
+      dueAt: Number.isFinite(Number(raw?.dueAt)) ? Number(raw?.dueAt) : 0,
+      lastAttemptAt: Number.isFinite(Number(raw?.lastAttemptAt)) ? Number(raw?.lastAttemptAt) : 0,
+      lastElapsedMs: Math.max(0, Math.trunc(Number(raw?.lastElapsedMs ?? 0))),
+      lastOutcome: raw?.lastOutcome === 'solved' || raw?.lastOutcome === 'failed' ? raw.lastOutcome : 'none',
+    };
   }
 
   private computeResumePuzzleIndex(entry: WoodpeckerPgnAnalytics, session: WoodpeckerSession | null): number | null {
@@ -412,11 +661,40 @@ export class WoodpeckerAnalyticsService {
             .map((entry) => Math.trunc(Number(entry)))
             .filter((entry) => Number.isFinite(entry) && entry >= 0 && entry < gameCount)
         : [],
-      puzzleStatsByIndex:
-        candidate.puzzleStatsByIndex && typeof candidate.puzzleStatsByIndex === 'object'
-          ? (candidate.puzzleStatsByIndex as WoodpeckerSession['puzzleStatsByIndex'])
-          : {},
+      puzzleStatsByIndex: this.normalizeSessionPuzzleStats(candidate.puzzleStatsByIndex),
     };
+  }
+
+  private normalizeSessionPuzzleStats(value: unknown): WoodpeckerSession['puzzleStatsByIndex'] {
+    if (!value || typeof value !== 'object') {
+      return {};
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>).map(([key, raw]) => {
+      const candidate = raw as Partial<WoodpeckerSession['puzzleStatsByIndex'][string]> | null;
+      return [
+        key,
+        {
+          totalAttempts: Math.max(0, Math.trunc(Number(candidate?.totalAttempts ?? 0))),
+          correctAttempts: Math.max(0, Math.trunc(Number(candidate?.correctAttempts ?? 0))),
+          wrongAttempts: Math.max(0, Math.trunc(Number(candidate?.wrongAttempts ?? 0))),
+          skippedAttempts: Math.max(0, Math.trunc(Number(candidate?.skippedAttempts ?? 0))),
+          totalSolveTimeMs: Math.max(0, Math.trunc(Number(candidate?.totalSolveTimeMs ?? 0))),
+          averageSolveTimeMs: Math.max(0, Math.trunc(Number(candidate?.averageSolveTimeMs ?? 0))),
+          currentStreak: Math.max(0, Math.trunc(Number(candidate?.currentStreak ?? 0))),
+          bestStreak: Math.max(0, Math.trunc(Number(candidate?.bestStreak ?? 0))),
+          ease: Number(candidate?.ease ?? 2.1),
+          intervalDays: Math.max(1, Math.trunc(Number(candidate?.intervalDays ?? 1))),
+          dueAt: Number.isFinite(Number(candidate?.dueAt)) ? Number(candidate?.dueAt) : 0,
+          lastAttemptAt: Number.isFinite(Number(candidate?.lastAttemptAt)) ? Number(candidate?.lastAttemptAt) : 0,
+          lastElapsedMs: Math.max(0, Math.trunc(Number(candidate?.lastElapsedMs ?? 0))),
+          lastOutcome:
+            candidate?.lastOutcome === 'solved' || candidate?.lastOutcome === 'failed' ? candidate.lastOutcome : 'none',
+        },
+      ] as const;
+    });
+
+    return Object.fromEntries(entries);
   }
 
   private hashText(value: string): string {
