@@ -222,6 +222,30 @@ export class LibraryPanelComponent {
     return this.woodpeckerSessionInfoByItemId[itemId]?.hasSession === true;
   }
 
+  woodpeckerStatusLabel(itemId: string): string {
+    if (this.hasResumeSession(itemId)) {
+      return `Riprendi dal puzzle ${this.resumePuzzleIndex(itemId)! + 1}`;
+    }
+
+    if (this.hasWoodpeckerSession(itemId)) {
+      return 'Sessione Woodpecker attiva';
+    }
+
+    return 'Nessuna sessione Woodpecker';
+  }
+
+  woodpeckerStatusClass(itemId: string): string {
+    if (this.hasResumeSession(itemId)) {
+      return 'status-resume';
+    }
+
+    if (this.hasWoodpeckerSession(itemId)) {
+      return 'status-session';
+    }
+
+    return 'status-idle';
+  }
+
   onResumeItem(itemId: string): void {
     const puzzleIndex = this.resumePuzzleIndex(itemId);
     if (puzzleIndex === null) {

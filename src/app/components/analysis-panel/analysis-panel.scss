@@ -12,6 +12,26 @@
   }
 }
 
+.history-nav-context {
+  display: grid;
+  gap: 0.05rem;
+  margin-right: 0.25rem;
+
+  strong {
+    color: #0f172a;
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+}
+
+.history-nav-kicker {
+  color: #64748b;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
 .fen-controls {
   label {
     display: grid;
@@ -323,6 +343,68 @@ button {
   }
 }
 
+.puzzle-status-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.section-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  background: rgba(180, 83, 9, 0.12);
+  color: #92400e;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.puzzle-status-message {
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.puzzle-status-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+}
+
+.compact-action {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.icon-action {
+  width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  border-radius: 999px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.woodpecker-detail-button {
+  background: #7c2d12;
+
+  &:hover:not(:disabled) {
+    background: #9a3412;
+    box-shadow: 0 2px 4px rgba(154, 52, 18, 0.28);
+  }
+}
+
 .woodpecker-status {
   border: 1px solid #fde68a;
   border-radius: 0.75rem;
@@ -349,18 +431,6 @@ button {
 
 .woodpecker-summary {
   font-weight: 700;
-}
-
-.woodpecker-info-trigger {
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 999px;
-  padding: 0;
-  font-weight: 800;
-  font-size: 0.95rem;
-  background: rgba(180, 83, 9, 0.16);
-  color: #7c2d12;
-  border: 1px solid rgba(180, 83, 9, 0.28);
 }
 
 .woodpecker-modal-backdrop {
@@ -427,6 +497,10 @@ button {
   overflow: hidden;
 }
 
+.woodpecker-progress.compact {
+  height: 0.4rem;
+}
+
 .woodpecker-progress-fill {
   display: block;
   height: 100%;
@@ -438,6 +512,11 @@ button {
 .woodpecker-progress-value {
   font-size: 0.82rem;
   letter-spacing: 0.03em;
+}
+
+.woodpecker-progress-value.inline {
+  flex-shrink: 0;
+  font-weight: 700;
 }
 
 .surrender {
@@ -627,6 +706,15 @@ button {
   z-index: 2;
 }
 
+.quick-menu-title {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
 .quick-action {
   border: 1px solid #cbd5e1;
   background: #f8fafc;
@@ -735,6 +823,66 @@ button {
   color: #0f172a;
 }
 
+@media (max-width: 640px) {
+  .library-game-title {
+    display: none;
+  }
+
+  .puzzle-status {
+    gap: 0.45rem;
+    padding: 0.75rem 0.8rem;
+  }
+
+  .section-tag {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  .puzzle-status-message {
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .woodpecker-status {
+    padding: 0.55rem 0.7rem;
+    gap: 0.24rem;
+
+    p {
+      font-size: 0.78rem;
+    }
+  }
+
+  .woodpecker-progress {
+    height: 0.34rem;
+  }
+
+  .woodpecker-status-head {
+    gap: 0.4rem;
+  }
+
+  .woodpecker-summary {
+    min-width: 0;
+  }
+
+  .woodpecker-progress-value.inline {
+    font-size: 0.76rem;
+  }
+
+  .history-nav {
+    gap: 0.55rem;
+  }
+
+  .history-nav-context {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .quick-menu {
+    left: 0;
+    right: 0;
+  }
+}
+
 :host-context(.theme-dark) {
   .puzzle-status {
     border-color: #7c2d12;
@@ -757,5 +905,10 @@ button {
 
   .woodpecker-progress {
     background: rgba(251, 191, 36, 0.16);
+  }
+
+  .section-tag {
+    background: rgba(251, 191, 36, 0.14);
+    color: #fdba74;
   }
 }

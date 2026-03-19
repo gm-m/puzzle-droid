@@ -239,11 +239,14 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   topBarEngineStatus(): string {
     if (this.isEngineHidden()) {
-      return `Engine OFF · d${this.depth()} · Puzzle`;
+      // return `Engine OFF · d${this.depth()} · Puzzle`;
+      // return `Engine OFF · Puzzle`;
+      return `Puzzle Mode`;
     }
 
     if (this.isAnalyzing()) {
-      return `Engine ON · d${this.depth()} · Analisi`;
+      // return `Engine ON · d${this.depth()} · Analisi`;
+      return `Engine ON · Analisi`;
     }
 
     return `Engine ON · d${this.depth()}`;

@@ -6,8 +6,22 @@
         <p class="topbar-kicker">Vista</p>
         <h1>{{ currentViewTitle() }}</h1>
       </div> -->
+      <div class="topbar-title-wrap">
+        <p class="topbar-kicker">Vista</p>
+        <h1>{{ currentViewTitle() }}</h1>
+        <p class="topbar-context" *ngIf="activeView() === 'analysis'">
+          {{ currentLibraryGameTitle() || (isPuzzleMode() ? 'Puzzle attivo' : 'Scacchiera libera') }}
+        </p>
+        <p class="topbar-context" *ngIf="activeView() === 'library'">
+          {{ libraryItems().length }} PGN caricati
+        </p>
+        <p class="topbar-context" *ngIf="activeView() === 'settings'">
+          Tema, scacchiera e backup
+        </p>
+      </div>
     </div>
     <!-- <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p> -->
+    <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p>
   </header>
 
   <aside class="side-menu" [class.open]="isMenuOpen()">

@@ -16,6 +16,7 @@
         <div>
           <h2>{{ item.name }}</h2>
           <p>{{ item.games.length }} partite disponibili</p>
+          <span class="woodpecker-status-pill" [ngClass]="woodpeckerStatusClass(item.id)">{{ woodpeckerStatusLabel(item.id) }}</span>
         </div>
       </header>
 
@@ -131,6 +132,23 @@
             </tbody>
           </table>
         </div>
+
+        <div class="games-mobile-list" *ngIf="entries.length > 0">
+          <article class="games-mobile-card" *ngFor="let entry of entries; trackBy: trackByGameEntry">
+            <button type="button" class="games-mobile-select" (click)="onGameClick(item, entry.game, entry.index)">
+              <div class="games-mobile-head">
+                <strong>{{ entry.title }}</strong>
+                <span class="games-mobile-moves">{{ entry.moveCount }} mosse</span>
+              </div>
+              <div class="games-mobile-meta">
+                <span><em>Bianco</em> {{ entry.game.white || '-' }}</span>
+                <span><em>Nero</em> {{ entry.game.black || '-' }}</span>
+                <span><em>Evento</em> {{ entry.game.event || '-' }}</span>
+                <span><em>Risultato</em> {{ entry.game.result || '*' }}</span>
+              </div>
+            </button>
+          </article>
+        </div>
       </ng-container>
 
       <ng-template #emptyFilteredList>
@@ -144,7 +162,10 @@
       <article class="game-card" *ngFor="let item of items">
         <header class="card-header">
           <div class="title-row">
-            <h2 class="card-title" [title]="item.name">{{ item.name }}</h2>
+            <div class="card-title-group">
+              <h2 class="card-title" [title]="item.name">{{ item.name }}</h2>
+              <span class="woodpecker-status-pill compact" [ngClass]="woodpeckerStatusClass(item.id)">{{ woodpeckerStatusLabel(item.id) }}</span>
+            </div>
             <span class="games-badge">{{ item.games.length }} partite</span>
           </div>
         </header>

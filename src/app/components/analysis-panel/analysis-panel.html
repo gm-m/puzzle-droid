@@ -98,28 +98,33 @@
 
   <ng-template #puzzleModeInfo>
     <section class="puzzle-status">
-      <h2>Modalità Puzzle</h2>
-      <p>{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
-      <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
-        <div class="woodpecker-status-head">
-          <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
+      <div class="puzzle-status-toolbar">
+        <p class="section-tag">Modalità Puzzle</p>
+        <div class="puzzle-status-actions" *ngIf="showSurrender || showWoodpeckerInfo">
+          <button *ngIf="showSurrender" type="button" class="surrender compact-action" (click)="surrenderPuzzle.emit()">
+            Arrenditi
+          </button>
           <button
+            *ngIf="showWoodpeckerInfo"
             type="button"
-            class="woodpecker-info-trigger"
+            class="toggle woodpecker-detail-button icon-action"
             aria-label="Mostra dettagli ciclo Woodpecker"
             (click)="openWoodpeckerInfoModal()"
           >
             i
           </button>
         </div>
-        <div class="woodpecker-progress" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" aria-valuemin="0" aria-valuemax="100">
+      </div>
+      <p class="puzzle-status-message">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+      <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
+        <div class="woodpecker-status-head">
+          <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
+          <p class="woodpecker-progress-value inline">{{ woodpeckerProgressPercent }}%</p>
+        </div>
+        <div class="woodpecker-progress compact" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" aria-valuemin="0" aria-valuemax="100">
           <span class="woodpecker-progress-fill" [style.width.%]="woodpeckerProgressPercent"></span>
         </div>
-        <p class="woodpecker-progress-value">{{ woodpeckerProgressPercent }}%</p>
       </div>
-      <button *ngIf="showSurrender" type="button" class="surrender" (click)="surrenderPuzzle.emit()">
-        Arrenditi
-      </button>
     </section>
   </ng-template>
 
@@ -175,6 +180,11 @@
 
   <div class="history-nav-shell" *ngIf="showMoveArea">
     <div class="history-nav">
+      <!-- <div class="history-nav-context" *ngIf="moves.length > 0">
+        <span class="history-nav-kicker">Navigazione</span>
+        <strong>Mossa {{ moveCursor }}/{{ moves.length }}</strong>
+      </div> -->
+
       <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
         |&lt;
       </button>
@@ -205,6 +215,8 @@
     </div>
 
     <section class="quick-menu" *ngIf="isQuickMenuOpen">
+      <p class="quick-menu-title">Azioni rapide</p>
+
       <label class="quick-option" [class.disabled]="hideEngine">
         <input
           type="checkbox"
