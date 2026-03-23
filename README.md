@@ -1,6 +1,18 @@
-# ChessApp
+# Puzzle Droid
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.2.
+Puzzle Droid is a chess training web app focused on **fast analysis, puzzle practice, and structured repetition** in a single interface.
+
+It combines an interactive chessboard, engine-assisted analysis, PGN library management, and Woodpecker-style training flows to help you study positions, review games, and improve tactical pattern recognition from both desktop and mobile.
+
+## Highlights
+
+- **Analyze positions quickly** with engine evaluation, best move hints, and candidate lines
+- **Train with puzzles** inside the same board experience used for free analysis
+- **Manage your PGN library** and jump between games, positions, and puzzle sources
+- **Track Woodpecker progress** with session state, cycle progress, and resume flows
+- **Customize the board UI** with themes, piece sets, coordinates, eval bar, rotation, and 3D mode
+
+Built with Angular and designed with a strong focus on a clean, practical, mobile-friendly chess study workflow.
 
 ## Development server
 

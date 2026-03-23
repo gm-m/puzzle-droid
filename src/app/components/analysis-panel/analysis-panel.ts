@@ -7,6 +7,14 @@ export interface LineMoveSelection {
   moveIndex: number;
 }
 
+export interface PositionBookmark {
+  id: string;
+  title: string;
+  note: string;
+  fen: string;
+  createdAt: number;
+}
+
 interface MoveEntry {
   index: number;
   text: string;
@@ -75,6 +83,7 @@ export class AnalysisPanelComponent {
   isEngineSettingsOpen = false;
   isQuickMenuOpen = false;
   isWoodpeckerInfoModalOpen = false;
+  isBookmarkModalOpen = false;
 
   @Output() readonly analyze = new EventEmitter<void>();
   @Output() readonly reset = new EventEmitter<void>();
@@ -95,6 +104,7 @@ export class AnalysisPanelComponent {
   @Output() readonly surrenderPuzzle = new EventEmitter<void>();
   @Output() readonly rotateBoard = new EventEmitter<void>();
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
+  @Output() readonly savePositionBookmark = new EventEmitter<{ title: string; note: string }>();
 
   toggleEngineSettings(): void {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;
@@ -114,6 +124,14 @@ export class AnalysisPanelComponent {
 
   closeWoodpeckerInfoModal(): void {
     this.isWoodpeckerInfoModalOpen = false;
+  }
+
+  openBookmarkModal(): void {
+    this.isBookmarkModalOpen = true;
+  }
+
+  closeBookmarkModal(): void {
+    this.isBookmarkModalOpen = false;
   }
 
   onRotateBoardFromQuickMenu(): void {
@@ -168,6 +186,16 @@ export class AnalysisPanelComponent {
   onPgnSubmit(event: Event, rawPgn: string): void {
     event.preventDefault();
     this.pgnApplied.emit(rawPgn);
+  }
+
+  onSaveBookmark(event: Event, titleInput: HTMLInputElement, noteInput: HTMLTextAreaElement): void {
+    event.preventDefault();
+    const title = titleInput.value.trim();
+    const note = noteInput.value.trim();
+    this.savePositionBookmark.emit({ title, note });
+    titleInput.value = '';
+    noteInput.value = '';
+    this.isBookmarkModalOpen = false;
   }
 
   onBestMoveArrowChange(event: Event): void {

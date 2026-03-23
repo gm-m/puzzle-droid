@@ -91,6 +91,7 @@
         <div class="actions">
           <button type="button" (click)="analyze.emit()">Analyze</button>
           <button type="button" (click)="reset.emit()">Reset</button>
+          <button type="button" class="toggle" (click)="openBookmarkModal()">Salva bookmark</button>
         </div>
       </section>
     </ng-container>
@@ -143,6 +144,34 @@
         <p>{{ woodpeckerCalendarLabel }}</p>
         <p>{{ woodpeckerTargetLabel }}</p>
       </div>
+    </section>
+  </div>
+
+  <div class="bookmark-modal-backdrop" *ngIf="isBookmarkModalOpen" (click)="closeBookmarkModal()">
+    <section class="bookmark-modal" role="dialog" aria-modal="true" aria-label="Salva bookmark posizione" (click)="$event.stopPropagation()">
+      <header>
+        <h3>Salva bookmark posizione</h3>
+        <button type="button" class="bookmark-modal-close" aria-label="Chiudi bookmark" (click)="closeBookmarkModal()">
+          ✕
+        </button>
+      </header>
+
+      <form class="bookmark-form" (submit)="onSaveBookmark($event, bookmarkTitleInput, bookmarkNoteInput)">
+        <label>
+          Titolo
+          <input #bookmarkTitleInput type="text" maxlength="80" placeholder="Es. Finale di torri interessante" />
+        </label>
+
+        <label>
+          Nota breve
+          <textarea #bookmarkNoteInput rows="3" maxlength="220" placeholder="Cosa vuoi ricordare di questa posizione?"></textarea>
+        </label>
+
+        <div class="bookmark-modal-actions">
+          <button type="button" class="toggle" (click)="closeBookmarkModal()">Annulla</button>
+          <button type="submit">Salva posizione corrente</button>
+        </div>
+      </form>
     </section>
   </div>
 

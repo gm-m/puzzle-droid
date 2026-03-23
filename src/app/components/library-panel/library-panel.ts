@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem } from '../../models/library.models';
+import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 
 export interface LibraryModeChange {
   id: string;
@@ -35,6 +36,8 @@ export interface LibraryWoodpeckerTargetDaysChange {
   targetDays: number;
 }
 
+type LibraryViewTab = 'pgn' | 'bookmarks';
+
 interface LibraryFilteredGameEntry {
   game: PgnLibraryGame;
   index: number;
@@ -60,6 +63,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 export class LibraryPanelComponent {
   @Input() items: PgnLibraryItem[] = [];
   @Input() openedItemId: string | null = null;
+  @Input() positionBookmarks: PositionBookmark[] = [];
   @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
@@ -70,10 +74,15 @@ export class LibraryPanelComponent {
   @Output() readonly openRequested = new EventEmitter<string>();
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly resumeRequested = new EventEmitter<LibraryResumeRequest>();
+  @Output() readonly positionBookmarkSelected = new EventEmitter<string>();
+  @Output() readonly positionBookmarkUpdated = new EventEmitter<{ id: string; title: string; note: string }>();
+  @Output() readonly positionBookmarkDeleted = new EventEmitter<string>();
   @Output() readonly woodpeckerSessionDeleteRequested = new EventEmitter<string>();
   @Output() readonly woodpeckerTargetDaysChanged = new EventEmitter<LibraryWoodpeckerTargetDaysChange>();
 
+  activeTab: LibraryViewTab = 'pgn';
   expandedItemId: string | null = null;
+  editingBookmarkId: string | null = null;
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
@@ -85,6 +94,42 @@ export class LibraryPanelComponent {
     const input = event.target as HTMLInputElement;
     this.filesSelected.emit(input.files);
     input.value = '';
+  }
+
+  setActiveTab(tab: LibraryViewTab): void {
+    this.activeTab = tab;
+  }
+
+  onOpenBookmark(bookmarkId: string): void {
+    this.positionBookmarkSelected.emit(bookmarkId);
+  }
+
+  startBookmarkEdit(bookmarkId: string): void {
+    this.editingBookmarkId = bookmarkId;
+  }
+
+  cancelBookmarkEdit(): void {
+    this.editingBookmarkId = null;
+  }
+
+  saveBookmarkEdit(bookmarkId: string, titleInput: HTMLInputElement, noteInput: HTMLTextAreaElement): void {
+    this.positionBookmarkUpdated.emit({
+      id: bookmarkId,
+      title: titleInput.value,
+      note: noteInput.value,
+    });
+    this.editingBookmarkId = null;
+  }
+
+  deleteBookmark(bookmarkId: string): void {
+    this.positionBookmarkDeleted.emit(bookmarkId);
+    if (this.editingBookmarkId === bookmarkId) {
+      this.editingBookmarkId = null;
+    }
+  }
+
+  isEditingBookmark(bookmarkId: string): boolean {
+    return this.editingBookmarkId === bookmarkId;
   }
 
   onModeChange(id: string, event: Event): void {

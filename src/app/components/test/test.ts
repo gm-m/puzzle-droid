@@ -5,7 +5,7 @@ import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
 import type { Key } from 'chessground/types';
 import { Subscription } from 'rxjs';
-import { AnalysisPanelComponent, type LineMoveSelection } from '../analysis-panel/analysis-panel';
+import { AnalysisPanelComponent, type LineMoveSelection, type PositionBookmark } from '../analysis-panel/analysis-panel';
 import { ChessBoardComponent, type BoardMove } from '../chess-board/chess-board';
 import { EvalBarComponent } from '../eval-bar/eval-bar';
 import {
@@ -52,6 +52,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
   private static readonly DAY_MS = 24 * 60 * 60 * 1000;
   private static readonly LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
+  private static readonly POSITION_BOOKMARKS_STORAGE_KEY = 'puzzle-droid-position-bookmarks-v1';
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
@@ -96,6 +97,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly isLibraryGamePickerOpen = signal(false);
   readonly libraryGameFilter = signal('');
   readonly woodpeckerSession = signal<WoodpeckerSession | null>(null);
+  readonly positionBookmarks = signal<PositionBookmark[]>([]);
 
   private readonly chess = new Chess();
   private historyInitialFen = Test.STARTING_FEN;
@@ -130,6 +132,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadLibraryItems();
+    this.loadPositionBookmarks();
     this.loadWoodpeckerSessions();
     this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
       this.syncViewFromRoute(params.get('view'));
@@ -674,6 +677,85 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     this.syncGameState();
     this.analyzePosition();
+  }
+
+  savePositionBookmark(payload: { title: string; note: string }): void {
+    const title = payload.title.trim();
+    const note = payload.note.trim();
+    if (!title) {
+      this.fenFeedback.set('Inserisci un titolo per salvare il bookmark.');
+      return;
+    }
+
+    const bookmark: PositionBookmark = {
+      id: `${Date.now()}-${this.hashText(`${title}|${this.currentFen()}`)}`,
+      title,
+      note,
+      fen: this.currentFen(),
+      createdAt: Date.now(),
+    };
+
+    this.positionBookmarks.update((entries) => [bookmark, ...entries]);
+    this.persistPositionBookmarks();
+    this.fenFeedback.set('Posizione salvata nei bookmark.');
+  }
+
+  updatePositionBookmark(payload: { id: string; title: string; note: string }): void {
+    const title = payload.title.trim();
+    const note = payload.note.trim();
+    if (!title) {
+      this.fenFeedback.set('Inserisci un titolo valido per il bookmark.');
+      return;
+    }
+
+    let updated = false;
+    this.positionBookmarks.update((entries) =>
+      entries.map((entry) => {
+        if (entry.id !== payload.id) {
+          return entry;
+        }
+
+        updated = true;
+        return {
+          ...entry,
+          title,
+          note,
+        };
+      }),
+    );
+
+    if (!updated) {
+      this.fenFeedback.set('Bookmark non trovato.');
+      return;
+    }
+
+    this.persistPositionBookmarks();
+    this.fenFeedback.set('Bookmark aggiornato.');
+  }
+
+  deletePositionBookmark(bookmarkId: string): void {
+    const previousLength = this.positionBookmarks().length;
+    this.positionBookmarks.update((entries) => entries.filter((entry) => entry.id !== bookmarkId));
+
+    if (this.positionBookmarks().length === previousLength) {
+      this.fenFeedback.set('Bookmark non trovato.');
+      return;
+    }
+
+    this.persistPositionBookmarks();
+    this.fenFeedback.set('Bookmark eliminato.');
+  }
+
+  loadPositionBookmark(bookmarkId: string): void {
+    const bookmark = this.positionBookmarks().find((entry) => entry.id === bookmarkId);
+    if (!bookmark) {
+      this.fenFeedback.set('Bookmark non trovato.');
+      return;
+    }
+
+    this.applyFen(bookmark.fen);
+    this.setActiveView('analysis');
+    this.fenFeedback.set(`Bookmark caricato: ${bookmark.title}`);
   }
 
   resetBoard(): void {
@@ -1500,6 +1582,30 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
+  private normalizePositionBookmark(value: unknown, index: number): PositionBookmark | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const candidate = value as Partial<PositionBookmark>;
+    const fen = typeof candidate.fen === 'string' ? candidate.fen.trim() : '';
+    const title = typeof candidate.title === 'string' ? candidate.title.trim() : '';
+    if (!fen || !title) {
+      return null;
+    }
+
+    return {
+      id:
+        typeof candidate.id === 'string' && candidate.id.trim().length > 0
+          ? candidate.id.trim()
+          : `${Date.now()}-${index}-${this.hashText(`${title}|${fen}`)}`,
+      title,
+      note: typeof candidate.note === 'string' ? candidate.note.trim() : '',
+      fen,
+      createdAt: Number.isFinite(Number(candidate.createdAt)) ? Number(candidate.createdAt) : Date.now(),
+    };
+  }
+
   private updatePuzzleStatsOnFailure(
     session: WoodpeckerSession,
     puzzleIndex: number,
@@ -1870,6 +1976,33 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private loadPositionBookmarks(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(Test.POSITION_BOOKMARKS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      const restored = parsed
+        .map((entry, index) => this.normalizePositionBookmark(entry, index))
+        .filter((bookmark): bookmark is PositionBookmark => bookmark !== null)
+        .sort((left, right) => right.createdAt - left.createdAt);
+
+      this.positionBookmarks.set(restored);
+    } catch {
+      this.positionBookmarks.set([]);
+    }
+  }
+
   private persistLibraryItems(): void {
     if (typeof localStorage === 'undefined') {
       return;
@@ -1885,6 +2018,18 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     try {
       localStorage.setItem(Test.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
+    } catch {
+      // Ignore persistence errors (private mode / quota).
+    }
+  }
+
+  private persistPositionBookmarks(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      localStorage.setItem(Test.POSITION_BOOKMARKS_STORAGE_KEY, JSON.stringify(this.positionBookmarks()));
     } catch {
       // Ignore persistence errors (private mode / quota).
     }

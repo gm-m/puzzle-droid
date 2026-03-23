@@ -115,6 +115,7 @@
           (nextGame)="nextLibraryGame()"
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
+          (savePositionBookmark)="savePositionBookmark($event)"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
 
@@ -195,6 +196,7 @@
           (nextGame)="nextLibraryGame()"
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
+          (savePositionBookmark)="savePositionBookmark($event)"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
 
@@ -255,6 +257,7 @@
           (nextGame)="nextLibraryGame()"
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
+          (savePositionBookmark)="savePositionBookmark($event)"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
       </section>
@@ -264,6 +267,7 @@
       <app-library-panel
         [items]="libraryItems()"
         [openedItemId]="libraryOpenedItemId()"
+        [positionBookmarks]="positionBookmarks()"
         [woodpeckerSessionInfoByItemId]="libraryWoodpeckerSessionInfoByItemId()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
@@ -273,6 +277,9 @@
         (openRequested)="onLibraryOpenRequested($event)"
         (closeRequested)="onLibraryCloseRequested()"
         (resumeRequested)="onLibraryResumeRequested($event)"
+        (positionBookmarkSelected)="loadPositionBookmark($event)"
+        (positionBookmarkUpdated)="updatePositionBookmark($event)"
+        (positionBookmarkDeleted)="deletePositionBookmark($event)"
         (woodpeckerSessionDeleteRequested)="onLibraryWoodpeckerSessionDeleteRequested($event)"
         (woodpeckerTargetDaysChanged)="onLibraryWoodpeckerTargetDaysChanged($event)"
       ></app-library-panel>
