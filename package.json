@@ -9,6 +9,10 @@
     "build:web": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessNoSandbox",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "playwright test --debug",
     "android:add": "npx cap add android",
     "cap:sync": "npx cap sync android",
     "android:open": "npx cap open android",
@@ -44,6 +48,7 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@angular/build": "^20.2.2",
     "@angular/cli": "^20.2.2",
     "@angular/compiler-cli": "^20.2.0",
