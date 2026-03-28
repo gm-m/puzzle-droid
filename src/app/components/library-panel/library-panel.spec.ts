@@ -63,11 +63,32 @@ describe('LibraryPanelComponent', () => {
 
   it('should emit bookmark deletion and clear edit mode for the same bookmark', () => {
     spyOn(component.positionBookmarkDeleted, 'emit');
+    spyOn(window, 'confirm').and.returnValue(true);
     component.startBookmarkEdit('bookmark-1');
 
     component.deleteBookmark('bookmark-1');
 
     expect(component.positionBookmarkDeleted.emit).toHaveBeenCalledWith('bookmark-1');
     expect(component.editingBookmarkId).toBeNull();
+  });
+
+  it('should filter bookmarks by title, note or fen and sort them', () => {
+    component.positionBookmarks = [
+      ...component.positionBookmarks,
+      {
+        id: 'bookmark-2',
+        title: 'Altra posizione',
+        note: 'Seconda nota',
+        fen: '8/8/8/8/8/8/8/K6k w - - 0 1',
+        createdAt: 1600000000000,
+      },
+    ];
+
+    component.bookmarkSearch = 'altra';
+    component.bookmarkSort = 'title';
+
+    const filtered = component.filteredBookmarks();
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].id).toBe('bookmark-2');
   });
 });

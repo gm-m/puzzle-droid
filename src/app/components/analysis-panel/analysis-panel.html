@@ -91,6 +91,7 @@
         <div class="actions">
           <button type="button" (click)="analyze.emit()">Analyze</button>
           <button type="button" (click)="reset.emit()">Reset</button>
+          <button type="button" class="toggle" (click)="copyFenRequested.emit()">Copia FEN</button>
           <button type="button" class="toggle" (click)="openBookmarkModal()">Salva bookmark</button>
         </div>
       </section>

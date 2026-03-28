@@ -82,6 +82,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly fenFeedback = signal('');
   readonly pgnFeedback = signal('');
   readonly puzzleMessage = signal('');
+  readonly toastMessage = signal('');
+  readonly toastTone = signal<'success' | 'info' | 'error'>('info');
   readonly boardOrientation = signal<'white' | 'black'>('white');
   readonly showBestMoveArrow = signal(false);
   readonly bestMoveArrow = signal<{ from: Key; to: Key } | null>(null);
@@ -114,6 +116,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private touchStartedOnBoard = false;
   private routeParamsSubscription: Subscription | null = null;
   private routeQueryParamsSubscription: Subscription | null = null;
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -166,6 +169,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       this.boardResizeObserver.disconnect();
       this.boardResizeObserver = null;
     }
+    this.clearToast();
     this.stockfish.destroy();
   }
 
@@ -194,6 +198,29 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       default:
         return 'Analisi';
     }
+  }
+
+  private showToast(message: string, tone: 'success' | 'info' | 'error' = 'info'): void {
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+
+    this.toastTone.set(tone);
+    this.toastMessage.set(message);
+    this.toastTimer = setTimeout(() => {
+      this.toastMessage.set('');
+      this.toastTimer = null;
+    }, 2600);
+  }
+
+  private clearToast(): void {
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+
+    this.toastMessage.set('');
   }
 
   private tryResumeWoodpeckerFromQuery(
@@ -698,6 +725,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.positionBookmarks.update((entries) => [bookmark, ...entries]);
     this.persistPositionBookmarks();
     this.fenFeedback.set('Posizione salvata nei bookmark.');
+    this.showToast('Bookmark salvato.', 'success');
   }
 
   updatePositionBookmark(payload: { id: string; title: string; note: string }): void {
@@ -731,6 +759,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     this.persistPositionBookmarks();
     this.fenFeedback.set('Bookmark aggiornato.');
+    this.showToast('Bookmark aggiornato.', 'success');
   }
 
   deletePositionBookmark(bookmarkId: string): void {
@@ -744,6 +773,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
     this.persistPositionBookmarks();
     this.fenFeedback.set('Bookmark eliminato.');
+    this.showToast('Bookmark eliminato.', 'info');
   }
 
   loadPositionBookmark(bookmarkId: string): void {
@@ -756,6 +786,27 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.applyFen(bookmark.fen);
     this.setActiveView('analysis');
     this.fenFeedback.set(`Bookmark caricato: ${bookmark.title}`);
+    this.showToast(`Bookmark caricato: ${bookmark.title}`, 'success');
+  }
+
+  async copyCurrentFen(): Promise<void> {
+    const fen = this.currentFen().trim();
+    if (!fen) {
+      this.showToast('Nessuna FEN disponibile da copiare.', 'error');
+      return;
+    }
+
+    if (!navigator?.clipboard?.writeText) {
+      this.showToast('Clipboard non disponibile in questo browser.', 'error');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(fen);
+      this.showToast('FEN copiata negli appunti.', 'success');
+    } catch {
+      this.showToast('Impossibile copiare la FEN.', 'error');
+    }
   }
 
   resetBoard(): void {

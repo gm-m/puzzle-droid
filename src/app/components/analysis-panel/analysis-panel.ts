@@ -105,6 +105,7 @@ export class AnalysisPanelComponent {
   @Output() readonly rotateBoard = new EventEmitter<void>();
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
   @Output() readonly savePositionBookmark = new EventEmitter<{ title: string; note: string }>();
+  @Output() readonly copyFenRequested = new EventEmitter<void>();
 
   toggleEngineSettings(): void {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;

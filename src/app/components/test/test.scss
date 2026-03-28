@@ -189,6 +189,34 @@ app-library-panel {
   display: none;
 }
 
+.app-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  max-width: min(90vw, 360px);
+  border-radius: 0.85rem;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 0.8rem 0.95rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  font-weight: 700;
+  line-height: 1.35;
+
+  &.success {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  &.error {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+}
+
 .library-picker-backdrop {
   position: fixed;
   inset: 0;

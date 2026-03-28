@@ -52,6 +52,8 @@ interface LibraryHeaderFilters {
   result: string;
 }
 
+type BookmarkSortOption = 'newest' | 'oldest' | 'title';
+
 const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
@@ -83,6 +85,8 @@ export class LibraryPanelComponent {
   activeTab: LibraryViewTab = 'pgn';
   expandedItemId: string | null = null;
   editingBookmarkId: string | null = null;
+  bookmarkSearch = '';
+  bookmarkSort: BookmarkSortOption = 'newest';
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
@@ -112,6 +116,38 @@ export class LibraryPanelComponent {
     this.editingBookmarkId = null;
   }
 
+  onBookmarkSearchInput(event: Event): void {
+    this.bookmarkSearch = (event.target as HTMLInputElement).value;
+  }
+
+  onBookmarkSortChange(event: Event): void {
+    this.bookmarkSort = (event.target as HTMLSelectElement).value as BookmarkSortOption;
+  }
+
+  filteredBookmarks(): PositionBookmark[] {
+    const query = this.bookmarkSearch.trim().toLowerCase();
+
+    return [...this.positionBookmarks]
+      .filter((bookmark) => {
+        if (!query) {
+          return true;
+        }
+
+        return [bookmark.title, bookmark.note, bookmark.fen].join(' ').toLowerCase().includes(query);
+      })
+      .sort((left, right) => {
+        switch (this.bookmarkSort) {
+          case 'oldest':
+            return left.createdAt - right.createdAt;
+          case 'title':
+            return left.title.localeCompare(right.title, 'it');
+          case 'newest':
+          default:
+            return right.createdAt - left.createdAt;
+        }
+      });
+  }
+
   saveBookmarkEdit(bookmarkId: string, titleInput: HTMLInputElement, noteInput: HTMLTextAreaElement): void {
     this.positionBookmarkUpdated.emit({
       id: bookmarkId,
@@ -122,6 +158,14 @@ export class LibraryPanelComponent {
   }
 
   deleteBookmark(bookmarkId: string): void {
+    const bookmark = this.positionBookmarks.find((entry) => entry.id === bookmarkId);
+    const confirmed =
+      typeof window === 'undefined' ||
+      window.confirm(`Eliminare il bookmark "${bookmark?.title ?? 'senza titolo'}"? Questa azione non può essere annullata.`);
+    if (!confirmed) {
+      return;
+    }
+
     this.positionBookmarkDeleted.emit(bookmarkId);
     if (this.editingBookmarkId === bookmarkId) {
       this.editingBookmarkId = null;

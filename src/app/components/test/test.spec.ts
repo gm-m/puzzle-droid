@@ -137,4 +137,19 @@ describe('Test', () => {
     expect(component.positionBookmarks().length).toBe(0);
     expect(component.fenFeedback()).toBe('Bookmark eliminato.');
   });
+
+  it('should copy current fen to clipboard and show success toast', async () => {
+    component.applyFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+    const writeTextSpy = jasmine.createSpy('writeText').and.resolveTo();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextSpy },
+    });
+
+    await component.copyCurrentFen();
+
+    expect(writeTextSpy).toHaveBeenCalledWith('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
+    expect(component.toastMessage()).toBe('FEN copiata negli appunti.');
+    expect(component.toastTone()).toBe('success');
+  });
 });

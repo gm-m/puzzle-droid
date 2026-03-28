@@ -20,47 +20,65 @@
   <p class="hint" *ngIf="activeTab === 'bookmarks'">Consulta le posizioni salvate e riaprile rapidamente dalla libreria.</p>
 
   <section class="bookmark-library-view" *ngIf="activeTab === 'bookmarks'; else pgnLibraryView">
-    <div class="bookmark-library-list" *ngIf="positionBookmarks.length > 0; else emptyBookmarksState">
-      <article class="bookmark-library-item" *ngFor="let bookmark of positionBookmarks">
-        <ng-container *ngIf="!isEditingBookmark(bookmark.id); else bookmarkEditForm">
-          <button type="button" class="bookmark-library-open" (click)="onOpenBookmark(bookmark.id)">
-            <span class="bookmark-library-head">
-              <strong>{{ bookmark.title }}</strong>
-              <span>{{ bookmark.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-            </span>
-            <span class="bookmark-library-note" *ngIf="bookmark.note">{{ bookmark.note }}</span>
-            <span class="bookmark-library-fen">{{ bookmark.fen }}</span>
-          </button>
+    <div class="bookmark-library-toolbar" *ngIf="positionBookmarks.length > 0">
+      <label class="bookmark-library-filter">
+        Cerca bookmark
+        <input type="text" [value]="bookmarkSearch" placeholder="Titolo, nota o FEN" (input)="onBookmarkSearchInput($event)" />
+      </label>
 
-          <div class="bookmark-library-actions">
-            <button type="button" class="bookmark-secondary-action" (click)="startBookmarkEdit(bookmark.id)">Modifica</button>
-            <button type="button" class="bookmark-danger-action" (click)="deleteBookmark(bookmark.id)">Elimina</button>
-          </div>
-        </ng-container>
-
-        <ng-template #bookmarkEditForm>
-          <form class="bookmark-library-edit" (submit)="$event.preventDefault(); saveBookmarkEdit(bookmark.id, bookmarkTitleInput, bookmarkNoteInput)">
-            <label>
-              Titolo
-              <input #bookmarkTitleInput type="text" [value]="bookmark.title" maxlength="80" />
-            </label>
-
-            <label>
-              Nota breve
-              <textarea #bookmarkNoteInput rows="3" maxlength="220">{{ bookmark.note }}</textarea>
-            </label>
-
-            <div class="bookmark-library-actions">
-              <button type="button" class="bookmark-secondary-action" (click)="cancelBookmarkEdit()">Annulla</button>
-              <button type="submit" class="bookmark-primary-action">Salva</button>
-            </div>
-          </form>
-        </ng-template>
-      </article>
+      <label class="bookmark-library-sort">
+        Ordina per
+        <select [value]="bookmarkSort" (change)="onBookmarkSortChange($event)">
+          <option value="newest">Più recenti</option>
+          <option value="oldest">Più vecchi</option>
+          <option value="title">Titolo A-Z</option>
+        </select>
+      </label>
     </div>
 
+    <ng-container *ngIf="filteredBookmarks() as bookmarks">
+      <div class="bookmark-library-list" *ngIf="bookmarks.length > 0; else emptyBookmarksState">
+        <article class="bookmark-library-item" *ngFor="let bookmark of bookmarks">
+          <ng-container *ngIf="!isEditingBookmark(bookmark.id); else bookmarkEditForm">
+            <button type="button" class="bookmark-library-open" (click)="onOpenBookmark(bookmark.id)">
+              <span class="bookmark-library-head">
+                <strong>{{ bookmark.title }}</strong>
+                <span>{{ bookmark.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+              </span>
+              <span class="bookmark-library-note" *ngIf="bookmark.note">{{ bookmark.note }}</span>
+              <span class="bookmark-library-fen">{{ bookmark.fen }}</span>
+            </button>
+
+            <div class="bookmark-library-actions">
+              <button type="button" class="bookmark-secondary-action" (click)="startBookmarkEdit(bookmark.id)">Modifica</button>
+              <button type="button" class="bookmark-danger-action" (click)="deleteBookmark(bookmark.id)">Elimina</button>
+            </div>
+          </ng-container>
+
+          <ng-template #bookmarkEditForm>
+            <form class="bookmark-library-edit" (submit)="$event.preventDefault(); saveBookmarkEdit(bookmark.id, bookmarkTitleInput, bookmarkNoteInput)">
+              <label>
+                Titolo
+                <input #bookmarkTitleInput type="text" [value]="bookmark.title" maxlength="80" />
+              </label>
+
+              <label>
+                Nota breve
+                <textarea #bookmarkNoteInput rows="3" maxlength="220">{{ bookmark.note }}</textarea>
+              </label>
+
+              <div class="bookmark-library-actions">
+                <button type="button" class="bookmark-secondary-action" (click)="cancelBookmarkEdit()">Annulla</button>
+                <button type="submit" class="bookmark-primary-action">Salva</button>
+              </div>
+            </form>
+          </ng-template>
+        </article>
+      </div>
+    </ng-container>
+
     <ng-template #emptyBookmarksState>
-      <div class="empty-state">Nessun bookmark salvato.</div>
+      <div class="empty-state">{{ positionBookmarks.length === 0 ? 'Nessun bookmark salvato.' : 'Nessun bookmark trovato con i filtri correnti.' }}</div>
     </ng-template>
   </section>
 

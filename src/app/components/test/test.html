@@ -116,6 +116,7 @@
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
           (savePositionBookmark)="savePositionBookmark($event)"
+          (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
 
@@ -197,6 +198,7 @@
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
           (savePositionBookmark)="savePositionBookmark($event)"
+          (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
 
@@ -258,6 +260,7 @@
           (moveJumpRequested)="onMoveJumpRequested($event)"
           (lineSelected)="onLineSelected($event)"
           (savePositionBookmark)="savePositionBookmark($event)"
+          (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
         ></app-analysis-panel>
       </section>
@@ -342,4 +345,8 @@
     aria-label="Close menu"
     (click)="toggleMenu()"
   ></button>
+
+  <div *ngIf="toastMessage()" class="app-toast" [class.success]="toastTone() === 'success'" [class.error]="toastTone() === 'error'" role="status" aria-live="polite">
+    {{ toastMessage() }}
+  </div>
 </main>
