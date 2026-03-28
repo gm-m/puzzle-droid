@@ -41,12 +41,12 @@ interface PersistedLibraryItem {
 type AppView = 'analysis' | 'library' | 'settings';
 
 @Component({
-  selector: 'app-test',
+  selector: 'app-chess-workspace',
   imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
-export class Test implements OnInit, AfterViewInit, OnDestroy {
+export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
@@ -102,7 +102,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   readonly positionBookmarks = signal<PositionBookmark[]>([]);
 
   private readonly chess = new Chess();
-  private historyInitialFen = Test.STARTING_FEN;
+  private historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
   private puzzleAutoMoveTimer: ReturnType<typeof setTimeout> | null = null;
   private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
   private boardResizeObserver: ResizeObserver | null = null;
@@ -441,7 +441,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
           name: file.name,
           pgn,
           mode: 'view',
-          woodpeckerInitialTargetDays: Test.WOODPECKER_INITIAL_TARGET_DAYS,
+          woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
           games,
           event: firstGame?.event,
           white: firstGame?.white,
@@ -820,7 +820,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.chess.reset();
-    this.historyInitialFen = Test.STARTING_FEN;
+    this.historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
     this.puzzleAutoRotateBoardOnTurn.set(false);
@@ -887,7 +887,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const fullHistory = [...(game.positions.at(-1)?.uciHistory ?? [])];
 
     try {
-      if (game.initialFen === Test.STARTING_FEN) {
+      if (game.initialFen === ChessWorkspaceComponent.STARTING_FEN) {
         this.chess.reset();
       } else {
         this.chess.load(game.initialFen);
@@ -1172,7 +1172,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return '';
     }
 
-    return `Ciclo ${session.cycle}/${Test.WOODPECKER_MAX_CYCLES}`;
+    return `Ciclo ${session.cycle}/${ChessWorkspaceComponent.WOODPECKER_MAX_CYCLES}`;
   }
 
   woodpeckerProgressLabel(): string {
@@ -1204,7 +1204,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const elapsedMs = Math.max(0, Date.now() - session.cycleStartedAt);
-    const elapsedDays = Math.floor(elapsedMs / Test.DAY_MS) + 1;
+    const elapsedDays = Math.floor(elapsedMs / ChessWorkspaceComponent.DAY_MS) + 1;
     return `Giorno ${elapsedDays} di ${session.targetDays}`;
   }
 
@@ -1214,13 +1214,13 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       return '';
     }
 
-    const deadline = new Date(session.cycleStartedAt + (session.targetDays - 1) * Test.DAY_MS);
+    const deadline = new Date(session.cycleStartedAt + (session.targetDays - 1) * ChessWorkspaceComponent.DAY_MS);
     const formattedDeadline = new Intl.DateTimeFormat('it-IT', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
     }).format(deadline);
-    const elapsedDays = Math.floor(Math.max(0, Date.now() - session.cycleStartedAt) / Test.DAY_MS) + 1;
+    const elapsedDays = Math.floor(Math.max(0, Date.now() - session.cycleStartedAt) / ChessWorkspaceComponent.DAY_MS) + 1;
     const remaining = Math.max(0, session.targetDays - elapsedDays);
 
     if (session.completed) {
@@ -1342,7 +1342,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
       this.puzzleMessage.set('Tocca a te.');
       this.markPuzzleAttemptStart();
-    }, Test.PUZZLE_AUTO_MOVE_DELAY_MS);
+    }, ChessWorkspaceComponent.PUZZLE_AUTO_MOVE_DELAY_MS);
   }
 
   private clearPuzzleAutoMoveTimer(): void {
@@ -1388,7 +1388,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.navigateLibraryGame(1);
-      }, Test.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
+      }, ChessWorkspaceComponent.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
       return;
     }
 
@@ -1448,7 +1448,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const readyForCycleCompletion = solvedCount >= total && failedQueue.length === 0;
 
     if (readyForCycleCompletion) {
-      const reachedFinalCycle = session.cycle >= Test.WOODPECKER_MAX_CYCLES || session.targetDays <= 1;
+      const reachedFinalCycle = session.cycle >= ChessWorkspaceComponent.WOODPECKER_MAX_CYCLES || session.targetDays <= 1;
       if (reachedFinalCycle) {
         this.updateWoodpeckerSession({
           ...session,
@@ -1624,7 +1624,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       bestStreak: Math.max(previous.bestStreak, previous.currentStreak + 1),
       ease: nextEase,
       intervalDays: nextInterval,
-      dueAt: now + nextInterval * Test.DAY_MS,
+      dueAt: now + nextInterval * ChessWorkspaceComponent.DAY_MS,
       lastAttemptAt: now,
       lastElapsedMs: elapsedMs,
       lastOutcome: 'solved',
@@ -1816,7 +1816,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.selectLibraryGame(item, targetGame, targetIndex);
-    }, Test.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
+    }, ChessWorkspaceComponent.PUZZLE_AUTO_NEXT_GAME_DELAY_MS);
   }
 
   private navigateLibraryGame(direction: -1 | 1): void {
@@ -1990,7 +1990,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      const raw = localStorage.getItem(Test.LIBRARY_STORAGE_KEY);
+      const raw = localStorage.getItem(ChessWorkspaceComponent.LIBRARY_STORAGE_KEY);
       if (!raw) {
         return;
       }
@@ -2033,7 +2033,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      const raw = localStorage.getItem(Test.POSITION_BOOKMARKS_STORAGE_KEY);
+      const raw = localStorage.getItem(ChessWorkspaceComponent.POSITION_BOOKMARKS_STORAGE_KEY);
       if (!raw) {
         return;
       }
@@ -2068,7 +2068,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }));
 
     try {
-      localStorage.setItem(Test.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
+      localStorage.setItem(ChessWorkspaceComponent.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
     } catch {
       // Ignore persistence errors (private mode / quota).
     }
@@ -2080,7 +2080,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      localStorage.setItem(Test.POSITION_BOOKMARKS_STORAGE_KEY, JSON.stringify(this.positionBookmarks()));
+      localStorage.setItem(ChessWorkspaceComponent.POSITION_BOOKMARKS_STORAGE_KEY, JSON.stringify(this.positionBookmarks()));
     } catch {
       // Ignore persistence errors (private mode / quota).
     }
@@ -2120,7 +2120,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      const raw = localStorage.getItem(Test.WOODPECKER_STORAGE_KEY);
+      const raw = localStorage.getItem(ChessWorkspaceComponent.WOODPECKER_STORAGE_KEY);
       if (!raw) {
         return;
       }
@@ -2149,7 +2149,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     try {
-      localStorage.setItem(Test.WOODPECKER_STORAGE_KEY, JSON.stringify(this.woodpeckerSessionsByKey));
+      localStorage.setItem(ChessWorkspaceComponent.WOODPECKER_STORAGE_KEY, JSON.stringify(this.woodpeckerSessionsByKey));
     } catch {
       // Ignore persistence errors (private mode / quota).
     }
@@ -2161,8 +2161,8 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const candidate = value as Partial<WoodpeckerSession>;
-    const cycle = this.clamp(Number(candidate.cycle ?? 1), 1, Test.WOODPECKER_MAX_CYCLES);
-    const targetDays = Math.max(1, Math.trunc(Number(candidate.targetDays ?? Test.WOODPECKER_INITIAL_TARGET_DAYS)));
+    const cycle = this.clamp(Number(candidate.cycle ?? 1), 1, ChessWorkspaceComponent.WOODPECKER_MAX_CYCLES);
+    const targetDays = Math.max(1, Math.trunc(Number(candidate.targetDays ?? ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS)));
     const cycleStartedAt = Number(candidate.cycleStartedAt ?? Date.now());
     const gameCount = Math.max(0, Math.trunc(Number(candidate.gameCount ?? 0)));
     const solvedIndexes = Array.isArray(candidate.solvedIndexes)
@@ -2235,7 +2235,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
   private getNormalizedTargetDays(value: unknown): number {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
-      return Test.WOODPECKER_INITIAL_TARGET_DAYS;
+      return ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS;
     }
 
     return Math.max(1, Math.trunc(numeric));
@@ -2415,7 +2415,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       this.chess.load(this.historyInitialFen);
     } catch {
       this.chess.reset();
-      this.historyInitialFen = Test.STARTING_FEN;
+      this.historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
     }
 
     const replayedMoves: string[] = [];
@@ -2472,7 +2472,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     const replay = new Chess();
 
     try {
-      if (initialFen === Test.STARTING_FEN) {
+      if (initialFen === ChessWorkspaceComponent.STARTING_FEN) {
         replay.reset();
       } else {
         replay.load(initialFen);
@@ -2620,7 +2620,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
     gameIndex: number,
   ): PgnLibraryPosition[] {
     const replay = new Chess();
-    if (initialFen !== Test.STARTING_FEN) {
+    if (initialFen !== ChessWorkspaceComponent.STARTING_FEN) {
       replay.load(initialFen);
     }
 
@@ -2670,7 +2670,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
 
   private resolveInitialFen(fenHeader?: string): string {
     if (!fenHeader || fenHeader.trim().length === 0) {
-      return Test.STARTING_FEN;
+      return ChessWorkspaceComponent.STARTING_FEN;
     }
 
     const candidate = fenHeader.trim();
@@ -2679,7 +2679,7 @@ export class Test implements OnInit, AfterViewInit, OnDestroy {
       chess.load(candidate);
       return chess.fen();
     } catch {
-      return Test.STARTING_FEN;
+      return ChessWorkspaceComponent.STARTING_FEN;
     }
   }
 

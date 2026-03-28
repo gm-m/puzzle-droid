@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { Test } from './components/test/test';
+import { ChessWorkspaceComponent } from './components/test/test';
 import { WoodpeckerDashboardComponent } from './components/woodpecker-dashboard/woodpecker-dashboard';
 
 export const routes: Routes = [
@@ -14,7 +14,7 @@ export const routes: Routes = [
   },
   {
     path: ':view',
-    component: Test,
+    component: ChessWorkspaceComponent,
   },
   {
     path: '**',

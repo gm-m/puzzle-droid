@@ -2,14 +2,14 @@ import { ActivatedRoute, convertToParamMap, type ParamMap, Router } from '@angul
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 
-import { Test } from './test';
+import { ChessWorkspaceComponent } from './test';
 import { SettingsService } from '../../services/settings.service';
 import { StockfishService } from '../../services/stockfish.service';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 
-describe('Test', () => {
-  let component: Test;
-  let fixture: ComponentFixture<Test>;
+describe('ChessWorkspaceComponent', () => {
+  let component: ChessWorkspaceComponent;
+  let fixture: ComponentFixture<ChessWorkspaceComponent>;
   let routerNavigateSpy: jasmine.Spy;
 
   beforeEach(async () => {
@@ -46,7 +46,7 @@ describe('Test', () => {
     routerNavigateSpy = jasmine.createSpy('navigate').and.resolveTo(true);
 
     await TestBed.configureTestingModule({
-      imports: [Test],
+      imports: [ChessWorkspaceComponent],
       providers: [
         { provide: StockfishService, useValue: stockfishMock },
         { provide: SettingsService, useValue: settingsMock },
@@ -65,7 +65,7 @@ describe('Test', () => {
     spyOn(window.localStorage, 'getItem').and.returnValue(null);
     spyOn(window.localStorage, 'setItem');
 
-    fixture = TestBed.createComponent(Test);
+    fixture = TestBed.createComponent(ChessWorkspaceComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

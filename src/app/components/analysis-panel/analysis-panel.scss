@@ -51,8 +51,8 @@
 .bookmark-modal {
   width: min(460px, 100%);
   border-radius: 0.9rem;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--border-color);
+  background: var(--surface-1);
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
   padding: 0.95rem;
   display: grid;
@@ -68,7 +68,7 @@
   h3 {
     margin: 0;
     font-size: 1rem;
-    color: #0f172a;
+    color: var(--text-primary);
   }
 }
 
@@ -76,9 +76,9 @@
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   padding: 0;
 }
 
@@ -961,6 +961,35 @@ button {
 }
 
 :host-context(.theme-dark) {
+  .bookmark-modal {
+    border-color: #334155;
+    background: #0f172a;
+  }
+
+  .bookmark-modal-close {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+  }
+
+  .bookmark-form {
+    label {
+      color: #e2e8f0;
+    }
+
+    input,
+    textarea {
+      background: #111827;
+      color: #f8fafc;
+      border-color: #334155;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #94a3b8;
+    }
+  }
+
   .puzzle-status {
     border-color: #7c2d12;
     background: linear-gradient(to right, #2b1908, #3a2310);

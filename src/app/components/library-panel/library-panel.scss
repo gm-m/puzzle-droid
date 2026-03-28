@@ -82,8 +82,18 @@
   transition: all 0.2s ease;
 
   &:hover {
-    color: #0f172a;
+    color: var(--text-primary);
   }
+
+  &:hover .bookmark-library-head strong,
+  &:focus-visible .bookmark-library-head strong {
+    color: var(--text-primary);
+  }
+}
+
+.bookmark-library-item:hover {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--border-color) 75%, var(--text-muted));
 }
 
 .bookmark-library-actions {
@@ -157,6 +167,7 @@
 
   strong {
     font-size: 0.95rem;
+    color: var(--text-primary);
   }
 
   span {

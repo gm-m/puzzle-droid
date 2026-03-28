@@ -66,6 +66,9 @@ test('can edit and delete a bookmark from library', async ({ page }) => {
   await expect(page.getByText(updatedBookmarkTitle)).toBeVisible();
   await expect(page.getByText(updatedBookmarkNote)).toBeVisible();
 
+  page.once('dialog', async (dialog) => {
+    await dialog.accept();
+  });
   await page.locator('.bookmark-library-item').filter({ hasText: updatedBookmarkTitle }).getByRole('button', { name: 'Elimina' }).click();
   await expect(page.locator('.bookmark-library-item').filter({ hasText: updatedBookmarkTitle })).toHaveCount(0);
   await expect(page.getByText('Nessun bookmark salvato.')).toBeVisible();
