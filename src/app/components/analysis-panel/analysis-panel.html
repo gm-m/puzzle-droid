@@ -205,8 +205,10 @@
         </div>
       </li>
     </ol>
+  </section>
 
-    <section class="pgn-comment" *ngIf="showPgnComment && pgnComment">
+  <section class="pgn-comment-panel" *ngIf="showMoveArea && showPgnComment && pgnComment">
+    <section class="pgn-comment">
       <h3>Commento PGN</h3>
       <p>{{ pgnComment }}</p>
     </section>

@@ -12,11 +12,19 @@
   }
 }
 
+.pgn-comment-panel {
+  display: grid;
+  gap: 0.75rem;
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
 .pgn-comment {
   display: grid;
   gap: 0.4rem;
-  border-top: 1px solid #e2e8f0;
-  padding-top: 0.85rem;
 
   h3,
   p {
@@ -995,6 +1003,11 @@ button {
     }
   }
 
+  .pgn-comment-panel {
+    background: #0f172a;
+    border-color: #334155;
+  }
+
   .move-row {
     border-bottom-color: #1e293b;
   }
@@ -1004,8 +1017,6 @@ button {
   }
 
   .pgn-comment {
-    border-top-color: #334155;
-
     h3 {
       color: #94a3b8;
     }

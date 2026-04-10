@@ -2574,6 +2574,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     const headers = this.parsePgnHeaders(pgn);
     const initialFen = this.resolveInitialFen(headers['FEN']);
     const commentByFen = this.parsePgnComments(pgn);
+    const leadingComment = this.extractLeadingPgnComment(pgn);
+
+    if (!commentByFen.has(initialFen) && leadingComment) {
+      commentByFen.set(initialFen, leadingComment);
+    }
 
     const moves = this.parseMovesWithFallback(pgn) ?? [];
     const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
@@ -2697,16 +2702,17 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     try {
       chess.loadPgn(pgn, { strict: false });
-    } catch {
+    } catch (error) {
       return new Map();
     }
 
     const comments = typeof chess.getComments === 'function' ? chess.getComments() : [];
-    return new Map(
+    const mappedComments = new Map(
       comments
         .map((entry) => [entry.fen, entry.comment.trim()] as const)
         .filter((entry) => entry[1].length > 0),
     );
+    return mappedComments;
   }
 
   private syncCurrentPgnComment(): void {
@@ -2717,7 +2723,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     const currentPosition = selection.positions.find((position) => position.uciHistory.length === this.moveCursor());
-    this.currentPgnComment.set(currentPosition?.comment?.trim() ?? '');
+    const nextComment = currentPosition?.comment?.trim() ?? '';
+    this.currentPgnComment.set(nextComment);
+  }
+
+  private extractLeadingPgnComment(pgn: string): string {
+    const normalized = pgn.replace(/\r\n?/g, '\n');
+    const withoutHeaders = normalized.replace(/^(\s*\[[^\]]+\]\s*)+/m, '').trimStart();
+    const match = withoutHeaders.match(/^\{([\s\S]*?)\}/);
+    return match?.[1]?.trim() ?? '';
   }
 
   private resolveInitialFen(fenHeader?: string): string {
