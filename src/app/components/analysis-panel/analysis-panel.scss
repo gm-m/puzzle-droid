@@ -12,6 +12,31 @@
   }
 }
 
+.pgn-comment {
+  display: grid;
+  gap: 0.4rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.85rem;
+
+  h3,
+  p {
+    margin: 0;
+  }
+
+  h3 {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+  }
+
+  p {
+    color: #334155;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+}
+
 .bookmark-form {
   display: grid;
   gap: 0.75rem;
@@ -961,6 +986,35 @@ button {
 }
 
 :host-context(.theme-dark) {
+  .move-list {
+    background: #0f172a;
+    border-color: #334155;
+
+    h2 {
+      color: #e2e8f0;
+    }
+  }
+
+  .move-row {
+    border-bottom-color: #1e293b;
+  }
+
+  .move-number {
+    color: #94a3b8;
+  }
+
+  .pgn-comment {
+    border-top-color: #334155;
+
+    h3 {
+      color: #94a3b8;
+    }
+
+    p {
+      color: #e2e8f0;
+    }
+  }
+
   .bookmark-modal {
     border-color: #334155;
     background: #0f172a;

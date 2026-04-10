@@ -62,6 +62,8 @@ export class AnalysisPanelComponent {
   @Input() moveListMaxHeight = 0;
   @Input() moves: string[] = [];
   @Input() moveCursor = 0;
+  @Input() pgnComment = '';
+  @Input() showPgnComment = false;
   @Input() fenInputValue = '';
   @Input() fenFeedback = '';
   @Input() pgnFeedback = '';

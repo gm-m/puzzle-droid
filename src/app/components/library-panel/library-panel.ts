@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 
 export interface LibraryModeChange {
@@ -15,6 +15,7 @@ export interface LibraryGameSelection {
   mode: LibraryMode;
   initialFen: string;
   fullUciHistory: string[];
+  positions: PgnLibraryPosition[];
   autoPlayFirstMove: boolean;
   autoAdvanceOnSuccess: boolean;
   autoRotateBoardOnTurn: boolean;
@@ -379,6 +380,10 @@ export class LibraryPanelComponent {
       mode: item.mode,
       initialFen: game.initialFen,
       fullUciHistory: [...fullUciHistory],
+      positions: game.positions.map((position) => ({
+        ...position,
+        uciHistory: [...position.uciHistory],
+      })),
       autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
       autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),

@@ -205,6 +205,11 @@
         </div>
       </li>
     </ol>
+
+    <section class="pgn-comment" *ngIf="showPgnComment && pgnComment">
+      <h3>Commento PGN</h3>
+      <p>{{ pgnComment }}</p>
+    </section>
   </section>
 
   <div class="history-nav-shell" *ngIf="showMoveArea">

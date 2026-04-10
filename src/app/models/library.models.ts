@@ -9,6 +9,7 @@ export interface PgnLibraryPosition {
   label: string;
   fen: string;
   uciHistory: string[];
+  comment?: string;
 }
 
 export interface PgnLibraryGame {

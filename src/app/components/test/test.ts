@@ -82,6 +82,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly fenFeedback = signal('');
   readonly pgnFeedback = signal('');
   readonly puzzleMessage = signal('');
+  readonly currentPgnComment = signal('');
   readonly toastMessage = signal('');
   readonly toastTone = signal<'success' | 'info' | 'error'>('info');
   readonly boardOrientation = signal<'white' | 'black'>('white');
@@ -636,6 +637,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.currentLibrarySelection = {
       ...selection,
       fullUciHistory: [...selection.fullUciHistory],
+      positions: selection.positions.map((position) => ({
+        ...position,
+        uciHistory: [...position.uciHistory],
+      })),
     };
     this.currentLibraryGameTitle.set(selection.gameTitle);
     this.syncWoodpeckerSessionForSelection();
@@ -662,6 +667,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.moveHistory.set([...fullHistory]);
     this.moveCursor.set(0);
     this.puzzleReplayLimit.set(selection.mode === 'puzzle' ? 0 : fullHistory.length);
+    this.syncCurrentPgnComment();
     this.fenFeedback.set('Partita caricata dalla libreria.');
     this.pgnFeedback.set('');
     this.syncGameState();
@@ -1050,6 +1056,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.isPuzzleSurrendered.set(true);
+    this.syncCurrentPgnComment();
     if (!shouldMarkWoodpeckerFailure) {
       this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     }
@@ -1134,6 +1141,14 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   showMoveList(): boolean {
     return !this.isPuzzleActive();
+  }
+
+  showCurrentPgnComment(): boolean {
+    if (!this.currentPgnComment()) {
+      return false;
+    }
+
+    return !this.isPuzzleMode() || this.isPuzzleSurrendered();
   }
 
   showLibraryGameNavigation(): boolean {
@@ -1243,6 +1258,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.currentFen.set(this.chess.fen());
     this.turnColor.set(this.chess.turn() === 'w' ? 'white' : 'black');
     this.legalDests.set(this.getLegalDestinations());
+    this.syncCurrentPgnComment();
   }
 
   private handlePuzzleMove(move: BoardMove): void {
@@ -1855,6 +1871,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       mode: overrides?.mode ?? reference?.mode ?? item.mode,
       initialFen: targetGame.initialFen,
       fullUciHistory: [...fullUciHistory],
+      positions: targetGame.positions.map((position) => ({
+        ...position,
+        uciHistory: [...position.uciHistory],
+      })),
       autoPlayFirstMove: overrides?.autoPlayFirstMove ?? reference?.autoPlayFirstMove ?? false,
       autoAdvanceOnSuccess: overrides?.autoAdvanceOnSuccess ?? reference?.autoAdvanceOnSuccess ?? true,
       autoRotateBoardOnTurn: overrides?.autoRotateBoardOnTurn ?? reference?.autoRotateBoardOnTurn ?? true,
@@ -2553,9 +2573,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private parseSinglePgnGame(pgn: string, itemId: string, gameIndex: number): PgnLibraryGame | null {
     const headers = this.parsePgnHeaders(pgn);
     const initialFen = this.resolveInitialFen(headers['FEN']);
+    const commentByFen = this.parsePgnComments(pgn);
 
     const moves = this.parseMovesWithFallback(pgn) ?? [];
-    const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex);
+    const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
 
     return {
       id: `${itemId}-g${gameIndex + 1}`,
@@ -2618,6 +2639,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     initialFen: string,
     itemId: string,
     gameIndex: number,
+    commentByFen: Map<string, string>,
   ): PgnLibraryPosition[] {
     const replay = new Chess();
     if (initialFen !== ChessWorkspaceComponent.STARTING_FEN) {
@@ -2634,6 +2656,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         label: 'Inizio partita',
         fen: replay.fen(),
         uciHistory: [],
+        comment: commentByFen.get(replay.fen()),
       },
     ];
 
@@ -2662,10 +2685,39 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         label,
         fen: replay.fen(),
         uciHistory: [...uciHistory],
+        comment: commentByFen.get(replay.fen()),
       });
     }
 
     return positions;
+  }
+
+  private parsePgnComments(pgn: string): Map<string, string> {
+    const chess = new Chess();
+
+    try {
+      chess.loadPgn(pgn, { strict: false });
+    } catch {
+      return new Map();
+    }
+
+    const comments = typeof chess.getComments === 'function' ? chess.getComments() : [];
+    return new Map(
+      comments
+        .map((entry) => [entry.fen, entry.comment.trim()] as const)
+        .filter((entry) => entry[1].length > 0),
+    );
+  }
+
+  private syncCurrentPgnComment(): void {
+    const selection = this.currentLibrarySelection;
+    if (!selection) {
+      this.currentPgnComment.set('');
+      return;
+    }
+
+    const currentPosition = selection.positions.find((position) => position.uciHistory.length === this.moveCursor());
+    this.currentPgnComment.set(currentPosition?.comment?.trim() ?? '');
   }
 
   private resolveInitialFen(fenHeader?: string): string {
