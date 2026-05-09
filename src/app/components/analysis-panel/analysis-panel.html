@@ -101,7 +101,13 @@
     <section class="puzzle-status">
       <div class="puzzle-status-toolbar">
         <p class="section-tag">Modalità Puzzle</p>
-        <div class="puzzle-status-actions" *ngIf="showSurrender || showWoodpeckerInfo">
+        <div class="puzzle-status-actions" *ngIf="showSurrender || showPuzzleSkipMove || showPuzzleHint || showWoodpeckerInfo">
+          <button *ngIf="showPuzzleSkipMove" type="button" class="puzzle-assist compact-action" (click)="skipPuzzleMove.emit()">
+            Salta mossa
+          </button>
+          <button *ngIf="showPuzzleHint" type="button" class="puzzle-assist compact-action" (click)="hintPuzzleMove.emit()">
+            Suggerimento
+          </button>
           <button *ngIf="showSurrender" type="button" class="surrender compact-action" (click)="surrenderPuzzle.emit()">
             Arrenditi
           </button>

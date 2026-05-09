@@ -31,6 +31,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() legalDests: Map<Key, Key[]> = new Map();
   @Input() orientation: 'white' | 'black' = 'white';
   @Input() bestMoveArrow: { from: Key; to: Key } | null = null;
+  @Input() puzzleHintSquare: Key | null = null;
   @Input() showCoordinates = true;
   @Input() boardTheme: 'brown' | 'green' | 'blue' | 'grey' = 'brown';
   @Input() pieceSet: 'cburnett' | 'merida' | 'alpha' | 'kosal' = 'cburnett';
@@ -56,9 +57,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
         check: true
       },
       drawable: {
-        autoShapes: this.bestMoveArrow
-          ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
-          : [],
+        autoShapes: this.boardShapes(),
       },
       movable: {
         color: 'both',
@@ -82,6 +81,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       changes['legalDests'] ||
       changes['orientation'] ||
       changes['bestMoveArrow'] ||
+      changes['puzzleHintSquare'] ||
       changes['showCoordinates'] ||
       changes['is3d'] ||
       changes['highlightLastMove']
@@ -97,9 +97,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
           check: true
         },
         drawable: {
-          autoShapes: this.bestMoveArrow
-            ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
-            : [],
+          autoShapes: this.boardShapes(),
         },
         movable: {
           color: 'both',
@@ -111,5 +109,14 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
         },
       });
     }
+  }
+
+  private boardShapes() {
+    return [
+      ...(this.puzzleHintSquare ? [{ orig: this.puzzleHintSquare, brush: 'yellow' as const }] : []),
+      ...(this.bestMoveArrow
+        ? [{ orig: this.bestMoveArrow.from, dest: this.bestMoveArrow.to, brush: 'green' as const }]
+        : []),
+    ];
   }
 }

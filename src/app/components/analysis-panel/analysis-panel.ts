@@ -70,6 +70,8 @@ export class AnalysisPanelComponent {
   @Input() hideEngine = false;
   @Input() puzzleMessage = '';
   @Input() showSurrender = false;
+  @Input() showPuzzleSkipMove = false;
+  @Input() showPuzzleHint = false;
   @Input() showWoodpeckerInfo = false;
   @Input() woodpeckerCycleLabel = '';
   @Input() woodpeckerProgressLabel = '';
@@ -104,6 +106,8 @@ export class AnalysisPanelComponent {
   @Output() readonly fenApplied = new EventEmitter<string>();
   @Output() readonly pgnApplied = new EventEmitter<string>();
   @Output() readonly surrenderPuzzle = new EventEmitter<void>();
+  @Output() readonly skipPuzzleMove = new EventEmitter<void>();
+  @Output() readonly hintPuzzleMove = new EventEmitter<void>();
   @Output() readonly rotateBoard = new EventEmitter<void>();
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
   @Output() readonly savePositionBookmark = new EventEmitter<{ title: string; note: string }>();

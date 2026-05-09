@@ -84,6 +84,8 @@
           [pgnFeedback]="pgnFeedback()"
           [puzzleMessage]="puzzleMessage()"
           [showSurrender]="showSurrenderButton()"
+          [showPuzzleSkipMove]="showPuzzleAssistanceButtons()"
+          [showPuzzleHint]="showPuzzleAssistanceButtons()"
           [showWoodpeckerInfo]="showWoodpeckerInfo()"
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
@@ -120,6 +122,8 @@
           (savePositionBookmark)="savePositionBookmark($event)"
           (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
+          (skipPuzzleMove)="onPuzzleSkipMove()"
+          (hintPuzzleMove)="onPuzzleHint()"
         ></app-analysis-panel>
 
         <section class="board-section">
@@ -133,6 +137,7 @@
             [legalDests]="legalDests()"
             [orientation]="boardOrientation()"
             [bestMoveArrow]="bestMoveArrow()"
+            [puzzleHintSquare]="puzzleHintSquare()"
             [showCoordinates]="settings().showCoordinates"
             [boardTheme]="settings().boardTheme"
             [pieceSet]="settings().pieceSet"
@@ -168,6 +173,8 @@
           [pgnFeedback]="pgnFeedback()"
           [puzzleMessage]="puzzleMessage()"
           [showSurrender]="showSurrenderButton()"
+          [showPuzzleSkipMove]="showPuzzleAssistanceButtons()"
+          [showPuzzleHint]="showPuzzleAssistanceButtons()"
           [showWoodpeckerInfo]="showWoodpeckerInfo()"
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
@@ -204,6 +211,8 @@
           (savePositionBookmark)="savePositionBookmark($event)"
           (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
+          (skipPuzzleMove)="onPuzzleSkipMove()"
+          (hintPuzzleMove)="onPuzzleHint()"
         ></app-analysis-panel>
 
         <app-analysis-panel
@@ -232,6 +241,8 @@
           [pgnFeedback]="pgnFeedback()"
           [puzzleMessage]="puzzleMessage()"
           [showSurrender]="showSurrenderButton()"
+          [showPuzzleSkipMove]="showPuzzleAssistanceButtons()"
+          [showPuzzleHint]="showPuzzleAssistanceButtons()"
           [showWoodpeckerInfo]="showWoodpeckerInfo()"
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
@@ -268,6 +279,8 @@
           (savePositionBookmark)="savePositionBookmark($event)"
           (copyFenRequested)="copyCurrentFen()"
           (surrenderPuzzle)="onPuzzleSurrender()"
+          (skipPuzzleMove)="onPuzzleSkipMove()"
+          (hintPuzzleMove)="onPuzzleHint()"
         ></app-analysis-panel>
       </section>
     </ng-container>

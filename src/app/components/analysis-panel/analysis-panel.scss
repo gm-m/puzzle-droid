@@ -639,6 +639,15 @@ button {
   }
 }
 
+.puzzle-assist {
+  background: #0f766e;
+
+  &:hover:not(:disabled) {
+    background: #115e59;
+    box-shadow: 0 2px 4px rgba(15, 118, 110, 0.28);
+  }
+}
+
 .board-controls {
   display: flex;
   justify-content: flex-start;

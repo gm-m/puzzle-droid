@@ -89,9 +89,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly boardOrientation = signal<'white' | 'black'>('white');
   readonly showBestMoveArrow = signal(false);
   readonly bestMoveArrow = signal<{ from: Key; to: Key } | null>(null);
+  readonly puzzleHintSquare = signal<Key | null>(null);
 
   readonly isPuzzleMode = signal(false);
   readonly isPuzzleSurrendered = signal(false);
+  readonly isPuzzleAssisted = signal(false);
   readonly isPuzzleAutoPlaying = signal(false);
   readonly puzzleAutoRotateBoardOnTurn = signal(true);
 
@@ -652,6 +654,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     if (selection.mode === 'puzzle') {
       this.isPuzzleMode.set(true);
       this.isPuzzleSurrendered.set(false);
+      this.isPuzzleAssisted.set(false);
+      this.puzzleHintSquare.set(null);
       this.puzzleAutoRotateBoardOnTurn.set(selection.autoRotateBoardOnTurn);
       if (selection.autoRotateBoardOnTurn) {
         this.boardOrientation.set(this.getPuzzleInitialOrientation(selection.initialFen, fullHistory, selection.autoPlayFirstMove));
@@ -662,6 +666,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     } else {
       this.isPuzzleMode.set(false);
       this.isPuzzleSurrendered.set(false);
+      this.isPuzzleAssisted.set(false);
+      this.puzzleHintSquare.set(null);
       this.puzzleAutoRotateBoardOnTurn.set(false);
       this.puzzleMessage.set('');
       this.puzzleAttemptStartedAt = null;
@@ -694,6 +700,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         return;
       }
 
+      this.puzzleHintSquare.set(null);
       this.handlePuzzleMove(move);
       return;
     }
@@ -832,6 +839,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
+    this.isPuzzleAssisted.set(false);
+    this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
@@ -869,6 +878,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.historyInitialFen = this.chess.fen();
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
+    this.isPuzzleAssisted.set(false);
+    this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
@@ -925,6 +936,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.historyInitialFen = game.initialFen;
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
+    this.isPuzzleAssisted.set(false);
+    this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
     this.puzzleMessage.set('');
     this.moveHistory.set(fullHistory);
@@ -1044,11 +1057,13 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     this.isPuzzleAutoPlaying.set(false);
+    this.puzzleHintSquare.set(null);
     const location = this.getCurrentLibraryGameLocation();
     const expectedUci = this.moveHistory()[this.moveCursor()] ?? '';
     const elapsedMs = this.consumePuzzleAttemptElapsedMs();
     const theme = this.detectTacticalTheme(expectedUci);
-    const shouldMarkWoodpeckerFailure = this.isWoodpeckerEnabledForCurrentSelection() && location !== null;
+    const shouldMarkWoodpeckerFailure =
+      !this.isPuzzleAssisted() && this.isWoodpeckerEnabledForCurrentSelection() && location !== null;
 
     if (shouldMarkWoodpeckerFailure && location) {
       this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs, {
@@ -1064,6 +1079,61 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.puzzleMessage.set('Ti sei arreso. Engine riattivato.');
     }
     this.analyzePosition();
+  }
+
+  onPuzzleSkipMove(): void {
+    if (!this.isPuzzleActive() || this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    const history = this.moveHistory();
+    const cursor = this.moveCursor();
+    const expectedUci = history[cursor] ?? '';
+    const parsed = this.parseUciMove(expectedUci);
+    if (!expectedUci || !parsed) {
+      this.puzzleMessage.set('Non c’è una mossa da saltare in questa posizione.');
+      return;
+    }
+
+    this.clearPuzzleAutoMoveTimer();
+    this.clearPuzzleAutoNextGameTimer();
+    this.puzzleHintSquare.set(null);
+    this.markCurrentPuzzleAssistedFailure(expectedUci, 'Mossa saltata: puzzle segnato come errato e aggiunto alla review SRS.');
+
+    const result = this.chess.move(parsed);
+    if (!result) {
+      this.puzzleMessage.set('Mossa del puzzle non valida in questa posizione.');
+      this.syncGameState();
+      return;
+    }
+
+    const nextCursor = cursor + 1;
+    this.moveCursor.set(nextCursor);
+    this.puzzleReplayLimit.update((currentLimit) => Math.max(currentLimit, nextCursor));
+    this.syncGameState();
+
+    if (nextCursor >= history.length) {
+      this.handlePuzzleSolved(expectedUci, this.detectTacticalTheme(expectedUci));
+      return;
+    }
+
+    this.schedulePuzzleAutoMove(nextCursor, 'Mossa saltata. Continuazione in arrivo...');
+  }
+
+  onPuzzleHint(): void {
+    if (!this.isPuzzleActive() || this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    const expectedUci = this.moveHistory()[this.moveCursor()] ?? '';
+    const expectedMove = this.parseUciMove(expectedUci);
+    if (!expectedUci || !expectedMove) {
+      this.puzzleMessage.set('Non c’è un suggerimento disponibile in questa posizione.');
+      return;
+    }
+
+    this.markCurrentPuzzleAssistedFailure(expectedUci, 'Suggerimento usato: puzzle segnato come errato e aggiunto alla review SRS.');
+    this.puzzleHintSquare.set(expectedMove.from);
   }
 
   previousLibraryGame(): void {
@@ -1140,6 +1210,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   showSurrenderButton(): boolean {
     return this.isPuzzleMode() && !this.isPuzzleSurrendered();
+  }
+
+  showPuzzleAssistanceButtons(): boolean {
+    return this.isPuzzleActive() && !this.isPuzzleAutoPlaying();
   }
 
   showMoveList(): boolean {
@@ -1380,6 +1454,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private handlePuzzleSolved(solvedUci?: string, theme: TacticalTheme = 'Manovra'): void {
     const location = this.getCurrentLibraryGameLocation();
+    if (this.isPuzzleAssisted()) {
+      this.handleAssistedPuzzleCompleted(location);
+      return;
+    }
+
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
       this.handleWoodpeckerSolved(location, solvedUci, theme);
       return;
@@ -1428,6 +1507,46 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.puzzleMessage.set(fallbackMessage);
     this.markPuzzleAttemptStart();
+  }
+
+  private markCurrentPuzzleAssistedFailure(expectedUci: string, fallbackMessage: string): void {
+    if (this.isPuzzleAssisted()) {
+      this.puzzleMessage.set(fallbackMessage);
+      return;
+    }
+
+    const location = this.getCurrentLibraryGameLocation();
+    const elapsedMs = this.consumePuzzleAttemptElapsedMs();
+    const theme = this.detectTacticalTheme(expectedUci);
+    this.isPuzzleAssisted.set(true);
+
+    if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
+      this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs, {
+        restartAttempt: false,
+        skipped: true,
+        message: fallbackMessage,
+      });
+      return;
+    }
+
+    this.puzzleMessage.set(fallbackMessage.replace(' e aggiunto alla review SRS', ''));
+  }
+
+  private handleAssistedPuzzleCompleted(location: { item: PgnLibraryItem; gameIndex: number } | null): void {
+    this.puzzleAttemptStartedAt = null;
+    const hasNextGame = Boolean(location && location.gameIndex < location.item.games.length - 1);
+    const shouldAutoAdvance =
+      this.currentLibrarySelection?.autoAdvanceOnSuccess === true &&
+      this.isPuzzleMode() &&
+      !this.isPuzzleSurrendered() &&
+      hasNextGame;
+
+    if (shouldAutoAdvance && location) {
+      this.scheduleNextLibraryGameSelection(location.item, location.gameIndex + 1, 'Puzzle completato con aiuto. Carico il successivo...');
+      return;
+    }
+
+    this.puzzleMessage.set('Puzzle completato con aiuto: resta segnato come errato.');
   }
 
   private handleWoodpeckerSolved(
