@@ -56,6 +56,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
+  private static readonly FAMOUS_TACTICS_ASSETS = ['tattiche-vol-1.pgn'];
 
   readonly activeView = signal<AppView>('analysis');
   readonly isMenuOpen = signal(false);
@@ -95,6 +96,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly puzzleAutoRotateBoardOnTurn = signal(true);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
+  readonly famousTacticsItems = signal<PgnLibraryItem[]>([]);
   readonly libraryOpenedItemId = signal<string | null>(null);
   readonly currentLibraryGameTitle = signal('');
   readonly isLibraryGamePickerOpen = signal(false);
@@ -136,6 +138,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   ngOnInit(): void {
     this.loadLibraryItems();
+    void this.loadFamousTacticsItems();
     this.loadPositionBookmarks();
     this.loadWoodpeckerSessions();
     this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
@@ -485,7 +488,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   onLibraryOpenRequested(itemId: string): void {
-    if (!this.libraryItems().some((item) => item.id === itemId)) {
+    if (!this.findLibraryItemById(itemId)) {
       return;
     }
 
@@ -514,7 +517,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   onLibraryResumeRequested(request: LibraryResumeRequest): void {
-    const item = this.libraryItems().find((entry) => entry.id === request.itemId);
+    const item = this.findLibraryItemById(request.itemId);
     if (!item || item.games.length === 0) {
       return;
     }
@@ -530,7 +533,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   onLibraryWoodpeckerSessionDeleteRequested(itemId: string): void {
-    const item = this.libraryItems().find((entry) => entry.id === itemId);
+    const item = this.findLibraryItemById(itemId);
     if (!item) {
       return;
     }
@@ -565,7 +568,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     );
     this.persistLibraryItems();
 
-    const item = this.libraryItems().find((entry) => entry.id === change.itemId);
+    const item = this.findLibraryItemById(change.itemId);
     if (!item) {
       return;
     }
@@ -611,7 +614,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   libraryWoodpeckerSessionInfoByItemId(): Record<string, LibraryWoodpeckerSessionInfo> {
     const byItem: Record<string, LibraryWoodpeckerSessionInfo> = {};
 
-    for (const item of this.libraryItems()) {
+    for (const item of this.allLibraryItems()) {
       const session = this.getWoodpeckerSessionForItem(item);
       byItem[item.id] = {
         hasSession: session !== null,
@@ -2047,6 +2050,55 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
+  private async loadFamousTacticsItems(): Promise<void> {
+    const items = await Promise.all(
+      ChessWorkspaceComponent.FAMOUS_TACTICS_ASSETS.map(async (assetName) => {
+        const response = await fetch(`/assets/pgn/${assetName}`);
+        if (!response.ok) {
+          return null;
+        }
+
+        const pgn = await response.text();
+        const itemId = `famous-tactics-${assetName}`;
+        const games = this.parsePgnGames(pgn, itemId);
+        const firstGame = games[0];
+
+        return {
+          id: itemId,
+          name: this.formatAssetPgnName(assetName),
+          pgn,
+          mode: 'puzzle',
+          woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
+          games,
+          event: firstGame?.event,
+          white: firstGame?.white,
+          black: firstGame?.black,
+          result: firstGame?.result,
+        } as PgnLibraryItem;
+      }),
+    );
+
+    this.famousTacticsItems.set(items.filter((item): item is PgnLibraryItem => item !== null));
+    this.syncOpenedLibraryItemFromQuery(this.route.snapshot.queryParamMap.get('libraryItem'));
+  }
+
+  private allLibraryItems(): PgnLibraryItem[] {
+    return [...this.libraryItems(), ...this.famousTacticsItems()];
+  }
+
+  private findLibraryItemById(itemId: string): PgnLibraryItem | null {
+    return this.allLibraryItems().find((item) => item.id === itemId) ?? null;
+  }
+
+  private formatAssetPgnName(assetName: string): string {
+    const withoutExtension = assetName.replace(/\.pgn$/i, '');
+    return withoutExtension
+      .split(/[-_\s]+/)
+      .filter((part) => part.length > 0)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
   private loadPositionBookmarks(): void {
     if (typeof localStorage === 'undefined') {
       return;
@@ -2281,7 +2333,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const itemExists = this.libraryItems().some((item) => item.id === rawItemId);
+    const itemExists = Boolean(this.findLibraryItemById(rawItemId));
     if (!itemExists) {
       this.libraryOpenedItemId.set(null);
       void this.router.navigate([], {
@@ -2350,7 +2402,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return null;
     }
 
-    const item = this.libraryItems().find((libraryItem) => libraryItem.id === selection.itemId);
+    const item = this.findLibraryItemById(selection.itemId);
     if (!item) {
       return null;
     }

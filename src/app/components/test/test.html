@@ -275,6 +275,7 @@
     <ng-container *ngIf="activeView() === 'library'">
       <app-library-panel
         [items]="libraryItems()"
+        [famousTacticsItems]="famousTacticsItems()"
         [openedItemId]="libraryOpenedItemId()"
         [positionBookmarks]="positionBookmarks()"
         [woodpeckerSessionInfoByItemId]="libraryWoodpeckerSessionInfoByItemId()"

@@ -11,12 +11,16 @@
     <button type="button" class="library-tab" [class.active]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">
       PGN
     </button>
+    <button type="button" class="library-tab" [class.active]="activeTab === 'famous-tactics'" (click)="setActiveTab('famous-tactics')">
+      Tattiche da partite famose
+    </button>
     <button type="button" class="library-tab" [class.active]="activeTab === 'bookmarks'" (click)="setActiveTab('bookmarks')">
       Bookmark posizioni
     </button>
   </div>
 
   <p class="hint" *ngIf="activeTab === 'pgn'">Carica file PGN, apri una card e seleziona una partita per avviarla sulla scacchiera.</p>
+  <p class="hint" *ngIf="activeTab === 'famous-tactics'">Studia tattiche estratte da partite famose realmente giocate.</p>
   <p class="hint" *ngIf="activeTab === 'bookmarks'">Consulta le posizioni salvate e riaprile rapidamente dalla libreria.</p>
 
   <section class="bookmark-library-view" *ngIf="activeTab === 'bookmarks'; else pgnLibraryView">
@@ -86,7 +90,7 @@
     <ng-container *ngIf="openedItem() as item; else itemsOverview">
       <section class="opened-item-screen">
         <header class="opened-item-header">
-          <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">← Torna ai PGN</button>
+          <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">← Torna a {{ activePgnTabLabel() }}</button>
           <div>
             <h2>{{ item.name }}</h2>
             <p>{{ item.games.length }} partite disponibili</p>
@@ -112,7 +116,7 @@
               (click)="onDeleteWoodpeckerSession(item.id)">
               Elimina sessione Woodpecker
             </button>
-            <button type="button" class="remove-item-button" (click)="onRemoveItem(item)">Rimuovi PGN</button>
+            <button type="button" class="remove-item-button" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)">Rimuovi PGN</button>
           </div>
 
           <label class="woodpecker-target-days" *ngIf="item.mode === 'puzzle'">
@@ -232,8 +236,8 @@
     </ng-container>
 
     <ng-template #itemsOverview>
-      <div class="library-grid" *ngIf="items.length > 0; else emptyState">
-        <article class="game-card" *ngFor="let item of items">
+      <div class="library-grid" *ngIf="visibleItems().length > 0; else emptyState">
+        <article class="game-card" *ngFor="let item of visibleItems()">
           <header class="card-header">
             <div class="title-row">
               <div class="card-title-group">
@@ -257,7 +261,7 @@
 
           <div class="card-actions-wrapper">
             <div class="card-primary-actions">
-              <button type="button" class="btn-primary" (click)="onOpenItem(item.id)">Apri PGN</button>
+              <button type="button" class="btn-primary" (click)="onOpenItem(item.id)">Apri {{ activePgnTabLabel() }}</button>
               <button type="button" class="btn-success" *ngIf="hasResumeSession(item.id)"
                 (click)="onResumeItem(item.id)">Riprendi</button>
               <button type="button" class="btn-secondary" (click)="toggleItemExpansion(item.id)">
@@ -273,7 +277,7 @@
                   (click)="onDeleteWoodpeckerSession(item.id)" title="Elimina sessione Woodpecker">
                   Rim. sess.
                 </button>
-                <button type="button" class="btn-text-danger" (click)="onRemoveItem(item)"
+                <button type="button" class="btn-text-danger" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)"
                   title="Rimuovi file PGN">Rimuovi PGN</button>
               </div>
             </div>
@@ -301,7 +305,7 @@
     </ng-template>
 
     <ng-template #emptyState>
-      <div class="empty-state">Nessun PGN caricato.</div>
+      <div class="empty-state">{{ activeEmptyStateLabel() }}</div>
     </ng-template>
   </ng-template>
 </section>

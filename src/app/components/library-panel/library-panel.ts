@@ -37,7 +37,7 @@ export interface LibraryWoodpeckerTargetDaysChange {
   targetDays: number;
 }
 
-type LibraryViewTab = 'pgn' | 'bookmarks';
+type LibraryViewTab = 'pgn' | 'famous-tactics' | 'bookmarks';
 
 interface LibraryFilteredGameEntry {
   game: PgnLibraryGame;
@@ -65,6 +65,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 })
 export class LibraryPanelComponent {
   @Input() items: PgnLibraryItem[] = [];
+  @Input() famousTacticsItems: PgnLibraryItem[] = [];
   @Input() openedItemId: string | null = null;
   @Input() positionBookmarks: PositionBookmark[] = [];
   @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
@@ -187,7 +188,25 @@ export class LibraryPanelComponent {
       return null;
     }
 
-    return this.items.find((item) => item.id === this.openedItemId) ?? null;
+    return this.visibleItems().find((item) => item.id === this.openedItemId) ?? null;
+  }
+
+  visibleItems(): PgnLibraryItem[] {
+    return this.activeTab === 'famous-tactics' ? this.famousTacticsItems : this.items;
+  }
+
+  activePgnTabLabel(): string {
+    return this.activeTab === 'famous-tactics' ? 'tattiche famose' : 'PGN';
+  }
+
+  activeEmptyStateLabel(): string {
+    return this.activeTab === 'famous-tactics'
+      ? 'Nessuna tattica da partite famose disponibile.'
+      : 'Nessun PGN caricato.';
+  }
+
+  canRemoveItem(): boolean {
+    return this.activeTab === 'pgn';
   }
 
   onOpenItem(itemId: string): void {
