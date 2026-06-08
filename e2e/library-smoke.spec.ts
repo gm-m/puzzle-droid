@@ -15,5 +15,5 @@ test('can switch from analysis to library and see both library tabs', async ({ p
 
   await expect(page.getByRole('heading', { name: 'Libreria PGN' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'PGN' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Bookmark posizioni' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bookmark' })).toBeVisible();
 });

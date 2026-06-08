@@ -16,7 +16,7 @@ async function goToBookmarksTab(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Libreria' }).click();
   await expect(page).toHaveURL(/\/library/);
   await expect(page.getByRole('heading', { name: 'Libreria PGN' })).toBeVisible();
-  await page.getByRole('button', { name: 'Bookmark posizioni' }).click();
+  await page.getByRole('button', { name: 'Bookmark' }).click();
   await expect(page.getByText('Consulta le posizioni salvate e riaprile rapidamente dalla libreria.')).toBeVisible();
 }
 
