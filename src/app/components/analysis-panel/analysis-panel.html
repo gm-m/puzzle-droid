@@ -11,20 +11,29 @@
       <section class="pv-list">
         <div class="pv-list-header">
           <div class="header-left">
-            <h2>Engine lines</h2>
+            <h2>Varianti engine</h2>
             <button 
               type="button" 
-              class="expand-toggle" 
-              [attr.aria-label]="isEngineLinesExpanded ? 'Comprimi linee' : 'Espandi linee'" 
+              class="expand-toggle"
+              [attr.aria-label]="isEngineLinesExpanded ? 'Comprimi varianti' : 'Espandi varianti'"
+              [attr.aria-expanded]="isEngineLinesExpanded"
+              [attr.aria-controls]="instanceId + '-engine-variations'"
               (click)="toggleEngineLines()"
               *ngIf="lines.length > 0">
               {{ isEngineLinesExpanded ? '▲' : '▼' }}
             </button>
           </div>
-          <button type="button" class="engine-cog" aria-label="Apri impostazioni engine" (click)="toggleEngineSettings()">⚙</button>
+          <button
+            type="button"
+            class="engine-cog"
+            [attr.aria-label]="isEngineSettingsOpen ? 'Chiudi impostazioni engine' : 'Apri impostazioni engine'"
+            [attr.aria-expanded]="isEngineSettingsOpen"
+            [attr.aria-controls]="instanceId + '-engine-settings'"
+            (click)="toggleEngineSettings()"
+          >⚙</button>
         </div>
         <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
-        <ol *ngIf="lines.length > 0" [class.expanded]="isEngineLinesExpanded">
+        <ol [id]="instanceId + '-engine-variations'" *ngIf="lines.length > 0" [class.expanded]="isEngineLinesExpanded">
           <li *ngFor="let line of lines">
             <p class="line-header">{{ lineHeader(line) }}</p>
             <div class="line-moves">
@@ -41,11 +50,11 @@
         </ol>
       </section>
 
-      <section class="engine-settings" *ngIf="isEngineSettingsOpen">
+      <section [id]="instanceId + '-engine-settings'" class="engine-settings" *ngIf="isEngineSettingsOpen">
         <div class="stats">
-          <p><strong>Best move:</strong> {{ bestMove }}</p>
-          <p><strong>Eval:</strong> {{ evalLabel }}</p>
-          <p><strong>Status:</strong> {{ isAnalyzing ? 'Analyzing...' : 'Ready' }}</p>
+          <p><strong>Mossa migliore:</strong> {{ bestMove }}</p>
+          <p><strong>Valutazione:</strong> {{ evalLabel }}</p>
+          <p aria-live="polite"><strong>Stato:</strong> {{ isAnalyzing ? 'Analisi in corso…' : 'Pronto' }}</p>
           <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
         </div>
 
@@ -72,7 +81,7 @@
             <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
           </label>
           <button type="submit">Applica FEN</button>
-          <p *ngIf="fenFeedback" class="fen-feedback">{{ fenFeedback }}</p>
+          <p *ngIf="fenFeedback" class="fen-feedback" role="status" aria-live="polite">{{ fenFeedback }}</p>
         </form>
 
         <form class="fen-controls" (submit)="onPgnSubmit($event, pgnInput.value)">
@@ -85,12 +94,12 @@
             ></textarea>
           </label>
           <button type="submit">Applica PGN</button>
-          <p *ngIf="pgnFeedback" class="fen-feedback">{{ pgnFeedback }}</p>
+          <p *ngIf="pgnFeedback" class="fen-feedback" role="status" aria-live="polite">{{ pgnFeedback }}</p>
         </form>
 
         <div class="actions">
-          <button type="button" (click)="analyze.emit()">Analyze</button>
-          <button type="button" (click)="reset.emit()">Reset</button>
+          <button type="button" (click)="analyze.emit()">Analizza</button>
+          <button type="button" (click)="reset.emit()">Reimposta</button>
           <button type="button" class="toggle" (click)="openBookmarkModal()">Salva bookmark</button>
         </div>
       </section>
@@ -132,7 +141,7 @@
           </button>
         </div>
       </div>
-      <p class="puzzle-status-message">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+      <p class="puzzle-status-message" role="status" aria-live="polite">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
       <div *ngIf="showBatchDrillInfo" class="batch-drill-status">
         <span class="batch-drill-badge">{{ batchDrillProgressLabel }}</span>
       </div>
@@ -141,7 +150,7 @@
           <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
           <p class="woodpecker-progress-value inline">{{ woodpeckerProgressPercent }}%</p>
         </div>
-        <div class="woodpecker-progress compact" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" aria-valuemin="0" aria-valuemax="100">
+        <div class="woodpecker-progress compact" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" [attr.aria-valuetext]="'Progresso Woodpecker: ' + woodpeckerProgressPercent + '%'" aria-valuemin="0" aria-valuemax="100">
           <span class="woodpecker-progress-fill" [style.width.%]="woodpeckerProgressPercent"></span>
         </div>
       </div>
@@ -262,14 +271,16 @@
       <button
         type="button"
         class="quick-menu-trigger"
-        aria-label="Apri impostazioni rapide"
+        [attr.aria-label]="isQuickMenuOpen ? 'Chiudi azioni rapide' : 'Apri azioni rapide'"
+        [attr.aria-expanded]="isQuickMenuOpen"
+        [attr.aria-controls]="instanceId + '-quick-menu'"
         (click)="toggleQuickMenu()"
       >
         ☰
       </button>
     </div>
 
-    <section class="quick-menu" *ngIf="isQuickMenuOpen">
+    <section [id]="instanceId + '-quick-menu'" class="quick-menu" *ngIf="isQuickMenuOpen">
       <p class="quick-menu-title">Azioni rapide</p>
 
       <label class="quick-option" [class.disabled]="hideEngine">

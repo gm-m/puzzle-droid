@@ -16,10 +16,13 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', () => {
+  it('should render a skip link to the main content', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Chessground + Stockfish POC');
+    const skipLink = compiled.querySelector<HTMLAnchorElement>('.skip-link');
+
+    expect(skipLink?.textContent).toContain('Vai al contenuto principale');
+    expect(skipLink?.getAttribute('href')).toBe('#main-content');
   });
 });

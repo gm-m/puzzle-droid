@@ -357,6 +357,20 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      if (this.isLibraryGamePickerOpen()) {
+        event.preventDefault();
+        this.closeLibraryGamePicker();
+        return;
+      }
+
+      if (this.isMenuOpen()) {
+        event.preventDefault();
+        this.isMenuOpen.set(false);
+        return;
+      }
+    }
+
     if (this.activeView() !== 'analysis' || !this.isDesktopViewport() || this.isPuzzleActive() || this.isMenuOpen()) {
       return;
     }

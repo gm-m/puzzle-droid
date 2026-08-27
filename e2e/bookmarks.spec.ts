@@ -41,7 +41,7 @@ test('can create a bookmark from analysis and reopen it from library', async ({ 
 
   await page.locator('.bookmark-library-open').filter({ hasText: bookmarkTitle }).click();
   await expect(page).toHaveURL(/\/analysis/);
-  await expect(page.getByRole('heading', { name: 'Engine lines' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Varianti engine' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Analisi' })).toBeVisible();
 });
 

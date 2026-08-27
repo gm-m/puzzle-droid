@@ -1,4 +1,4 @@
-<main class="dashboard-shell">
+<main id="main-content" class="dashboard-shell" tabindex="-1">
   <header class="dashboard-header">
     <div>
       <p class="kicker">Woodpecker</p>
@@ -89,6 +89,7 @@
           tabindex="0"
           (click)="openFailedPuzzle(vm, puzzle.puzzleIndex)"
           (keydown.enter)="openFailedPuzzle(vm, puzzle.puzzleIndex)"
+          (keydown.space)="$event.preventDefault(); openFailedPuzzle(vm, puzzle.puzzleIndex)"
         >
           <p>
             Puzzle {{ puzzle.puzzleIndex + 1 }}
@@ -269,6 +270,7 @@
             tabindex="0"
             (click)="openFailedPuzzle(vm, failed.puzzleIndex)"
             (keydown.enter)="openFailedPuzzle(vm, failed.puzzleIndex)"
+            (keydown.space)="$event.preventDefault(); openFailedPuzzle(vm, failed.puzzleIndex)"
           >
             <p>
               Puzzle {{ failed.puzzleIndex + 1 }}

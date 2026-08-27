@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import type { EngineLine, EngineScore } from '../../models/engine.models';
 
 export interface LineMoveSelection {
@@ -33,6 +33,10 @@ interface MoveRow {
   styleUrl: './analysis-panel.scss',
 })
 export class AnalysisPanelComponent {
+  private static nextInstanceId = 0;
+
+  readonly instanceId = `analysis-panel-${AnalysisPanelComponent.nextInstanceId++}`;
+
   @Input() isAnalyzing = false;
   @Input() bestMove = '-';
   @Input() evalLabel = '-';
@@ -142,6 +146,26 @@ export class AnalysisPanelComponent {
 
   closeBookmarkModal(): void {
     this.isBookmarkModalOpen = false;
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscapeKey(event: Event): void {
+    if (this.isBookmarkModalOpen) {
+      event.preventDefault();
+      this.closeBookmarkModal();
+      return;
+    }
+
+    if (this.isWoodpeckerInfoModalOpen) {
+      event.preventDefault();
+      this.closeWoodpeckerInfoModal();
+      return;
+    }
+
+    if (this.isQuickMenuOpen) {
+      event.preventDefault();
+      this.isQuickMenuOpen = false;
+    }
   }
 
   onRotateBoardFromQuickMenu(): void {

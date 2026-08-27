@@ -1,3 +1,4 @@
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { LibraryPanelComponent } from './library-panel';
@@ -9,6 +10,7 @@ describe('LibraryPanelComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [LibraryPanelComponent],
+      providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LibraryPanelComponent);
@@ -29,10 +31,19 @@ describe('LibraryPanelComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should switch to bookmarks tab', () => {
-    component.setActiveTab('bookmarks');
+  it('should switch to bookmarks tab', async () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const bookmarkTab = Array.from(compiled.querySelectorAll<HTMLButtonElement>('.library-tab')).find(
+      (button) => button.textContent?.trim() === 'Bookmark',
+    );
+
+    bookmarkTab?.click();
+    await fixture.whenStable();
+
+    const activeTab = compiled.querySelector<HTMLButtonElement>('.library-tab[aria-pressed="true"]');
 
     expect(component.activeTab).toBe('bookmarks');
+    expect(activeTab?.textContent?.trim()).toBe('Bookmark');
   });
 
   it('should emit bookmark selection when opening a bookmark', () => {

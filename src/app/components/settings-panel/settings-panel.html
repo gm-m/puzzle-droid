@@ -8,7 +8,7 @@
     <div class="setting-group checkbox-group">
       <label class="setting-label" for="dark-mode">Dark mode globale</label>
       <label class="switch">
-        <input id="dark-mode" type="checkbox" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
+        <input id="dark-mode" type="checkbox" role="switch" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -36,7 +36,7 @@
     <div class="setting-group checkbox-group">
       <label class="setting-label" for="board-3d">Stile 3D</label>
       <label class="switch">
-        <input id="board-3d" type="checkbox" [checked]="settings().is3d" (change)="on3dChange($event)">
+        <input id="board-3d" type="checkbox" role="switch" [checked]="settings().is3d" (change)="on3dChange($event)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -44,7 +44,7 @@
     <div class="setting-group checkbox-group">
       <label class="setting-label" for="show-coords">Mostra Coordinate</label>
       <label class="switch">
-        <input id="show-coords" type="checkbox" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">
+        <input id="show-coords" type="checkbox" role="switch" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -52,7 +52,7 @@
     <div class="setting-group checkbox-group">
       <label class="setting-label" for="highlight-move">Evidenzia Ultima Mossa</label>
       <label class="switch">
-        <input id="highlight-move" type="checkbox" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)">
+        <input id="highlight-move" type="checkbox" role="switch" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)">
         <span class="slider round"></span>
       </label>
     </div>
@@ -73,7 +73,7 @@
         </label>
       </div>
 
-      <p class="backup-feedback" *ngIf="backupFeedback">{{ backupFeedback }}</p>
+      <p class="backup-feedback" *ngIf="backupFeedback" role="status" aria-live="polite">{{ backupFeedback }}</p>
     </div>
   </div>
 </div>

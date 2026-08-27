@@ -7,14 +7,14 @@
     </label>
   </header>
 
-  <div class="library-tabs" role="tablist" aria-label="Viste libreria">
-    <button type="button" class="library-tab" [class.active]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">
+  <div class="library-tabs" role="group" aria-label="Vista libreria">
+    <button type="button" class="library-tab" [class.active]="activeTab === 'pgn'" [attr.aria-pressed]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">
       PGN
     </button>
-    <button type="button" class="library-tab" [class.active]="activeTab === 'famous-tactics'" (click)="setActiveTab('famous-tactics')">
+    <button type="button" class="library-tab" [class.active]="activeTab === 'famous-tactics'" [attr.aria-pressed]="activeTab === 'famous-tactics'" (click)="setActiveTab('famous-tactics')">
       Tattiche da partite famose
     </button>
-    <button type="button" class="library-tab" [class.active]="activeTab === 'bookmarks'" (click)="setActiveTab('bookmarks')">
+    <button type="button" class="library-tab" [class.active]="activeTab === 'bookmarks'" [attr.aria-pressed]="activeTab === 'bookmarks'" (click)="setActiveTab('bookmarks')">
       Bookmark
     </button>
   </div>
@@ -227,19 +227,29 @@
         <ng-container *ngIf="filteredGameEntries(item) as entries">
           <div class="games-table-wrap" *ngIf="entries.length > 0; else emptyFilteredList">
             <table class="games-table">
+              <caption class="sr-only">Partite disponibili nel PGN {{ item.name }}</caption>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Bianco</th>
-                  <th>Nero</th>
-                  <th>Evento</th>
-                  <th>Risultato</th>
-                  <th>Mosse</th>
+                  <th scope="col">#</th>
+                  <th scope="col">Bianco</th>
+                  <th scope="col">Nero</th>
+                  <th scope="col">Evento</th>
+                  <th scope="col">Risultato</th>
+                  <th scope="col">Mosse</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let entry of entries; trackBy: trackByGameEntry" (click)="onGameClick(item, entry.game, entry.index)" style="cursor: pointer;">
-                  <td>{{ entry.index + 1 }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="game-row-action"
+                      [attr.aria-label]="'Apri partita ' + (entry.index + 1)"
+                      (click)="$event.stopPropagation(); onGameClick(item, entry.game, entry.index)"
+                    >
+                      {{ entry.index + 1 }}
+                    </button>
+                  </td>
                   <td>{{ entry.game.white || '-' }}</td>
                   <td>{{ entry.game.black || '-' }}</td>
                   <td>{{ entry.game.event || '-' }}</td>

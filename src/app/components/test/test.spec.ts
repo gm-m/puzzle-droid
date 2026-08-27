@@ -1,4 +1,5 @@
 import { ActivatedRoute, convertToParamMap, type ParamMap, Router } from '@angular/router';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 
@@ -48,6 +49,7 @@ describe('ChessWorkspaceComponent', () => {
     await TestBed.configureTestingModule({
       imports: [ChessWorkspaceComponent],
       providers: [
+        provideZonelessChangeDetection(),
         { provide: StockfishService, useValue: stockfishMock },
         { provide: SettingsService, useValue: settingsMock },
         { provide: WoodpeckerAnalyticsService, useValue: analyticsMock },
@@ -57,6 +59,7 @@ describe('ChessWorkspaceComponent', () => {
           useValue: {
             paramMap: routeParamMap$.asObservable(),
             queryParamMap: routeQueryParamMap$.asObservable(),
+            snapshot: { queryParamMap: convertToParamMap({}) },
           } as Partial<ActivatedRoute>,
         },
       ],
@@ -64,6 +67,7 @@ describe('ChessWorkspaceComponent', () => {
 
     spyOn(window.localStorage, 'getItem').and.returnValue(null);
     spyOn(window.localStorage, 'setItem');
+    spyOn(window, 'fetch').and.resolveTo(new Response(null, { status: 404 }));
 
     fixture = TestBed.createComponent(ChessWorkspaceComponent);
     component = fixture.componentInstance;
@@ -98,7 +102,7 @@ describe('ChessWorkspaceComponent', () => {
     });
     const bookmarkId = component.positionBookmarks()[0].id;
 
-    component.setActiveView('library');
+    component.activeView.set('library');
     component.loadPositionBookmark(bookmarkId);
 
     expect(component.currentFen()).toBe(component.positionBookmarks()[0].fen);
@@ -151,5 +155,21 @@ describe('ChessWorkspaceComponent', () => {
     expect(writeTextSpy).toHaveBeenCalledWith('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
     expect(component.toastMessage()).toBe('FEN copiata negli appunti.');
     expect(component.toastTone()).toBe('success');
+  });
+
+  it('should close the navigation menu with Escape', () => {
+    component.isMenuOpen.set(true);
+
+    component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(component.isMenuOpen()).toBeFalse();
+  });
+
+  it('should expose the active view in the primary navigation', () => {
+    fixture.detectChanges();
+
+    const activeItem = fixture.nativeElement.querySelector('.menu-item[aria-current="page"]') as HTMLButtonElement | null;
+
+    expect(activeItem?.textContent?.trim()).toBe('Analisi');
   });
 });
