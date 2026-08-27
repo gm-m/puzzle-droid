@@ -148,6 +148,45 @@
               (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
             Metodo Woodpecker (ripetizione a cicli)
           </label>
+
+          <div class="batch-drill-box" *ngIf="item.mode === 'puzzle'">
+            <label class="puzzle-option batch-header-option">
+              <input type="checkbox" [checked]="isPuzzleBatchEnabled(item.id)"
+                (change)="onPuzzleBatchEnabledChange(item.id, $event)" />
+              <strong>Modalità Micro-Set (intervallo limitato)</strong>
+            </label>
+
+            <div class="batch-drill-content" *ngIf="isPuzzleBatchEnabled(item.id)">
+              <div class="batch-range-row">
+                <label class="batch-field">
+                  Da puzzle:
+                  <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeFrom(item.id)"
+                    (input)="onPuzzleBatchRangeFromChange(item.id, $event)" />
+                </label>
+                <label class="batch-field">
+                  A puzzle:
+                  <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeTo(item.id, item.games.length)"
+                    (input)="onPuzzleBatchRangeToChange(item.id, $event, item.games.length)" />
+                </label>
+              </div>
+
+              <label class="puzzle-option sub-option">
+                <input type="checkbox" [checked]="isPuzzleBatchLoop(item.id)"
+                  (change)="onPuzzleBatchLoopChange(item.id, $event)" />
+                Ripeti a ciclo continuo questo set (senza andare oltre)
+              </label>
+
+              <label class="puzzle-option sub-option">
+                <input type="checkbox" [checked]="isPuzzleBatchShuffle(item.id)"
+                  (change)="onPuzzleBatchShuffleChange(item.id, $event)" />
+                Rimescola l'ordine (Shuffle) se sbagli o torni indietro
+              </label>
+
+              <button type="button" class="start-batch-button" (click)="startBatchDrill(item)">
+                ▶ Avvia Micro-Set ({{ puzzleBatchRangeFrom(item.id) }} - {{ puzzleBatchRangeTo(item.id, item.games.length) }})
+              </button>
+            </div>
+          </div>
         </section>
 
         <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">

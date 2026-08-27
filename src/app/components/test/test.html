@@ -93,6 +93,8 @@
           [woodpeckerDayLabel]="woodpeckerDayLabel()"
           [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
           [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
+          [showBatchDrillInfo]="isBatchDrillActive()"
+          [batchDrillProgressLabel]="batchDrillProgressLabel()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -124,6 +126,7 @@
           (surrenderPuzzle)="onPuzzleSurrender()"
           (skipPuzzleMove)="onPuzzleSkipMove()"
           (hintPuzzleMove)="onPuzzleHint()"
+          (shuffleBatch)="shuffleBatchNow()"
         ></app-analysis-panel>
 
         <section class="board-section">
@@ -182,6 +185,8 @@
           [woodpeckerDayLabel]="woodpeckerDayLabel()"
           [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
           [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
+          [showBatchDrillInfo]="isBatchDrillActive()"
+          [batchDrillProgressLabel]="batchDrillProgressLabel()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -213,6 +218,7 @@
           (surrenderPuzzle)="onPuzzleSurrender()"
           (skipPuzzleMove)="onPuzzleSkipMove()"
           (hintPuzzleMove)="onPuzzleHint()"
+          (shuffleBatch)="shuffleBatchNow()"
         ></app-analysis-panel>
 
         <app-analysis-panel
@@ -250,6 +256,8 @@
           [woodpeckerDayLabel]="woodpeckerDayLabel()"
           [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
           [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
+          [showBatchDrillInfo]="isBatchDrillActive()"
+          [batchDrillProgressLabel]="batchDrillProgressLabel()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -281,6 +289,7 @@
           (surrenderPuzzle)="onPuzzleSurrender()"
           (skipPuzzleMove)="onPuzzleSkipMove()"
           (hintPuzzleMove)="onPuzzleHint()"
+          (shuffleBatch)="shuffleBatchNow()"
         ></app-analysis-panel>
       </section>
     </ng-container>

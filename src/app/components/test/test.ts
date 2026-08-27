@@ -19,8 +19,9 @@ import {
 import { SettingsPanelComponent } from '../settings-panel/settings-panel';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
 import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '../../models/woodpecker.models';
+
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { StockfishService } from '../../services/stockfish.service';
 
@@ -105,6 +106,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly libraryGameFilter = signal('');
   readonly woodpeckerSession = signal<WoodpeckerSession | null>(null);
   readonly positionBookmarks = signal<PositionBookmark[]>([]);
+  readonly activeBatchConfig = signal<PuzzleBatchConfig | null>(null);
+  readonly batchQueue = signal<number[]>([]);
+  readonly batchCursor = signal<number>(0);
+  readonly batchCycle = signal<number>(1);
+  readonly batchHasMistake = signal<boolean>(false);
+
 
   private readonly chess = new Chess();
   private historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
@@ -651,7 +658,43 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.syncWoodpeckerSessionForSelection();
     this.closeLibraryGamePicker();
 
+    if (selection.mode === 'puzzle' && selection.batchConfig && selection.batchConfig.enabled) {
+      const location = this.getCurrentLibraryGameLocation();
+      const currentGameIndex = location?.gameIndex ?? selection.batchConfig.startIndex;
+      const prevConfig = this.activeBatchConfig();
+      const isSameBatch =
+        prevConfig !== null &&
+        prevConfig.startIndex === selection.batchConfig.startIndex &&
+        prevConfig.endIndex === selection.batchConfig.endIndex &&
+        this.batchQueue().length === (selection.batchConfig.endIndex - selection.batchConfig.startIndex + 1);
+
+      this.activeBatchConfig.set(selection.batchConfig);
+      if (!isSameBatch) {
+        const queue: number[] = [];
+        for (let i = selection.batchConfig.startIndex; i <= selection.batchConfig.endIndex; i++) {
+          queue.push(i);
+        }
+        this.batchQueue.set(queue);
+        const idx = queue.indexOf(currentGameIndex);
+        this.batchCursor.set(idx >= 0 ? idx : 0);
+        this.batchCycle.set(1);
+        this.batchHasMistake.set(false);
+      } else {
+        const idx = this.batchQueue().indexOf(currentGameIndex);
+        if (idx >= 0) {
+          this.batchCursor.set(idx);
+        }
+      }
+    } else {
+      this.activeBatchConfig.set(null);
+      this.batchQueue.set([]);
+      this.batchCursor.set(0);
+      this.batchCycle.set(1);
+      this.batchHasMistake.set(false);
+    }
+
     if (selection.mode === 'puzzle') {
+
       this.isPuzzleMode.set(true);
       this.isPuzzleSurrendered.set(false);
       this.isPuzzleAssisted.set(false);
@@ -1136,9 +1179,106 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleHintSquare.set(expectedMove.from);
   }
 
+  shuffleBatchNow(): void {
+    if (this.isPuzzleAutoPlaying()) {
+      return;
+    }
+
+    const config = this.activeBatchConfig();
+    const location = this.getCurrentLibraryGameLocation();
+    if (!config || !location) {
+      return;
+    }
+
+    const allIndices: number[] = [];
+    for (let i = config.startIndex; i <= config.endIndex; i++) {
+      allIndices.push(i);
+    }
+    const shuffled = this.shuffleIndices(allIndices);
+    this.batchQueue.set(shuffled);
+    this.batchCursor.set(0);
+    this.batchHasMistake.set(false);
+
+    const targetGame = location.item.games[shuffled[0]];
+    if (targetGame) {
+      this.selectLibraryGame(location.item, targetGame, shuffled[0], {
+        batchConfig: config,
+      });
+      this.showToast('Micro-Set rimescolato!', 'info');
+    }
+  }
+
+  private shuffleIndices(array: number[]): number[] {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  isBatchDrillActive(): boolean {
+    return this.activeBatchConfig() !== null && this.isPuzzleMode();
+  }
+
+  batchDrillProgressLabel(): string {
+    const config = this.activeBatchConfig();
+    const queue = this.batchQueue();
+    if (!config || queue.length === 0) {
+      return '';
+    }
+
+    return `Micro-Set: ${this.batchCursor() + 1}/${queue.length} (Ciclo ${this.batchCycle()})`;
+  }
+
   previousLibraryGame(): void {
     if (this.isPuzzleAutoPlaying()) {
       return;
+    }
+
+    const config = this.activeBatchConfig();
+    const location = this.getCurrentLibraryGameLocation();
+    if (config && location) {
+      if (this.batchHasMistake() && config.shuffleOnMistakeOrBack) {
+        const allIndices: number[] = [];
+        for (let i = config.startIndex; i <= config.endIndex; i++) {
+          allIndices.push(i);
+        }
+        const shuffled = this.shuffleIndices(allIndices);
+        this.batchQueue.set(shuffled);
+        this.batchCursor.set(0);
+        this.batchHasMistake.set(false);
+
+        const targetGame = location.item.games[shuffled[0]];
+        if (targetGame) {
+          this.selectLibraryGame(location.item, targetGame, shuffled[0]);
+          this.showToast('Problema errato: Micro-Set rimescolato!', 'info');
+        }
+        return;
+      }
+
+      const cursor = this.batchCursor();
+      if (cursor > 0) {
+        const prevCursor = cursor - 1;
+        this.batchCursor.set(prevCursor);
+        const prevGameIndex = this.batchQueue()[prevCursor];
+        const targetGame = location.item.games[prevGameIndex];
+        if (targetGame) {
+          this.selectLibraryGame(location.item, targetGame, prevGameIndex);
+        }
+        return;
+      }
+
+      if (config.loopBatch && this.batchQueue().length > 0) {
+        const lastCursor = this.batchQueue().length - 1;
+        this.batchCursor.set(lastCursor);
+        const lastGameIndex = this.batchQueue()[lastCursor];
+        const targetGame = location.item.games[lastGameIndex];
+        if (targetGame) {
+          this.selectLibraryGame(location.item, targetGame, lastGameIndex);
+        }
+        return;
+      }
     }
 
     this.navigateLibraryGame(-1);
@@ -1149,8 +1289,49 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
+    const config = this.activeBatchConfig();
+    const location = this.getCurrentLibraryGameLocation();
+    if (config && location) {
+      const queue = this.batchQueue();
+      const cursor = this.batchCursor();
+
+      if (cursor < queue.length - 1) {
+        const nextCursor = cursor + 1;
+        this.batchCursor.set(nextCursor);
+        const nextGameIndex = queue[nextCursor];
+        const targetGame = location.item.games[nextGameIndex];
+        if (targetGame) {
+          this.selectLibraryGame(location.item, targetGame, nextGameIndex);
+        }
+        return;
+      }
+
+      if (config.loopBatch && queue.length > 0) {
+        let nextQueue = [...queue];
+        if (this.batchHasMistake() && config.shuffleOnMistakeOrBack) {
+          const allIndices: number[] = [];
+          for (let i = config.startIndex; i <= config.endIndex; i++) {
+            allIndices.push(i);
+          }
+          nextQueue = this.shuffleIndices(allIndices);
+          this.batchQueue.set(nextQueue);
+          this.batchHasMistake.set(false);
+          this.showToast('Micro-Set rimescolato per il nuovo ciclo!', 'info');
+        }
+        this.batchCycle.update((c) => c + 1);
+        this.batchCursor.set(0);
+        const firstGameIndex = nextQueue[0];
+        const targetGame = location.item.games[firstGameIndex];
+        if (targetGame) {
+          this.selectLibraryGame(location.item, targetGame, firstGameIndex);
+        }
+        return;
+      }
+    }
+
     this.navigateLibraryGame(1);
   }
+
 
   onLineSelected(selection: LineMoveSelection): void {
     const lineMoves = selection.line.pv.slice(0, selection.moveIndex + 1);
@@ -1237,6 +1418,14 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return false;
     }
 
+    const config = this.activeBatchConfig();
+    if (config) {
+      if (config.loopBatch || (this.batchHasMistake() && config.shuffleOnMistakeOrBack)) {
+        return true;
+      }
+      return this.batchCursor() > 0;
+    }
+
     const location = this.getCurrentLibraryGameLocation();
     return Boolean(location && location.gameIndex > 0);
   }
@@ -1246,9 +1435,18 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return false;
     }
 
+    const config = this.activeBatchConfig();
+    if (config) {
+      if (config.loopBatch) {
+        return true;
+      }
+      return this.batchCursor() < this.batchQueue().length - 1;
+    }
+
     const location = this.getCurrentLibraryGameLocation();
     return Boolean(location && location.gameIndex < location.item.games.length - 1);
   }
+
 
   moveHistorySan(): string[] {
     return this.toSanHistory(this.historyInitialFen, this.moveHistory());
@@ -1459,6 +1657,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
+    if (this.isBatchDrillActive() && location) {
+      this.handleBatchDrillSolved(location);
+      return;
+    }
+
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
       this.handleWoodpeckerSolved(location, solvedUci, theme);
       return;
@@ -1493,12 +1696,83 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleMessage.set('Puzzle risolto!');
   }
 
+  private handleBatchDrillSolved(location: { item: PgnLibraryItem; gameIndex: number }): void {
+    const config = this.activeBatchConfig();
+    if (!config) {
+      this.puzzleMessage.set('Puzzle risolto!');
+      return;
+    }
+
+    this.puzzleAttemptStartedAt = null;
+    const queue = this.batchQueue();
+    const cursor = this.batchCursor();
+    const isLastInBatch = cursor >= queue.length - 1;
+    const shouldAutoAdvance =
+      this.isPuzzleMode() &&
+      !this.isPuzzleSurrendered() &&
+      this.currentLibrarySelection?.mode === 'puzzle' &&
+      this.currentLibrarySelection?.autoAdvanceOnSuccess === true;
+
+    if (!isLastInBatch) {
+      const nextCursor = cursor + 1;
+      const nextGameIndex = queue[nextCursor];
+      this.batchCursor.set(nextCursor);
+
+      if (shouldAutoAdvance) {
+        this.scheduleNextLibraryGameSelection(
+          location.item,
+          nextGameIndex,
+          `Puzzle risolto (${cursor + 1}/${queue.length})! Carico il successivo...`,
+        );
+      } else {
+        this.puzzleMessage.set(`Puzzle risolto (${cursor + 1}/${queue.length})!`);
+      }
+      return;
+    }
+
+    const finishedCycle = this.batchCycle();
+    this.batchCycle.update((c) => c + 1);
+
+    let nextQueue = [...queue];
+    let didReshuffle = false;
+    if (this.batchHasMistake() && config.shuffleOnMistakeOrBack) {
+      const allIndices: number[] = [];
+      for (let i = config.startIndex; i <= config.endIndex; i++) {
+        allIndices.push(i);
+      }
+      nextQueue = this.shuffleIndices(allIndices);
+      this.batchQueue.set(nextQueue);
+      this.batchHasMistake.set(false);
+      didReshuffle = true;
+    }
+
+    this.batchCursor.set(0);
+
+    if (config.loopBatch) {
+      const firstGameIndex = nextQueue[0];
+      const cycleMsg = didReshuffle
+        ? `Set completato! Rimescolato per il Ciclo ${finishedCycle + 1}...`
+        : `Set completato! Carico Ciclo ${finishedCycle + 1}...`;
+
+      if (shouldAutoAdvance) {
+        this.scheduleNextLibraryGameSelection(location.item, firstGameIndex, cycleMsg);
+      } else {
+        this.puzzleMessage.set(`Micro-Set completato! Inizio Ciclo ${finishedCycle + 1}.`);
+      }
+      this.showToast(`Micro-Set completato! Ciclo ${finishedCycle + 1}`, 'success');
+    } else {
+      this.puzzleMessage.set('Micro-Set completato con successo!');
+      this.showToast('Micro-Set completato!', 'success');
+    }
+  }
+
   private handlePuzzleIncorrectAttempt(
     location: { item: PgnLibraryItem; gameIndex: number } | null,
     expectedUci: string,
     theme: TacticalTheme,
     fallbackMessage: string,
   ): void {
+    this.batchHasMistake.set(true);
     const elapsedMs = this.consumePuzzleAttemptElapsedMs();
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
       this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs);
@@ -1510,6 +1784,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private markCurrentPuzzleAssistedFailure(expectedUci: string, fallbackMessage: string): void {
+    this.batchHasMistake.set(true);
     if (this.isPuzzleAssisted()) {
       this.puzzleMessage.set(fallbackMessage);
       return;
@@ -1534,6 +1809,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private handleAssistedPuzzleCompleted(location: { item: PgnLibraryItem; gameIndex: number } | null): void {
     this.puzzleAttemptStartedAt = null;
+
+    if (this.isBatchDrillActive() && location) {
+      this.handleBatchDrillSolved(location);
+      return;
+    }
+
     const hasNextGame = Boolean(location && location.gameIndex < location.item.games.length - 1);
     const shouldAutoAdvance =
       this.currentLibrarySelection?.autoAdvanceOnSuccess === true &&
@@ -1548,6 +1829,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.puzzleMessage.set('Puzzle completato con aiuto: resta segnato come errato.');
   }
+
 
   private handleWoodpeckerSolved(
     location: { item: PgnLibraryItem; gameIndex: number },
@@ -1979,7 +2261,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     overrides?: Partial<
       Pick<
         LibraryGameSelection,
-        'mode' | 'autoPlayFirstMove' | 'autoAdvanceOnSuccess' | 'autoRotateBoardOnTurn' | 'woodpeckerEnabled'
+        'mode' | 'autoPlayFirstMove' | 'autoAdvanceOnSuccess' | 'autoRotateBoardOnTurn' | 'woodpeckerEnabled' | 'batchConfig'
       >
     >,
   ): void {
@@ -2001,8 +2283,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       autoAdvanceOnSuccess: overrides?.autoAdvanceOnSuccess ?? reference?.autoAdvanceOnSuccess ?? true,
       autoRotateBoardOnTurn: overrides?.autoRotateBoardOnTurn ?? reference?.autoRotateBoardOnTurn ?? true,
       woodpeckerEnabled: overrides?.woodpeckerEnabled ?? reference?.woodpeckerEnabled ?? false,
+      batchConfig: overrides?.batchConfig ?? reference?.batchConfig,
     });
   }
+
 
   private observeBoardSize(): void {
     if (this.boardResizeObserver) {

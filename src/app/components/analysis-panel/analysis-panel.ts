@@ -83,6 +83,8 @@ export class AnalysisPanelComponent {
   @Input() turnColor: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;
   @Input() showLibraryGameNavigation = false;
+  @Input() showBatchDrillInfo = false;
+  @Input() batchDrillProgressLabel = '';
 
   isEngineSettingsOpen = false;
   isQuickMenuOpen = false;
@@ -112,6 +114,7 @@ export class AnalysisPanelComponent {
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
   @Output() readonly savePositionBookmark = new EventEmitter<{ title: string; note: string }>();
   @Output() readonly copyFenRequested = new EventEmitter<void>();
+  @Output() readonly shuffleBatch = new EventEmitter<void>();
 
   toggleEngineSettings(): void {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;

@@ -101,7 +101,7 @@
     <section class="puzzle-status">
       <div class="puzzle-status-toolbar">
         <!-- <p class="section-tag">Modalità Puzzle</p> -->
-        <div class="puzzle-status-actions" *ngIf="showSurrender || showPuzzleSkipMove || showPuzzleHint || showWoodpeckerInfo">
+        <div class="puzzle-status-actions" *ngIf="showSurrender || showPuzzleSkipMove || showPuzzleHint || showWoodpeckerInfo || showBatchDrillInfo">
           <button *ngIf="showPuzzleSkipMove" type="button" class="puzzle-assist compact-action" (click)="skipPuzzleMove.emit()">
             Salta mossa
           </button>
@@ -110,6 +110,16 @@
           </button>
           <button *ngIf="showSurrender" type="button" class="surrender compact-action" (click)="surrenderPuzzle.emit()">
             Arrenditi
+          </button>
+          <button
+            *ngIf="showBatchDrillInfo"
+            type="button"
+            class="toggle batch-shuffle-button icon-action"
+            title="Rimescola set corrente (Shuffle)"
+            aria-label="Rimescola set corrente"
+            (click)="shuffleBatch.emit()"
+          >
+            🔀
           </button>
           <button
             *ngIf="showWoodpeckerInfo"
@@ -123,6 +133,9 @@
         </div>
       </div>
       <p class="puzzle-status-message">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+      <div *ngIf="showBatchDrillInfo" class="batch-drill-status">
+        <span class="batch-drill-badge">{{ batchDrillProgressLabel }}</span>
+      </div>
       <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
         <div class="woodpecker-status-head">
           <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>

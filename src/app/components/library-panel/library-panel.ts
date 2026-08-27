@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 
 export interface LibraryModeChange {
@@ -20,7 +20,9 @@ export interface LibraryGameSelection {
   autoAdvanceOnSuccess: boolean;
   autoRotateBoardOnTurn: boolean;
   woodpeckerEnabled: boolean;
+  batchConfig?: PuzzleBatchConfig;
 }
+
 
 export interface LibraryWoodpeckerSessionInfo {
   hasSession: boolean;
@@ -93,8 +95,14 @@ export class LibraryPanelComponent {
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
   private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
+  private readonly puzzleBatchEnabledByItem = new Map<string, boolean>();
+  private readonly puzzleBatchRangeFromByItem = new Map<string, number>();
+  private readonly puzzleBatchRangeToByItem = new Map<string, number>();
+  private readonly puzzleBatchLoopByItem = new Map<string, boolean>();
+  private readonly puzzleBatchShuffleByItem = new Map<string, boolean>();
   private readonly gameFilterByItem = new Map<string, string>();
   private readonly headerFiltersByItem = new Map<string, LibraryHeaderFilters>();
+
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -392,6 +400,19 @@ export class LibraryPanelComponent {
   onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {
     const fullUciHistory = game.positions.at(-1)?.uciHistory ?? [];
 
+    let batchConfig: PuzzleBatchConfig | undefined = undefined;
+    if (item.mode === 'puzzle' && this.isPuzzleBatchEnabled(item.id)) {
+      const from = Math.max(0, this.puzzleBatchRangeFrom(item.id) - 1);
+      const to = Math.min(item.games.length - 1, Math.max(from, this.puzzleBatchRangeTo(item.id, item.games.length) - 1));
+      batchConfig = {
+        enabled: true,
+        startIndex: from,
+        endIndex: to,
+        loopBatch: this.isPuzzleBatchLoop(item.id),
+        shuffleOnMistakeOrBack: this.isPuzzleBatchShuffle(item.id),
+      };
+    }
+
     this.gameSelected.emit({
       itemId: item.id,
       gameId: game.id,
@@ -407,7 +428,22 @@ export class LibraryPanelComponent {
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
       autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),
       woodpeckerEnabled: this.isPuzzleWoodpecker(item.id),
+      batchConfig,
     });
+  }
+
+  startBatchDrill(item: PgnLibraryItem): void {
+    if (item.games.length === 0) {
+      return;
+    }
+
+    const from = Math.max(0, this.puzzleBatchRangeFrom(item.id) - 1);
+    const targetGame = item.games[from] ?? item.games[0];
+    if (!targetGame) {
+      return;
+    }
+
+    this.onGameClick(item, targetGame, from);
   }
 
   onPuzzleAutoFirstMoveChange(itemId: string, event: Event): void {
@@ -446,17 +482,81 @@ export class LibraryPanelComponent {
     return this.puzzleWoodpeckerByItem.get(itemId) ?? false;
   }
 
+  onPuzzleBatchEnabledChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleBatchEnabledByItem.set(itemId, checked);
+  }
+
+  isPuzzleBatchEnabled(itemId: string): boolean {
+    return this.puzzleBatchEnabledByItem.get(itemId) ?? false;
+  }
+
+  puzzleBatchRangeFrom(itemId: string): number {
+    const candidate = Number(this.puzzleBatchRangeFromByItem.get(itemId) ?? 1);
+    return Number.isFinite(candidate) && candidate >= 1 ? Math.trunc(candidate) : 1;
+  }
+
+  onPuzzleBatchRangeFromChange(itemId: string, event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    this.puzzleBatchRangeFromByItem.set(itemId, Math.max(1, Math.trunc(value)));
+  }
+
+  puzzleBatchRangeTo(itemId: string, totalGames: number): number {
+    const defaultTo = Math.min(10, Math.max(1, totalGames));
+    const candidate = Number(this.puzzleBatchRangeToByItem.get(itemId) ?? defaultTo);
+    if (!Number.isFinite(candidate)) {
+      return defaultTo;
+    }
+    return Math.max(1, Math.trunc(candidate));
+  }
+
+  onPuzzleBatchRangeToChange(itemId: string, event: Event, totalGames: number): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    const maxVal = Math.max(1, totalGames);
+    this.puzzleBatchRangeToByItem.set(itemId, Math.min(maxVal, Math.max(1, Math.trunc(value))));
+  }
+
+  isPuzzleBatchLoop(itemId: string): boolean {
+    return this.puzzleBatchLoopByItem.get(itemId) ?? true;
+  }
+
+  onPuzzleBatchLoopChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleBatchLoopByItem.set(itemId, checked);
+  }
+
+  isPuzzleBatchShuffle(itemId: string): boolean {
+    return this.puzzleBatchShuffleByItem.get(itemId) ?? true;
+  }
+
+  onPuzzleBatchShuffleChange(itemId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.puzzleBatchShuffleByItem.set(itemId, checked);
+  }
+
   private clearItemState(itemId: string): void {
     this.puzzleAutoFirstMoveByItem.delete(itemId);
     this.puzzleAutoAdvanceByItem.delete(itemId);
     this.puzzleAutoRotateByItem.delete(itemId);
     this.puzzleWoodpeckerByItem.delete(itemId);
+    this.puzzleBatchEnabledByItem.delete(itemId);
+    this.puzzleBatchRangeFromByItem.delete(itemId);
+    this.puzzleBatchRangeToByItem.delete(itemId);
+    this.puzzleBatchLoopByItem.delete(itemId);
+    this.puzzleBatchShuffleByItem.delete(itemId);
     this.gameFilterByItem.delete(itemId);
     this.headerFiltersByItem.delete(itemId);
     if (this.expandedItemId === itemId) {
       this.expandedItemId = null;
     }
   }
+
 
   gameTitle(index: number, item: PgnLibraryItem): string {
     const game = item.games[index];

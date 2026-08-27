@@ -22,6 +22,14 @@ export interface PgnLibraryGame {
   positions: PgnLibraryPosition[];
 }
 
+export interface PuzzleBatchConfig {
+  enabled: boolean;
+  startIndex: number; // 0-based
+  endIndex: number;   // 0-based
+  loopBatch: boolean;
+  shuffleOnMistakeOrBack: boolean;
+}
+
 export interface PgnLibraryItem {
   id: string;
   name: string;
@@ -34,3 +42,4 @@ export interface PgnLibraryItem {
   black?: string;
   result?: string;
 }
+
