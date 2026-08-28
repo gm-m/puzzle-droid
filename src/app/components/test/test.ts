@@ -17,6 +17,7 @@ import {
   type LibraryWoodpeckerTargetDaysChange,
 } from '../library-panel/library-panel';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel';
+import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
@@ -43,7 +44,7 @@ type AppView = 'analysis' | 'library' | 'settings';
 
 @Component({
   selector: 'app-chess-workspace',
-  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent],
+  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent, AppIconComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
@@ -2795,7 +2796,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  private openLibraryGamePicker(): void {
+  openLibraryGamePicker(): void {
     const location = this.getCurrentLibraryGameLocation();
     if (!location || location.item.games.length === 0) {
       return;

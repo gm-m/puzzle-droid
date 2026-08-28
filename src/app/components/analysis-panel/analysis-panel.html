@@ -1,5 +1,18 @@
-<aside class="analysis-panel">
-  <p *ngIf="showEngineArea && libraryGameTitle" class="library-game-title">{{ libraryGameTitle }}</p>
+<aside class="analysis-panel" [class.puzzle-mode]="hideEngine">
+  <section class="analysis-engine-region" *ngIf="showEngineArea">
+  <div class="library-game-context" *ngIf="libraryGameTitle">
+    <p class="library-game-title">{{ libraryGameTitle }}</p>
+    <button
+      *ngIf="showLibraryGamePicker"
+      type="button"
+      class="library-game-picker-trigger"
+      aria-controls="library-game-picker"
+      (click)="openLibraryGamePickerRequested.emit()"
+    >
+      <app-icon name="list"></app-icon>
+      Elenco partite
+    </button>
+  </div>
 
   <div *ngIf="showEngineArea" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
     <span class="turn-dot" aria-hidden="true"></span>
@@ -20,7 +33,7 @@
               [attr.aria-controls]="instanceId + '-engine-variations'"
               (click)="toggleEngineLines()"
               *ngIf="lines.length > 0">
-              {{ isEngineLinesExpanded ? '▲' : '▼' }}
+              <app-icon [name]="isEngineLinesExpanded ? 'chevron-up' : 'chevron-down'"></app-icon>
             </button>
           </div>
           <button
@@ -30,9 +43,20 @@
             [attr.aria-expanded]="isEngineSettingsOpen"
             [attr.aria-controls]="instanceId + '-engine-settings'"
             (click)="toggleEngineSettings()"
-          >⚙</button>
+          >
+            <app-icon name="settings"></app-icon>
+          </button>
         </div>
-        <p *ngIf="lines.length === 0">Nessuna variante disponibile.</p>
+        <div class="engine-overview">
+          <span class="engine-state" [class.analyzing]="isAnalyzing" aria-live="polite" aria-atomic="true">
+            <span *ngIf="isAnalyzing" class="engine-spinner" aria-hidden="true"></span>
+            {{ isAnalyzing ? 'Analisi in corso' : 'Pronto' }}
+          </span>
+          <span><strong>{{ evalLabel }}</strong> valutazione</span>
+          <span><strong>{{ bestMove }}</strong> mossa migliore</span>
+          <span>Profondità {{ depth }}</span>
+        </div>
+        <p *ngIf="lines.length === 0" class="engine-empty">{{ isAnalyzing ? 'Calcolo delle varianti…' : 'Nessuna variante disponibile.' }}</p>
         <ol [id]="instanceId + '-engine-variations'" *ngIf="lines.length > 0" [class.expanded]="isEngineLinesExpanded">
           <li *ngFor="let line of lines">
             <p class="line-header">{{ lineHeader(line) }}</p>
@@ -60,17 +84,17 @@
 
         <div class="engine-config">
           <label>
-            Depth
+            Profondità
             <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
           </label>
 
           <label>
-            Multiple lines
+            Varianti multiple
             <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
           </label>
 
           <label>
-            Skill level
+            Livello di gioco
             <input type="number" min="0" max="20" [value]="skillLevel" (input)="onSkillLevelInput($event)" />
           </label>
         </div>
@@ -100,7 +124,6 @@
         <div class="actions">
           <button type="button" (click)="analyze.emit()">Analizza</button>
           <button type="button" (click)="reset.emit()">Reimposta</button>
-          <button type="button" class="toggle" (click)="openBookmarkModal()">Salva bookmark</button>
         </div>
       </section>
     </ng-container>
@@ -128,16 +151,16 @@
             aria-label="Rimescola set corrente"
             (click)="shuffleBatch.emit()"
           >
-            🔀
+            <app-icon name="shuffle"></app-icon>
           </button>
           <button
             *ngIf="showWoodpeckerInfo"
             type="button"
             class="toggle woodpecker-detail-button icon-action"
             aria-label="Mostra dettagli ciclo Woodpecker"
-            (click)="openWoodpeckerInfoModal()"
+            (click)="openWoodpeckerInfoModal($event)"
           >
-            i
+            <app-icon name="info"></app-icon>
           </button>
         </div>
       </div>
@@ -156,13 +179,23 @@
       </div>
     </section>
   </ng-template>
+  </section>
 
   <div class="woodpecker-modal-backdrop" *ngIf="isWoodpeckerInfoModalOpen" (click)="closeWoodpeckerInfoModal()">
-    <section class="woodpecker-modal" role="dialog" aria-modal="true" aria-label="Dettagli ciclo Woodpecker" (click)="$event.stopPropagation()">
+    <section
+      #woodpeckerDialog
+      class="woodpecker-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="instanceId + '-woodpecker-dialog-title'"
+      tabindex="-1"
+      (keydown)="onDialogKeydown($event, woodpeckerDialog)"
+      (click)="$event.stopPropagation()"
+    >
       <header>
-        <h3>Dettagli ciclo Woodpecker</h3>
-        <button type="button" class="woodpecker-modal-close" aria-label="Chiudi dettagli" (click)="closeWoodpeckerInfoModal()">
-          ✕
+        <h3 [id]="instanceId + '-woodpecker-dialog-title'">Dettagli ciclo Woodpecker</h3>
+        <button autofocus type="button" class="woodpecker-modal-close" aria-label="Chiudi dettagli" (click)="closeWoodpeckerInfoModal()">
+          <app-icon name="close"></app-icon>
         </button>
       </header>
       <div class="woodpecker-modal-content">
@@ -176,18 +209,27 @@
   </div>
 
   <div class="bookmark-modal-backdrop" *ngIf="isBookmarkModalOpen" (click)="closeBookmarkModal()">
-    <section class="bookmark-modal" role="dialog" aria-modal="true" aria-label="Salva bookmark posizione" (click)="$event.stopPropagation()">
+    <section
+      #bookmarkDialog
+      class="bookmark-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="instanceId + '-bookmark-dialog-title'"
+      tabindex="-1"
+      (keydown)="onDialogKeydown($event, bookmarkDialog)"
+      (click)="$event.stopPropagation()"
+    >
       <header>
-        <h3>Salva bookmark posizione</h3>
+        <h3 [id]="instanceId + '-bookmark-dialog-title'">Salva bookmark posizione</h3>
         <button type="button" class="bookmark-modal-close" aria-label="Chiudi bookmark" (click)="closeBookmarkModal()">
-          ✕
+          <app-icon name="close"></app-icon>
         </button>
       </header>
 
       <form class="bookmark-form" (submit)="onSaveBookmark($event, bookmarkTitleInput, bookmarkNoteInput)">
         <label>
           Titolo
-          <input #bookmarkTitleInput type="text" maxlength="80" placeholder="Es. Finale di torri interessante" />
+          <input #bookmarkTitleInput autofocus type="text" maxlength="80" placeholder="Es. Finale di torri interessante" />
         </label>
 
         <label>
@@ -203,7 +245,8 @@
     </section>
   </div>
 
-  <section class="move-list" *ngIf="showMoveArea && showMoveList && moves.length > 0">
+  <section class="analysis-moves-region" *ngIf="showMoveArea">
+  <section class="move-list" *ngIf="showMoveList && moves.length > 0">
     <h2>Mosse giocate</h2>
     <ol class="move-rows" [style.max-height.px]="moveListMaxHeight > 0 ? moveListMaxHeight : null">
       <li class="move-row" *ngFor="let row of moveRows()">
@@ -250,7 +293,7 @@
       </div> -->
 
       <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
-        |&lt;
+        <app-icon name="first"></app-icon>
       </button>
       <button
         type="button"
@@ -259,13 +302,22 @@
         aria-label="Mossa precedente"
         (click)="previousMove.emit()"
       >
-        &lt;
+        <app-icon name="previous"></app-icon>
       </button>
       <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
-        &gt;
+        <app-icon name="next"></app-icon>
       </button>
       <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
-        &gt;|
+        <app-icon name="last"></app-icon>
+      </button>
+
+      <button
+        type="button"
+        class="position-action-button"
+        aria-label="Salva la posizione nei bookmark"
+        (click)="openBookmarkModal($event)"
+      >
+        <app-icon name="bookmark"></app-icon>
       </button>
 
       <button
@@ -276,7 +328,7 @@
         [attr.aria-controls]="instanceId + '-quick-menu'"
         (click)="toggleQuickMenu()"
       >
-        ☰
+        <app-icon name="more"></app-icon>
       </button>
     </div>
 
@@ -299,18 +351,21 @@
       </label>
 
       <button type="button" class="quick-action" (click)="copyFenRequested.emit()">
+        <app-icon name="copy"></app-icon>
         Copia FEN corrente
       </button>
 
       <button type="button" class="quick-action" (click)="onRotateBoardFromQuickMenu()">
+        <app-icon name="rotate"></app-icon>
         Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
       </button>
     </section>
   </div>
 
-  <div class="library-game-nav" *ngIf="showMoveArea && showLibraryGameNavigation">
+  <div class="library-game-nav" *ngIf="showLibraryGameNavigation">
     <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
     <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
   </div>
+  </section>
 
 </aside>

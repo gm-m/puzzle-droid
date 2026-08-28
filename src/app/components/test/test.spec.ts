@@ -78,6 +78,12 @@ describe('ChessWorkspaceComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should render a single analysis panel instance', () => {
+    const panels = fixture.nativeElement.querySelectorAll('app-analysis-panel');
+
+    expect(panels.length).toBe(1);
+  });
+
   it('should save a position bookmark with title, note and current fen', () => {
     component.applyFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
 

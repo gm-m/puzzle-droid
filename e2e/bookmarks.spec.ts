@@ -6,9 +6,8 @@ const bookmarkNote = 'Creato da Playwright';
 const updatedBookmarkNote = 'Aggiornato da Playwright';
 
 async function openAnalysisBookmarkModal(page: import('@playwright/test').Page) {
-  const desktopPanel = page.locator('app-analysis-panel.analysis-panel-desktop');
-  await desktopPanel.locator('button.engine-cog').click();
-  await desktopPanel.getByRole('button', { name: 'Salva bookmark' }).click();
+  const analysisPanel = page.locator('app-analysis-panel.analysis-workspace-panel');
+  await analysisPanel.getByRole('button', { name: 'Salva la posizione nei bookmark' }).click();
   await expect(page.getByRole('dialog', { name: 'Salva bookmark posizione' })).toBeVisible();
 }
 
@@ -31,6 +30,7 @@ test('can create a bookmark from analysis and reopen it from library', async ({ 
   await openAnalysisBookmarkModal(page);
 
   const dialog = page.getByRole('dialog', { name: 'Salva bookmark posizione' });
+  await expect(dialog.getByLabel('Titolo')).toBeFocused();
   await dialog.getByLabel('Titolo').fill(bookmarkTitle);
   await dialog.getByLabel('Nota breve').fill(bookmarkNote);
   await page.getByRole('button', { name: 'Salva posizione corrente' }).click();
@@ -49,6 +49,7 @@ test('can edit and delete a bookmark from library', async ({ page }) => {
   await openAnalysisBookmarkModal(page);
 
   const dialog = page.getByRole('dialog', { name: 'Salva bookmark posizione' });
+  await expect(dialog.getByLabel('Titolo')).toBeFocused();
   await dialog.getByLabel('Titolo').fill(bookmarkTitle);
   await dialog.getByLabel('Nota breve').fill(bookmarkNote);
   await page.getByRole('button', { name: 'Salva posizione corrente' }).click();

@@ -1,13 +1,31 @@
+:host,
 .analysis-panel {
-  display: grid;
-  gap: 1rem;
-  position: relative;
-  padding-bottom: 1rem;
+  display: contents;
+}
 
+.analysis-engine-region,
+.analysis-moves-region {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.analysis-engine-region {
+  grid-area: engine;
+}
+
+.analysis-moves-region {
+  grid-area: moves;
+  padding-bottom: var(--space-4);
+}
+
+.analysis-panel {
   h1 {
     margin: 0;
     font-size: 1.4rem;
-    color: #1e293b;
+    color: var(--text-primary);
     font-weight: 800;
   }
 }
@@ -79,6 +97,13 @@
   place-items: center;
   padding: 1rem;
   z-index: 60;
+}
+
+.bookmark-modal,
+.woodpecker-modal {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .bookmark-modal {
@@ -159,16 +184,37 @@
   }
 }
 
+.library-game-context {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
 .library-game-title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
-  padding: 0.6rem 0.8rem;
-  border-radius: 0.5rem;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
   background: var(--surface-1);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   font-weight: 650;
   font-size: var(--font-sm);
   box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-game-picker-trigger {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .history-icon-button {
@@ -418,7 +464,64 @@
     font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #64748b;
+    color: var(--text-muted);
+  }
+}
+
+.engine-overview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+
+  > span {
+    min-height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+  }
+
+  strong {
+    color: var(--text-primary);
+  }
+}
+
+.engine-overview > .engine-state {
+  color: var(--success);
+  border-color: var(--success-border);
+  background: var(--success-soft);
+  font-weight: 700;
+
+  &.analyzing {
+    color: var(--info);
+    border-color: var(--info-border);
+    background: var(--info-soft);
+  }
+}
+
+.engine-spinner {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: var(--radius-full);
+  animation: engine-spin 720ms linear infinite;
+}
+
+.engine-empty {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+@keyframes engine-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -808,18 +911,30 @@ button {
   flex-wrap: wrap;
 }
 
+.position-action-button,
 .quick-menu-trigger {
-  margin-left: auto;
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 0.6rem;
+  width: var(--control-height);
+  min-width: var(--control-height);
+  height: var(--control-height);
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.05rem;
-  background: #0f172a;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
   padding: 0;
+}
+
+.position-action-button {
+  margin-left: auto;
+  border: 1px solid var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.quick-menu-trigger {
+  margin-left: 0;
+  font-size: 1.05rem;
+  background: var(--neutral-action);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-menu {
@@ -846,12 +961,15 @@ button {
 }
 
 .quick-action {
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #1e293b;
+  border: 1px solid var(--border-color);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
   justify-content: flex-start;
+  gap: var(--space-2);
   text-align: left;
-  font-size: 0.85rem;
+  font-size: var(--font-sm);
 }
 
 .quick-option {
@@ -952,6 +1070,20 @@ button {
   margin: 0 0 0.45rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+@media (max-width: 900px) {
+  .analysis-engine-region {
+    order: 2;
+  }
+
+  .analysis-moves-region {
+    order: 3;
+  }
+
+  .analysis-panel.puzzle-mode .analysis-engine-region {
+    order: 0;
+  }
 }
 
 @media (max-width: 640px) {

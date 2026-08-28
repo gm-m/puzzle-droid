@@ -10,12 +10,13 @@ import type {
   WoodpeckerPuzzleStatusSummary,
 } from '../../models/woodpecker.models';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
+import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-woodpecker-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, AppIconComponent],
   templateUrl: './woodpecker-dashboard.html',
   styleUrl: './woodpecker-dashboard.scss',
 })

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import type { EngineLine, EngineScore } from '../../models/engine.models';
+import { AppIconComponent } from '../ui/app-icon/app-icon';
 
 export interface LineMoveSelection {
   line: EngineLine;
@@ -28,7 +29,7 @@ interface MoveRow {
 
 @Component({
   selector: 'app-analysis-panel',
-  imports: [CommonModule],
+  imports: [CommonModule, AppIconComponent],
   templateUrl: './analysis-panel.html',
   styleUrl: './analysis-panel.scss',
 })
@@ -36,6 +37,11 @@ export class AnalysisPanelComponent {
   private static nextInstanceId = 0;
 
   readonly instanceId = `analysis-panel-${AnalysisPanelComponent.nextInstanceId++}`;
+
+  @ViewChild('woodpeckerDialog') private woodpeckerDialog?: ElementRef<HTMLElement>;
+  @ViewChild('bookmarkDialog') private bookmarkDialog?: ElementRef<HTMLElement>;
+
+  private dialogTrigger: HTMLElement | null = null;
 
   @Input() isAnalyzing = false;
   @Input() bestMove = '-';
@@ -87,6 +93,7 @@ export class AnalysisPanelComponent {
   @Input() turnColor: 'white' | 'black' = 'white';
   @Input() showBestMoveArrow = false;
   @Input() showLibraryGameNavigation = false;
+  @Input() showLibraryGamePicker = false;
   @Input() showBatchDrillInfo = false;
   @Input() batchDrillProgressLabel = '';
 
@@ -118,6 +125,7 @@ export class AnalysisPanelComponent {
   @Output() readonly bestMoveArrowToggled = new EventEmitter<boolean>();
   @Output() readonly savePositionBookmark = new EventEmitter<{ title: string; note: string }>();
   @Output() readonly copyFenRequested = new EventEmitter<void>();
+  @Output() readonly openLibraryGamePickerRequested = new EventEmitter<void>();
   @Output() readonly shuffleBatch = new EventEmitter<void>();
 
   toggleEngineSettings(): void {
@@ -132,20 +140,27 @@ export class AnalysisPanelComponent {
     this.isQuickMenuOpen = !this.isQuickMenuOpen;
   }
 
-  openWoodpeckerInfoModal(): void {
+  openWoodpeckerInfoModal(event?: Event): void {
+    this.dialogTrigger = this.eventTrigger(event);
     this.isWoodpeckerInfoModalOpen = true;
+    this.focusDialog('woodpecker');
   }
 
   closeWoodpeckerInfoModal(): void {
     this.isWoodpeckerInfoModalOpen = false;
+    this.restoreDialogFocus();
   }
 
-  openBookmarkModal(): void {
+  openBookmarkModal(event?: Event): void {
+    this.dialogTrigger = this.eventTrigger(event);
+    this.isQuickMenuOpen = false;
     this.isBookmarkModalOpen = true;
+    this.focusDialog('bookmark');
   }
 
   closeBookmarkModal(): void {
     this.isBookmarkModalOpen = false;
+    this.restoreDialogFocus();
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -165,6 +180,44 @@ export class AnalysisPanelComponent {
     if (this.isQuickMenuOpen) {
       event.preventDefault();
       this.isQuickMenuOpen = false;
+    }
+  }
+
+  onDialogKeydown(event: KeyboardEvent, dialog: HTMLElement): void {
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    if (focusable.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const activeElement = document.activeElement;
+
+    if (!activeElement || activeElement === dialog || !dialog.contains(activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
+
+    if (event.shiftKey && activeElement === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+
+    if (!event.shiftKey && activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   }
 
@@ -229,7 +282,7 @@ export class AnalysisPanelComponent {
     this.savePositionBookmark.emit({ title, note });
     titleInput.value = '';
     noteInput.value = '';
-    this.isBookmarkModalOpen = false;
+    this.closeBookmarkModal();
   }
 
   onBestMoveArrowChange(event: Event): void {
@@ -274,6 +327,26 @@ export class AnalysisPanelComponent {
 
   isMoveActive(index: number): boolean {
     return index + 1 === this.moveCursor;
+  }
+
+  private eventTrigger(event?: Event): HTMLElement | null {
+    return event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  }
+
+  private focusDialog(type: 'woodpecker' | 'bookmark'): void {
+    setTimeout(() => {
+      const dialog = type === 'woodpecker' ? this.woodpeckerDialog?.nativeElement : this.bookmarkDialog?.nativeElement;
+      const initialFocus =
+        dialog?.querySelector<HTMLElement>('[autofocus]') ??
+        dialog?.querySelector<HTMLElement>('input, button, textarea, select, a[href], [tabindex="0"]');
+      (initialFocus ?? dialog)?.focus();
+    });
+  }
+
+  private restoreDialogFocus(): void {
+    const trigger = this.dialogTrigger;
+    this.dialogTrigger = null;
+    setTimeout(() => trigger?.focus());
   }
 
   private formatScore(score: EngineScore): string {

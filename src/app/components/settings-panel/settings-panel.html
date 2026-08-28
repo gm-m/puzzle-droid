@@ -5,15 +5,26 @@
   </div>
 
   <div class="settings-content">
-    <div class="setting-group checkbox-group">
-      <label class="setting-label" for="dark-mode">Dark mode globale</label>
-      <label class="switch">
-        <input id="dark-mode" type="checkbox" role="switch" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
-        <span class="slider round"></span>
-      </label>
-    </div>
+    <section class="settings-section" aria-labelledby="appearance-heading">
+      <div class="section-heading">
+        <h3 id="appearance-heading">Aspetto</h3>
+        <p>Preferenze visive dell’applicazione.</p>
+      </div>
+      <div class="setting-group checkbox-group">
+        <label class="setting-label" for="dark-mode">Tema scuro</label>
+        <label class="switch">
+          <input id="dark-mode" type="checkbox" role="switch" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </section>
 
-    <div class="setting-group">
+    <section class="settings-section" aria-labelledby="board-heading">
+      <div class="section-heading">
+        <h3 id="board-heading">Scacchiera</h3>
+        <p>Personalizza la resa della posizione e delle mosse.</p>
+      </div>
+      <div class="setting-group">
       <label class="setting-label" for="board-theme">Tema Scacchiera</label>
       <select id="board-theme" class="setting-select" [value]="settings().boardTheme" (change)="onThemeChange($event)">
         <option value="brown">Marrone Classico</option>
@@ -21,9 +32,9 @@
         <option value="green">Verde Scacchistico</option>
         <option value="grey">Grigio Minimal</option>
       </select>
-    </div>
+      </div>
 
-    <div class="setting-group">
+      <div class="setting-group">
       <label class="setting-label" for="piece-set">Set Pezzi</label>
       <select id="piece-set" class="setting-select" [value]="settings().pieceSet" (change)="onPieceSetChange($event)">
         <option value="cburnett">Cburnett</option>
@@ -31,49 +42,66 @@
         <option value="alpha">Alpha</option>
         <option value="kosal">Kosal</option>
       </select>
-    </div>
+      </div>
 
-    <div class="setting-group checkbox-group">
+      <div class="setting-group checkbox-group">
       <label class="setting-label" for="board-3d">Stile 3D</label>
       <label class="switch">
         <input id="board-3d" type="checkbox" role="switch" [checked]="settings().is3d" (change)="on3dChange($event)">
         <span class="slider round"></span>
       </label>
-    </div>
+      </div>
 
-    <div class="setting-group checkbox-group">
+      <div class="setting-group checkbox-group">
       <label class="setting-label" for="show-coords">Mostra Coordinate</label>
       <label class="switch">
         <input id="show-coords" type="checkbox" role="switch" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">
         <span class="slider round"></span>
       </label>
-    </div>
+      </div>
 
-    <div class="setting-group checkbox-group">
+      <div class="setting-group checkbox-group">
       <label class="setting-label" for="highlight-move">Evidenzia Ultima Mossa</label>
       <label class="switch">
         <input id="highlight-move" type="checkbox" role="switch" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)">
         <span class="slider round"></span>
       </label>
-    </div>
-    
-    <div class="settings-actions">
-      <button type="button" class="btn-reset" (click)="resetSettings()">Ripristina Predefinite</button>
-    </div>
+      </div>
+    </section>
 
-    <div class="backup-card">
-      <h3>Backup e Restore</h3>
+    <section class="settings-section data-section" aria-labelledby="data-heading">
+      <div class="section-heading">
+        <h3 id="data-heading">Dati e backup</h3>
+        <p>Salva i dati locali o ripristina una copia precedente.</p>
+      </div>
+      <div class="backup-card">
+      <h4>Backup e ripristino</h4>
       <p>Esporta/importa libreria, sessioni Woodpecker, analytics e impostazioni.</p>
 
       <div class="backup-actions">
         <button type="button" class="btn-backup" (click)="exportBackup()">Esporta backup JSON</button>
-        <label class="btn-import">
-          Importa backup JSON
-          <input type="file" accept="application/json,.json" (change)="onBackupFileSelected($event)" />
+        <label class="btn-import" [class.is-loading]="isImportingBackup">
+          {{ isImportingBackup ? 'Importazione in corso…' : 'Importa backup JSON' }}
+          <input type="file" accept="application/json,.json" [disabled]="isImportingBackup" (change)="onBackupFileSelected($event)" />
         </label>
       </div>
 
-      <p class="backup-feedback" *ngIf="backupFeedback" role="status" aria-live="polite">{{ backupFeedback }}</p>
-    </div>
+      <p class="backup-feedback" *ngIf="backupFeedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
+      </div>
+      <div class="settings-actions">
+        <button type="button" class="btn-reset" (click)="openResetConfirmation($event)">Ripristina impostazioni</button>
+      </div>
+    </section>
   </div>
+</div>
+
+<div class="reset-modal-backdrop" *ngIf="isResetConfirmationOpen" (click)="closeResetConfirmation()">
+  <section #resetDialog class="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description" tabindex="-1" (keydown)="onDialogKeydown($event, resetDialog)" (click)="$event.stopPropagation()">
+    <h2 id="reset-dialog-title">Ripristinare le impostazioni?</h2>
+    <p id="reset-dialog-description">Il tema e le preferenze della scacchiera torneranno ai valori iniziali. I dati della libreria e degli allenamenti non verranno modificati.</p>
+    <div class="reset-modal-actions">
+      <button type="button" class="btn-cancel" autofocus (click)="closeResetConfirmation()">Annulla</button>
+      <button type="button" class="btn-reset" (click)="confirmResetSettings()">Ripristina</button>
+    </div>
+  </section>
 </div>

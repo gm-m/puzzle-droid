@@ -594,6 +594,9 @@
 
 .back-to-library {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   border: 1px solid var(--border-color);
   border-radius: 0.55rem;
   background: var(--surface-2);
@@ -677,6 +680,9 @@
 
 .start-batch-button {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #ffffff;
   border: 0;

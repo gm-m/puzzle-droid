@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
+import { AppIconComponent } from '../ui/app-icon/app-icon';
 
 export interface LibraryModeChange {
   id: string;
@@ -61,7 +62,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
   selector: 'app-library-panel',
-  imports: [CommonModule],
+  imports: [CommonModule, AppIconComponent],
   templateUrl: './library-panel.html',
   styleUrl: './library-panel.scss',
 })

@@ -90,7 +90,10 @@
     <ng-container *ngIf="openedItem() as item; else itemsOverview">
       <section class="opened-item-screen">
         <header class="opened-item-header">
-          <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">← Torna a {{ activePgnTabLabel() }}</button>
+          <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">
+            <app-icon name="arrow-left"></app-icon>
+            Torna a {{ activePgnTabLabel() }}
+          </button>
           <div>
             <h2>{{ item.name }}</h2>
             <p>{{ item.games.length }} partite disponibili</p>
@@ -183,7 +186,8 @@
               </label>
 
               <button type="button" class="start-batch-button" (click)="startBatchDrill(item)">
-                ▶ Avvia Micro-Set ({{ puzzleBatchRangeFrom(item.id) }} - {{ puzzleBatchRangeTo(item.id, item.games.length) }})
+                <app-icon name="play"></app-icon>
+                Avvia Micro-Set ({{ puzzleBatchRangeFrom(item.id) }} - {{ puzzleBatchRangeTo(item.id, item.games.length) }})
               </button>
             </div>
           </div>
