@@ -5,6 +5,8 @@
 
 .analysis-engine-region,
 .analysis-moves-region {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   display: grid;
   align-content: start;
@@ -185,6 +187,10 @@
 }
 
 .library-game-context {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   align-items: stretch;
   gap: var(--space-2);
@@ -262,8 +268,8 @@
 
 .puzzle-status {
   display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-2);
+  padding: var(--space-3);
   border: 1px solid var(--warning-border);
   border-radius: var(--radius-md);
   background: var(--warning-soft);
@@ -283,8 +289,14 @@
   justify-content: space-between;
 }
 
+.puzzle-status-toolbar {
+  min-width: 0;
+  align-items: flex-start;
+}
+
 .puzzle-status-actions {
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 .puzzle-status-message,
@@ -292,6 +304,13 @@
   margin: 0;
   color: var(--text-primary);
   font-weight: 650;
+}
+
+.puzzle-status-message {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-block-size: 2.7em;
+  line-height: 1.35;
 }
 
 .compact-action {
@@ -745,14 +764,13 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.25rem;
 }
 
 .batch-drill-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 9999px;
   background: color-mix(in srgb, #3b82f6 15%, var(--surface-2));
   border: 1px solid color-mix(in srgb, #3b82f6 40%, var(--border-color));
@@ -889,19 +907,38 @@ button {
   position: sticky;
   bottom: calc(0.65rem + env(safe-area-inset-bottom));
   z-index: 15;
+  width: 100%;
+  min-width: 0;
 }
 
 .history-nav {
   position: relative;
+  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
   background: var(--surface-elevated);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
+}
+
+.history-step-actions,
+.history-utility-actions {
+  display: grid;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.history-step-actions {
+  grid-template-columns: repeat(4, var(--control-height));
+}
+
+.history-utility-actions {
+  grid-template-columns: repeat(2, var(--control-height));
 }
 
 .library-game-nav {
@@ -911,6 +948,7 @@ button {
   flex-wrap: wrap;
 }
 
+.history-nav .history-icon-button,
 .position-action-button,
 .quick-menu-trigger {
   width: var(--control-height);
@@ -924,7 +962,7 @@ button {
 }
 
 .position-action-button {
-  margin-left: auto;
+  margin-left: 0;
   border: 1px solid var(--primary-border);
   background: var(--primary-soft);
   color: var(--primary);
@@ -1087,13 +1125,32 @@ button {
 }
 
 @media (max-width: 640px) {
+  .library-game-context {
+    gap: var(--space-1);
+  }
+
   .library-game-title {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .library-game-picker-trigger {
+    width: var(--control-height);
+    min-width: var(--control-height);
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .library-game-picker-label {
     display: none;
   }
 
   .puzzle-status {
-    gap: 0.45rem;
-    padding: 0.75rem 0.8rem;
+    gap: 0.35rem;
+    padding: 0.625rem 0.7rem;
+  }
+
+  .puzzle-status-actions {
+    gap: var(--space-1);
   }
 
   .section-tag {

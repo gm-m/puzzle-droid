@@ -6,11 +6,12 @@
       *ngIf="showLibraryGamePicker"
       type="button"
       class="library-game-picker-trigger"
+      aria-label="Apri elenco partite"
       aria-controls="library-game-picker"
       (click)="openLibraryGamePickerRequested.emit()"
     >
       <app-icon name="list"></app-icon>
-      Elenco partite
+      <span class="library-game-picker-label">Elenco partite</span>
     </button>
   </div>
 
@@ -132,16 +133,37 @@
   <ng-template #puzzleModeInfo>
     <section class="puzzle-status">
       <div class="puzzle-status-toolbar">
-        <!-- <p class="section-tag">Modalità Puzzle</p> -->
-        <div class="puzzle-status-actions" *ngIf="showSurrender || showPuzzleSkipMove || showPuzzleHint || showWoodpeckerInfo || showBatchDrillInfo">
-          <button *ngIf="showPuzzleSkipMove" type="button" class="puzzle-assist compact-action" (click)="skipPuzzleMove.emit()">
-            Salta mossa
+        <p class="puzzle-status-message" role="status" aria-live="polite">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+        <div class="puzzle-status-actions">
+          <button
+            type="button"
+            class="puzzle-assist compact-action icon-action"
+            aria-label="Salta mossa"
+            title="Salta mossa"
+            [disabled]="!showPuzzleSkipMove"
+            (click)="skipPuzzleMove.emit()"
+          >
+            <app-icon name="skip-move"></app-icon>
           </button>
-          <button *ngIf="showPuzzleHint" type="button" class="puzzle-assist compact-action" (click)="hintPuzzleMove.emit()">
-            Suggerimento
+          <button
+            type="button"
+            class="puzzle-assist compact-action icon-action"
+            aria-label="Mostra suggerimento"
+            title="Suggerimento"
+            [disabled]="!showPuzzleHint"
+            (click)="hintPuzzleMove.emit()"
+          >
+            <app-icon name="hint"></app-icon>
           </button>
-          <button *ngIf="showSurrender" type="button" class="surrender compact-action" (click)="surrenderPuzzle.emit()">
-            Arrenditi
+          <button
+            type="button"
+            class="surrender compact-action icon-action"
+            aria-label="Arrenditi"
+            title="Arrenditi"
+            [disabled]="!showSurrender"
+            (click)="surrenderPuzzle.emit()"
+          >
+            <app-icon name="surrender"></app-icon>
           </button>
           <button
             *ngIf="showBatchDrillInfo"
@@ -164,7 +186,6 @@
           </button>
         </div>
       </div>
-      <p class="puzzle-status-message" role="status" aria-live="polite">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
       <div *ngIf="showBatchDrillInfo" class="batch-drill-status">
         <span class="batch-drill-badge">{{ batchDrillProgressLabel }}</span>
       </div>
@@ -292,44 +313,48 @@
         <strong>Mossa {{ moveCursor }}/{{ moves.length }}</strong>
       </div> -->
 
-      <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
-        <app-icon name="first"></app-icon>
-      </button>
-      <button
-        type="button"
-        class="history-icon-button"
-        [disabled]="!canGoBack"
-        aria-label="Mossa precedente"
-        (click)="previousMove.emit()"
-      >
-        <app-icon name="previous"></app-icon>
-      </button>
-      <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
-        <app-icon name="next"></app-icon>
-      </button>
-      <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
-        <app-icon name="last"></app-icon>
-      </button>
+      <div class="history-step-actions" role="group" aria-label="Navigazione mosse">
+        <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
+          <app-icon name="first"></app-icon>
+        </button>
+        <button
+          type="button"
+          class="history-icon-button"
+          [disabled]="!canGoBack"
+          aria-label="Mossa precedente"
+          (click)="previousMove.emit()"
+        >
+          <app-icon name="previous"></app-icon>
+        </button>
+        <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
+          <app-icon name="next"></app-icon>
+        </button>
+        <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
+          <app-icon name="last"></app-icon>
+        </button>
+      </div>
 
-      <button
-        type="button"
-        class="position-action-button"
-        aria-label="Salva la posizione nei bookmark"
-        (click)="openBookmarkModal($event)"
-      >
-        <app-icon name="bookmark"></app-icon>
-      </button>
+      <div class="history-utility-actions" role="group" aria-label="Azioni posizione">
+        <button
+          type="button"
+          class="position-action-button"
+          aria-label="Salva la posizione nei bookmark"
+          (click)="openBookmarkModal($event)"
+        >
+          <app-icon name="bookmark"></app-icon>
+        </button>
 
-      <button
-        type="button"
-        class="quick-menu-trigger"
-        [attr.aria-label]="isQuickMenuOpen ? 'Chiudi azioni rapide' : 'Apri azioni rapide'"
-        [attr.aria-expanded]="isQuickMenuOpen"
-        [attr.aria-controls]="instanceId + '-quick-menu'"
-        (click)="toggleQuickMenu()"
-      >
-        <app-icon name="more"></app-icon>
-      </button>
+        <button
+          type="button"
+          class="quick-menu-trigger"
+          [attr.aria-label]="isQuickMenuOpen ? 'Chiudi azioni rapide' : 'Apri azioni rapide'"
+          [attr.aria-expanded]="isQuickMenuOpen"
+          [attr.aria-controls]="instanceId + '-quick-menu'"
+          (click)="toggleQuickMenu()"
+        >
+          <app-icon name="more"></app-icon>
+        </button>
+      </div>
     </div>
 
     <section [id]="instanceId + '-quick-menu'" class="quick-menu" *ngIf="isQuickMenuOpen">

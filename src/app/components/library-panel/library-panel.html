@@ -314,29 +314,60 @@
 
           <div class="card-actions-wrapper">
             <div class="card-primary-actions">
-              <button type="button" class="btn-primary" (click)="onOpenItem(item.id)">Apri {{ activePgnTabLabel() }}</button>
-              <button type="button" class="btn-success" *ngIf="hasResumeSession(item.id)"
-                (click)="onResumeItem(item.id)">Riprendi</button>
-              <button type="button" class="btn-secondary" (click)="toggleItemExpansion(item.id)">
+              <button
+                type="button"
+                class="card-primary-action"
+                *ngIf="hasResumeSession(item.id); else openItemPrimaryAction"
+                (click)="onResumeItem(item.id)"
+              >
+                {{ woodpeckerStatusLabel(item.id) }}
+              </button>
+              <ng-template #openItemPrimaryAction>
+                <button type="button" class="card-primary-action" (click)="onOpenItem(item.id)">
+                  Apri {{ activePgnTabLabel() }}
+                </button>
+              </ng-template>
+            </div>
+
+            <div class="card-secondary-actions" role="group" aria-label="Azioni secondarie">
+              <button
+                type="button"
+                class="card-secondary-action"
+                *ngIf="hasResumeSession(item.id)"
+                (click)="onOpenItem(item.id)"
+              >
+                Apri {{ activePgnTabLabel() }}
+              </button>
+              <button
+                type="button"
+                class="card-secondary-action"
+                [attr.aria-expanded]="isExpanded(item.id)"
+                [attr.aria-controls]="'card-details-' + item.id"
+                (click)="toggleItemExpansion(item.id)"
+              >
                 {{ isExpanded(item.id) ? 'Nascondi' : 'Anteprima' }} partite
+              </button>
+              <button type="button" class="card-secondary-action" (click)="onOpenDashboard(item.id)">
+                Dashboard Woodpecker
               </button>
             </div>
 
-            <div class="card-secondary-actions">
-              <button type="button" class="btn-outline-info" (click)="onOpenDashboard(item.id)">Dashboard
-                Woodpecker</button>
-              <div class="card-danger-actions">
-                <button type="button" class="btn-text-danger" *ngIf="hasWoodpeckerSession(item.id)"
-                  (click)="onDeleteWoodpeckerSession(item.id)" title="Elimina sessione Woodpecker">
-                  Rim. sess.
-                </button>
-                <button type="button" class="btn-text-danger" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)"
-                  title="Rimuovi file PGN">Rimuovi PGN</button>
-              </div>
+            <div class="card-danger-actions" role="group" aria-label="Azioni distruttive" *ngIf="hasWoodpeckerSession(item.id) || canRemoveItem()">
+              <button
+                type="button"
+                class="card-danger-action"
+                *ngIf="hasWoodpeckerSession(item.id)"
+                (click)="onDeleteWoodpeckerSession(item.id)"
+              >
+                Elimina sessione
+              </button>
+              <button type="button" class="card-danger-action" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)">
+                Rimuovi PGN
+              </button>
             </div>
           </div>
 
-          <section class="card-details" *ngIf="isExpanded(item.id)">
+          <section class="card-details" [id]="'card-details-' + item.id" *ngIf="isExpanded(item.id)">
             <label class="game-filter" [attr.for]="'item-inline-game-filter-' + item.id">
               Filtra partite
               <input [id]="'item-inline-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"

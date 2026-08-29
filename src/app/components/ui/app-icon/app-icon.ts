@@ -18,7 +18,10 @@ export type AppIconName =
   | 'rotate'
   | 'copy'
   | 'arrow-left'
-  | 'play';
+  | 'play'
+  | 'skip-move'
+  | 'hint'
+  | 'surrender';
 
 @Component({
   selector: 'app-icon',

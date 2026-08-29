@@ -459,6 +459,7 @@ app-library-panel {
   .poc-shell {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
   }
 
   .board-section,

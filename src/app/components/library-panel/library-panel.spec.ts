@@ -102,4 +102,50 @@ describe('LibraryPanelComponent', () => {
     expect(filtered.length).toBe(1);
     expect(filtered[0].id).toBe('bookmark-2');
   });
+
+  it('should make resume the only primary card action when a session is available', () => {
+    component.items = [
+      {
+        id: 'pgn-1',
+        name: 'Allenamento.pgn',
+        pgn: '',
+        mode: 'puzzle',
+        games: [],
+      },
+    ];
+    component.woodpeckerSessionInfoByItemId = {
+      'pgn-1': { hasSession: true, resumePuzzleIndex: 4 },
+    };
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const primaryActions = compiled.querySelectorAll<HTMLButtonElement>('.card-primary-action');
+    const secondaryActions = Array.from(
+      compiled.querySelectorAll<HTMLButtonElement>('.card-secondary-action'),
+    ).map((button) => button.textContent?.trim());
+
+    expect(primaryActions.length).toBe(1);
+    expect(primaryActions[0].textContent?.trim()).toBe('Riprendi dal puzzle 5');
+    expect(secondaryActions).toContain('Apri PGN');
+    expect(secondaryActions).toContain('Anteprima partite');
+    expect(secondaryActions).toContain('Dashboard Woodpecker');
+  });
+
+  it('should make open the primary card action when no session can be resumed', () => {
+    component.items = [
+      {
+        id: 'pgn-1',
+        name: 'Allenamento.pgn',
+        pgn: '',
+        mode: 'view',
+        games: [],
+      },
+    ];
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const primaryAction = compiled.querySelector<HTMLButtonElement>('.card-primary-action');
+
+    expect(primaryAction?.textContent?.trim()).toBe('Apri PGN');
+  });
 });
