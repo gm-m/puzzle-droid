@@ -1,13 +1,14 @@
-import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SettingsService } from '../../services/settings.service';
 import { AppSettings } from '../../models/settings.models';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
+import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
 
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AppDialogComponent],
   templateUrl: './settings-panel.html',
   styleUrl: './settings-panel.scss'
 })
@@ -20,9 +21,6 @@ export class SettingsPanelComponent {
   backupFeedbackKind: 'success' | 'error' | 'info' = 'info';
   isImportingBackup = false;
   isResetConfirmationOpen = false;
-
-  @ViewChild('resetDialog') private resetDialog?: ElementRef<HTMLElement>;
-  private resetTrigger: HTMLElement | null = null;
 
   updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
     this.settingsService.updateSettings({ [key]: value });
@@ -58,17 +56,12 @@ export class SettingsPanelComponent {
     this.updateSetting('highlightLastMove', checked);
   }
 
-  openResetConfirmation(event: Event): void {
-    this.resetTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  openResetConfirmation(): void {
     this.isResetConfirmationOpen = true;
-    setTimeout(() => this.resetDialog?.nativeElement.querySelector<HTMLElement>('[autofocus]')?.focus());
   }
 
   closeResetConfirmation(): void {
     this.isResetConfirmationOpen = false;
-    const trigger = this.resetTrigger;
-    this.resetTrigger = null;
-    setTimeout(() => trigger?.focus());
   }
 
   confirmResetSettings(): void {
@@ -108,29 +101,6 @@ export class SettingsPanelComponent {
     } finally {
       this.isImportingBackup = false;
       input.value = '';
-    }
-  }
-
-  @HostListener('document:keydown.escape', ['$event'])
-  onEscape(event: Event): void {
-    if (this.isResetConfirmationOpen) {
-      event.preventDefault();
-      this.closeResetConfirmation();
-    }
-  }
-
-  onDialogKeydown(event: KeyboardEvent, dialog: HTMLElement): void {
-    if (event.key !== 'Tab') return;
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
     }
   }
 

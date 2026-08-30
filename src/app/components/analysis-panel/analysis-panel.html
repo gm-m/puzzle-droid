@@ -2,6 +2,11 @@
   <section class="analysis-engine-region" *ngIf="showEngineArea">
   <div class="library-game-context" *ngIf="libraryGameTitle">
     <p class="library-game-title">{{ libraryGameTitle }}</p>
+    <div class="turn-indicator compact" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'"
+      [attr.aria-label]="'Al tratto: ' + (turnColor === 'white' ? 'Bianco' : 'Nero')">
+      <span class="turn-dot" aria-hidden="true"></span>
+      <span aria-hidden="true">{{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
+    </div>
     <button
       *ngIf="showLibraryGamePicker"
       type="button"
@@ -15,7 +20,7 @@
     </button>
   </div>
 
-  <div *ngIf="showEngineArea" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
+  <div *ngIf="showEngineArea && !libraryGameTitle" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
     <span class="turn-dot" aria-hidden="true"></span>
     <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
   </div>
@@ -133,6 +138,7 @@
   <ng-template #puzzleModeInfo>
     <section class="puzzle-status">
       <div class="puzzle-status-toolbar">
+        <!-- <p class="section-tag">Modalità Puzzle</p> -->
         <p class="puzzle-status-message" role="status" aria-live="polite">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
         <div class="puzzle-status-actions">
           <button

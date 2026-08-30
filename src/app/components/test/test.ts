@@ -13,11 +13,13 @@ import {
   type LibraryGameSelection,
   type LibraryModeChange,
   type LibraryResumeRequest,
+  type LibraryUploadResult,
   type LibraryWoodpeckerSessionInfo,
   type LibraryWoodpeckerTargetDaysChange,
 } from '../library-panel/library-panel';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
+import { AppToastComponent } from '../ui/app-toast/app-toast';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
@@ -44,7 +46,7 @@ type AppView = 'analysis' | 'library' | 'settings';
 
 @Component({
   selector: 'app-chess-workspace',
-  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent, AppIconComponent],
+  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent, AppIconComponent, AppToastComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })
@@ -101,6 +103,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
   readonly famousTacticsItems = signal<PgnLibraryItem[]>([]);
+  readonly isLibraryUploadInProgress = signal(false);
+  readonly libraryUploadResults = signal<LibraryUploadResult[]>([]);
   readonly libraryOpenedItemId = signal<string | null>(null);
   readonly currentLibraryGameTitle = signal('');
   readonly isLibraryGamePickerOpen = signal(false);
@@ -123,6 +127,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private currentWoodpeckerSessionKey: string | null = null;
   private woodpeckerSessionsByKey: Record<string, WoodpeckerSession> = {};
   private puzzleAttemptStartedAt: number | null = null;
+  private menuTriggerElement: HTMLElement | null = null;
+  private libraryPickerTriggerElement: HTMLElement | null = null;
   private touchStartX: number | null = null;
   private touchStartY: number | null = null;
   private touchStartFromLeftEdge = false;
@@ -197,8 +203,47 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   toggleMenu(): void {
-    this.closeLibraryGamePicker();
-    this.isMenuOpen.update((value) => !value);
+    if (this.isMenuOpen()) {
+      this.closeMenu();
+      return;
+    }
+
+    this.closeLibraryGamePicker(false);
+    this.menuTriggerElement = document.activeElement as HTMLElement | null;
+    this.isMenuOpen.set(true);
+    setTimeout(() => document.querySelector<HTMLElement>('#primary-navigation .menu-item')?.focus());
+  }
+
+  closeMenu(restoreFocus = true): void {
+    this.isMenuOpen.set(false);
+    if (restoreFocus) {
+      const trigger = this.menuTriggerElement;
+      this.menuTriggerElement = null;
+      setTimeout(() => trigger?.focus());
+    }
+  }
+
+  onDrawerKeydown(event: KeyboardEvent, drawer: HTMLElement): void {
+    if (event.key !== 'Tab') {
+      return;
+    }
+
+    const focusable = Array.from(
+      drawer.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'),
+    );
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) {
+      return;
+    }
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   currentViewTitle(): string {
@@ -228,7 +273,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }, 2600);
   }
 
-  private clearToast(): void {
+  clearToast(): void {
     if (this.toastTimer) {
       clearTimeout(this.toastTimer);
       this.toastTimer = null;
@@ -285,15 +330,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.isEngineHidden()) {
       // return `Engine OFF · d${this.depth()} · Puzzle`;
       // return `Engine OFF · Puzzle`;
-      return `Puzzle Mode`;
+      return 'Puzzle';
     }
 
     if (this.isAnalyzing()) {
       // return `Engine ON · d${this.depth()} · Analisi`;
-      return `Engine ON · Analisi`;
+      return 'Engine attivo';
     }
 
-    return `Engine ON · d${this.depth()}`;
+    return `Engine d${this.depth()}`;
   }
 
   onContentTouchStart(event: TouchEvent): void {
@@ -346,7 +391,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     if (deltaX > 0 && this.touchStartFromLeftEdge) {
-      this.isMenuOpen.set(true);
+      this.toggleMenu();
     }
 
     this.resetTouchState();
@@ -367,7 +412,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
       if (this.isMenuOpen()) {
         event.preventDefault();
-        this.isMenuOpen.set(false);
+        this.closeMenu();
         return;
       }
     }
@@ -402,9 +447,14 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.libraryGameFilter.set(value);
   }
 
-  closeLibraryGamePicker(): void {
+  closeLibraryGamePicker(restoreFocus = true): void {
     this.isLibraryGamePickerOpen.set(false);
     this.libraryGameFilter.set('');
+    if (restoreFocus) {
+      const trigger = this.libraryPickerTriggerElement;
+      this.libraryPickerTriggerElement = null;
+      setTimeout(() => trigger?.focus());
+    }
   }
 
   libraryGamePickerEntries(): LibraryGameListEntry[] {
@@ -453,34 +503,88 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   async onLibraryFilesSelected(files: FileList | null): Promise<void> {
-    if (!files || files.length === 0) {
+    if (!files || files.length === 0 || this.isLibraryUploadInProgress()) {
       return;
     }
 
-    const parsedItems = await Promise.all(
-      Array.from(files).map(async (file, index) => {
-        const pgn = await file.text();
-        const itemId = `${Date.now()}-${index}-${file.name}`;
-        const games = this.parsePgnGames(pgn, itemId);
-        const firstGame = games[0];
+    this.isLibraryUploadInProgress.set(true);
+    this.libraryUploadResults.set([]);
+    const uploadId = Date.now();
 
-        return {
-          id: itemId,
-          name: file.name,
-          pgn,
-          mode: 'view',
-          woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
-          games,
-          event: firstGame?.event,
-          white: firstGame?.white,
-          black: firstGame?.black,
-          result: firstGame?.result,
-        } as PgnLibraryItem;
-      }),
-    );
+    try {
+      const parsed = await Promise.all(
+        Array.from(files).map(async (file, index): Promise<{ item: PgnLibraryItem | null; result: LibraryUploadResult }> => {
+          try {
+            if (!file.name.toLowerCase().endsWith('.pgn')) {
+              return {
+                item: null,
+                result: { fileName: file.name, status: 'error', message: 'Formato non supportato: usa un file .pgn.' },
+              };
+            }
 
-    this.libraryItems.update((items) => [...parsedItems, ...items]);
-    this.persistLibraryItems();
+            const pgn = await file.text();
+            if (!pgn.trim()) {
+              return {
+                item: null,
+                result: { fileName: file.name, status: 'error', message: 'Il file è vuoto.' },
+              };
+            }
+
+            const itemId = `${uploadId}-${index}-${file.name}`;
+            const games = this.parsePgnGames(pgn, itemId).filter((game) => game.positions.length > 1);
+            const firstGame = games[0];
+            if (!firstGame) {
+              return {
+                item: null,
+                result: { fileName: file.name, status: 'error', message: 'Nessuna partita con mosse valide trovata.' },
+              };
+            }
+
+            return {
+              item: {
+                id: itemId,
+                name: file.name,
+                pgn,
+                mode: 'view',
+                woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
+                games,
+                event: firstGame.event,
+                white: firstGame.white,
+                black: firstGame.black,
+                result: firstGame.result,
+              },
+              result: {
+                fileName: file.name,
+                status: 'success',
+                message: `${games.length} ${games.length === 1 ? 'partita importata' : 'partite importate'}.`,
+              },
+            };
+          } catch {
+            return {
+              item: null,
+              result: { fileName: file.name, status: 'error', message: 'Impossibile leggere o analizzare il file.' },
+            };
+          }
+        }),
+      );
+
+      const parsedItems = parsed.flatMap(({ item }) => (item ? [item] : []));
+      this.libraryUploadResults.set(parsed.map(({ result }) => result));
+      if (parsedItems.length > 0) {
+        this.libraryItems.update((items) => [...parsedItems, ...items]);
+        this.persistLibraryItems();
+      }
+
+      const failedCount = parsed.length - parsedItems.length;
+      this.showToast(
+        failedCount > 0
+          ? `${parsedItems.length} file importati, ${failedCount} non importati.`
+          : `${parsedItems.length} ${parsedItems.length === 1 ? 'file importato' : 'file importati'} correttamente.`,
+        failedCount > 0 ? 'error' : 'success',
+      );
+    } finally {
+      this.isLibraryUploadInProgress.set(false);
+    }
   }
 
   onLibraryModeChanged(change: LibraryModeChange): void {
@@ -2788,8 +2892,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private applyViewState(view: AppView): void {
     this.activeView.set(view);
-    this.isMenuOpen.set(false);
-    this.closeLibraryGamePicker();
+    this.closeMenu(false);
+    this.closeLibraryGamePicker(false);
 
     if (view === 'analysis') {
       setTimeout(() => this.observeBoardSize());
@@ -2802,9 +2906,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    this.isMenuOpen.set(false);
+    this.libraryPickerTriggerElement = document.activeElement as HTMLElement | null;
+    this.closeMenu(false);
     this.libraryGameFilter.set('');
     this.isLibraryGamePickerOpen.set(true);
+    setTimeout(() => document.querySelector<HTMLElement>('#library-game-picker .library-picker-close')?.focus());
   }
 
   private resetTouchState(): void {

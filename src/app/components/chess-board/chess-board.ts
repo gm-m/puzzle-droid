@@ -70,6 +70,16 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
     });
   }
 
+  boardAriaLabel(): string {
+    const orientationLabel = this.orientation === 'white' ? 'bianco in basso' : 'nero in basso';
+    const turnLabel = this.turnColor === 'white' ? 'Bianco' : 'Nero';
+    return `Scacchiera, ${orientationLabel}. Al tratto: ${turnLabel}.`;
+  }
+
+  boardPositionDescription(): string {
+    return `Posizione corrente in formato FEN: ${this.fen}`;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.boardApi) {
       return;

@@ -1,0 +1,22 @@
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: clamp(var(--space-5), 5vw, var(--space-8));
+  background: var(--surface-1);
+  color: var(--text-primary);
+  text-align: center;
+
+  strong {
+    font-size: 1rem;
+  }
+
+  p {
+    max-width: 46ch;
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+}

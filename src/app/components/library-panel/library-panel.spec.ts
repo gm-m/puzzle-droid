@@ -72,15 +72,18 @@ describe('LibraryPanelComponent', () => {
     expect(component.editingBookmarkId).toBeNull();
   });
 
-  it('should emit bookmark deletion and clear edit mode for the same bookmark', () => {
+  it('should emit bookmark deletion after confirmation and clear edit mode', () => {
     spyOn(component.positionBookmarkDeleted, 'emit');
-    spyOn(window, 'confirm').and.returnValue(true);
     component.startBookmarkEdit('bookmark-1');
 
     component.deleteBookmark('bookmark-1');
+    expect(component.positionBookmarkDeleted.emit).not.toHaveBeenCalled();
+
+    component.confirmBookmarkDelete();
 
     expect(component.positionBookmarkDeleted.emit).toHaveBeenCalledWith('bookmark-1');
     expect(component.editingBookmarkId).toBeNull();
+    expect(component.bookmarkPendingDeleteId).toBeNull();
   });
 
   it('should filter bookmarks by title, note or fen and sort them', () => {
@@ -147,5 +150,25 @@ describe('LibraryPanelComponent', () => {
     const primaryAction = compiled.querySelector<HTMLButtonElement>('.card-primary-action');
 
     expect(primaryAction?.textContent?.trim()).toBe('Apri PGN');
+  });
+
+  it('should apply advanced filters without requiring a general search query', () => {
+    const item = {
+      id: 'pgn-1',
+      name: 'Allenamento.pgn',
+      pgn: '',
+      mode: 'view' as const,
+      games: [
+        { id: 'game-1', initialFen: '', positions: [], white: 'Carlsen', black: 'Nakamura', result: '1-0' },
+        { id: 'game-2', initialFen: '', positions: [], white: 'Kasparov', black: 'Karpov', result: '0-1' },
+      ],
+    };
+    const input = document.createElement('input');
+    input.value = 'Carlsen';
+
+    component.onHeaderFilterInput(item.id, 'white', { target: input } as unknown as Event);
+
+    expect(component.itemGameFilter(item.id)).toBe('');
+    expect(component.filteredGameEntries(item).map((entry) => entry.game.id)).toEqual(['game-1']);
   });
 });

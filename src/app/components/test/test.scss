@@ -37,6 +37,7 @@
 
 .topbar-title-wrap {
   min-width: 0;
+  flex: 1 1 auto;
 
   h1 {
     margin: 0;
@@ -68,12 +69,57 @@
   font-weight: 700;
 }
 
+.topbar-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.topbar-turn,
+.topbar-game-picker {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 0;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+
+.topbar-turn-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-elevated);
+}
+
+.topbar-turn.black .topbar-turn-dot {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+}
+
+.topbar-game-picker {
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--primary);
+  cursor: pointer;
+}
+
 .topbar-engine {
   margin: 0;
-  border: 1px solid #2563eb33;
-  border-radius: 999px;
-  background: #2563eb14;
-  color: var(--text-primary);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius-full);
+  background: var(--info-soft);
+  color: var(--info);
   font-weight: 700;
   font-size: 0.82rem;
   padding: 0.35rem 0.65rem;
@@ -81,8 +127,9 @@
   flex-shrink: 0;
 
   &.off {
-    border-color: #f9731633;
-    background: #f9731612;
+    border-color: var(--warning-border);
+    background: var(--warning-soft);
+    color: var(--warning);
   }
 }
 
@@ -235,34 +282,6 @@ app-library-panel {
 
 .menu-backdrop {
   display: none;
-}
-
-.app-toast {
-  position: fixed;
-  right: var(--space-4);
-  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
-  z-index: 80;
-  max-width: min(90vw, 380px);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--info-border);
-  background: var(--info-soft);
-  color: var(--info);
-  padding: var(--space-3) var(--space-4);
-  box-shadow: var(--shadow-md);
-  font-weight: 700;
-  line-height: 1.35;
-
-  &.success {
-    border-color: var(--success-border);
-    background: var(--success-soft);
-    color: var(--success);
-  }
-
-  &.error {
-    border-color: var(--danger-border);
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
 }
 
 .library-picker-backdrop {
@@ -475,6 +494,10 @@ app-library-panel {
 @media (max-width: 600px) {
   .app-topbar {
     gap: 0.45rem;
+  }
+
+  .topbar-tools .topbar-engine {
+    display: none;
   }
 
   .topbar-engine {

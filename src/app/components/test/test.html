@@ -1,10 +1,11 @@
 <main id="main-content" class="layout-shell" tabindex="-1">
-  <header class="app-topbar">
+  <header class="app-topbar" [attr.inert]="isMenuOpen() || isLibraryGamePickerOpen() ? '' : null"
+    [attr.aria-hidden]="isMenuOpen() || isLibraryGamePickerOpen() ? 'true' : null">
     <div class="topbar-main">
       <button
         type="button"
         class="menu-trigger"
-        aria-label="Apri navigazione"
+        [attr.aria-label]="isMenuOpen() ? 'Chiudi navigazione' : 'Apri navigazione'"
         aria-controls="primary-navigation"
         [attr.aria-expanded]="isMenuOpen()"
         (click)="toggleMenu()"
@@ -30,10 +31,24 @@
       </div>
     </div>
     <!-- <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p> -->
-    <p class="topbar-engine" [class.off]="isEngineHidden()" aria-live="polite">{{ topBarEngineStatus() }}</p>
+    <div class="topbar-tools" *ngIf="activeView() === 'analysis'">
+      <span class="topbar-turn" [class.black]="turnColor() === 'black'"
+        [attr.aria-label]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')"
+        [title]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')">
+        <span class="topbar-turn-dot" aria-hidden="true"></span>
+        <span aria-hidden="true">{{ turnColor() === 'white' ? 'B' : 'N' }}</span>
+      </span>
+      <button *ngIf="showLibraryGameNavigation()" type="button" class="topbar-game-picker"
+        aria-label="Apri elenco partite" title="Elenco partite" (click)="openLibraryGamePicker()">
+        <app-icon name="list"></app-icon>
+      </button>
+      <p class="topbar-engine" [class.off]="isEngineHidden()" aria-live="polite">{{ topBarEngineStatus() }}</p>
+    </div>
   </header>
 
-  <nav id="primary-navigation" class="side-menu" [class.open]="isMenuOpen()" aria-label="Navigazione principale">
+  <nav #primaryNavigation id="primary-navigation" class="side-menu" [class.open]="isMenuOpen()"
+    [attr.inert]="isLibraryGamePickerOpen() ? '' : null" [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null"
+    aria-label="Navigazione principale" (keydown)="onDrawerKeydown($event, primaryNavigation)">
     <div class="side-menu-brand" aria-label="Puzzle Droid">
       <span class="brand-mark" aria-hidden="true">PD</span>
       <span>
@@ -74,7 +89,9 @@
     </button>
   </nav>
 
-  <div class="content-area" (touchstart)="onContentTouchStart($event)" (touchend)="onContentTouchEnd($event)" (touchcancel)="onContentTouchCancel()">
+  <div class="content-area" [attr.inert]="isMenuOpen() || isLibraryGamePickerOpen() ? '' : null"
+    [attr.aria-hidden]="isMenuOpen() || isLibraryGamePickerOpen() ? 'true' : null"
+    (touchstart)="onContentTouchStart($event)" (touchend)="onContentTouchEnd($event)" (touchcancel)="onContentTouchCancel()">
     <ng-container *ngIf="activeView() === 'analysis'">
       <section class="poc-shell">
         <app-analysis-panel
@@ -181,6 +198,8 @@
         [openedItemId]="libraryOpenedItemId()"
         [positionBookmarks]="positionBookmarks()"
         [woodpeckerSessionInfoByItemId]="libraryWoodpeckerSessionInfoByItemId()"
+        [isUploadInProgress]="isLibraryUploadInProgress()"
+        [uploadResults]="libraryUploadResults()"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"
@@ -211,12 +230,14 @@
   ></button>
 
   <aside
+    #libraryGamePicker
     id="library-game-picker"
     class="library-picker-drawer"
     [class.open]="isLibraryGamePickerOpen()"
     [attr.aria-hidden]="!isLibraryGamePickerOpen()"
     [attr.inert]="isLibraryGamePickerOpen() ? null : ''"
     aria-label="Elenco partite libreria"
+    (keydown)="onDrawerKeydown($event, libraryGamePicker)"
   >
     <header class="library-picker-header">
       <h2>{{ currentLibraryItemName() || 'Elenco partite' }}</h2>
@@ -264,7 +285,5 @@
     (click)="toggleMenu()"
   ></button>
 
-  <div *ngIf="toastMessage()" class="app-toast" [class.success]="toastTone() === 'success'" [class.error]="toastTone() === 'error'" role="status" aria-live="polite">
-    {{ toastMessage() }}
-  </div>
+  <app-toast *ngIf="toastMessage()" [message]="toastMessage()" [tone]="toastTone()" (closed)="clearToast()"></app-toast>
 </main>

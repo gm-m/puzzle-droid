@@ -204,31 +204,6 @@
   &.info { color: var(--info); }
 }
 
-.reset-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: var(--overlay);
-}
-
-.reset-modal {
-  width: min(100%, 30rem);
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--surface-elevated);
-  box-shadow: var(--shadow-lg);
-
-  h2, p { margin: 0; }
-  h2 { color: var(--text-primary); font-size: var(--font-lg); }
-  p { color: var(--text-secondary); }
-}
-
 .reset-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
 
 .btn-cancel {

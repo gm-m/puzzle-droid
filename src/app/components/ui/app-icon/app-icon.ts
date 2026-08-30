@@ -21,7 +21,9 @@ export type AppIconName =
   | 'play'
   | 'skip-move'
   | 'hint'
-  | 'surrender';
+  | 'surrender'
+  | 'chart'
+  | 'trash';
 
 @Component({
   selector: 'app-icon',

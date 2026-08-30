@@ -1,0 +1,14 @@
+@if (open) {
+  <div class="backdrop" (click)="requestClose()">
+    <section #dialog class="dialog" role="dialog" aria-modal="true" [attr.aria-labelledby]="titleId"
+      tabindex="-1" (keydown)="onKeydown($event)" (click)="$event.stopPropagation()">
+      <header>
+        <h2 [id]="titleId">{{ title }}</h2>
+        <button autofocus type="button" aria-label="Chiudi finestra" (click)="requestClose()">
+          <app-icon name="close"></app-icon>
+        </button>
+      </header>
+      <div class="content"><ng-content></ng-content></div>
+    </section>
+  </div>
+}

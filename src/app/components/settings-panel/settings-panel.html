@@ -89,19 +89,16 @@
       <p class="backup-feedback" *ngIf="backupFeedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
       </div>
       <div class="settings-actions">
-        <button type="button" class="btn-reset" (click)="openResetConfirmation($event)">Ripristina impostazioni</button>
+        <button type="button" class="btn-reset" (click)="openResetConfirmation()">Ripristina impostazioni</button>
       </div>
     </section>
   </div>
 </div>
 
-<div class="reset-modal-backdrop" *ngIf="isResetConfirmationOpen" (click)="closeResetConfirmation()">
-  <section #resetDialog class="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description" tabindex="-1" (keydown)="onDialogKeydown($event, resetDialog)" (click)="$event.stopPropagation()">
-    <h2 id="reset-dialog-title">Ripristinare le impostazioni?</h2>
-    <p id="reset-dialog-description">Il tema e le preferenze della scacchiera torneranno ai valori iniziali. I dati della libreria e degli allenamenti non verranno modificati.</p>
-    <div class="reset-modal-actions">
-      <button type="button" class="btn-cancel" autofocus (click)="closeResetConfirmation()">Annulla</button>
-      <button type="button" class="btn-reset" (click)="confirmResetSettings()">Ripristina</button>
-    </div>
-  </section>
-</div>
+<app-dialog [open]="isResetConfirmationOpen" title="Ripristinare le impostazioni?" (closed)="closeResetConfirmation()">
+  <p>Il tema e le preferenze della scacchiera torneranno ai valori iniziali. I dati della libreria e degli allenamenti non verranno modificati.</p>
+  <div class="reset-modal-actions">
+    <button type="button" class="btn-cancel" autofocus (click)="closeResetConfirmation()">Annulla</button>
+    <button type="button" class="btn-reset" (click)="confirmResetSettings()">Ripristina</button>
+  </div>
+</app-dialog>

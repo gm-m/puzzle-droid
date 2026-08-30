@@ -1,11 +1,26 @@
 <section class="library-panel">
-  <header class="library-header">
+  <ng-container *ngIf="!openedItem()">
+  <header class="library-header" [attr.aria-busy]="isUploadInProgress">
     <h1>Libreria PGN</h1>
-    <label class="upload-button">
-      Carica PGN
-      <input type="file" accept=".pgn,text/plain" multiple (change)="onFilesInput($event)" />
+    <label class="upload-button" [class.loading]="isUploadInProgress">
+      {{ isUploadInProgress ? 'Importazione…' : 'Carica PGN' }}
+      <input type="file" accept=".pgn" multiple [disabled]="isUploadInProgress"
+        aria-describedby="pgn-upload-help" (change)="onFilesInput($event)" />
     </label>
+    <p id="pgn-upload-help" class="upload-help">File .pgn, anche multipli. Ogni file viene verificato prima dell'importazione.</p>
   </header>
+
+  <section class="upload-results" *ngIf="isUploadInProgress || uploadResults.length > 0" aria-live="polite" aria-atomic="true">
+    <app-loading-indicator *ngIf="isUploadInProgress" class="upload-progress"
+      label="Lettura e verifica dei file in corso" [visibleLabel]="true"></app-loading-indicator>
+    <ul *ngIf="uploadResults.length > 0">
+      <li *ngFor="let result of uploadResults" [class.upload-success]="result.status === 'success'"
+        [class.upload-error]="result.status === 'error'">
+        <strong>{{ result.fileName }}</strong>
+        <span>{{ result.message }}</span>
+      </li>
+    </ul>
+  </section>
 
   <div class="library-tabs" role="group" aria-label="Vista libreria">
     <button type="button" class="library-tab" [class.active]="activeTab === 'pgn'" [attr.aria-pressed]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">
@@ -22,6 +37,7 @@
   <p class="hint" *ngIf="activeTab === 'pgn'">Carica file PGN, apri una card e seleziona una partita per avviarla sulla scacchiera.</p>
   <p class="hint" *ngIf="activeTab === 'famous-tactics'">Studia tattiche estratte da partite famose realmente giocate.</p>
   <p class="hint" *ngIf="activeTab === 'bookmarks'">Consulta le posizioni salvate e riaprile rapidamente dalla libreria.</p>
+  </ng-container>
 
   <section class="bookmark-library-view" *ngIf="activeTab === 'bookmarks'; else pgnLibraryView">
     <div class="bookmark-library-toolbar" *ngIf="positionBookmarks.length > 0">
@@ -60,10 +76,11 @@
           </ng-container>
 
           <ng-template #bookmarkEditForm>
-            <form class="bookmark-library-edit" (submit)="$event.preventDefault(); saveBookmarkEdit(bookmark.id, bookmarkTitleInput, bookmarkNoteInput)">
+            <form class="bookmark-library-edit" aria-label="Modifica bookmark"
+              (submit)="$event.preventDefault(); saveBookmarkEdit(bookmark.id, bookmarkTitleInput, bookmarkNoteInput)">
               <label>
                 Titolo
-                <input #bookmarkTitleInput type="text" [value]="bookmark.title" maxlength="80" />
+                <input #bookmarkTitleInput autofocus type="text" [value]="bookmark.title" maxlength="80" />
               </label>
 
               <label>
@@ -82,8 +99,19 @@
     </ng-container>
 
     <ng-template #emptyBookmarksState>
-      <div class="empty-state">{{ positionBookmarks.length === 0 ? 'Nessun bookmark salvato.' : 'Nessun bookmark trovato con i filtri correnti.' }}</div>
+      <app-empty-state
+        [title]="positionBookmarks.length === 0 ? 'Nessun bookmark salvato' : 'Nessun bookmark trovato'"
+        [description]="positionBookmarks.length === 0 ? 'Salva una posizione dall’area Analisi per ritrovarla qui.' : 'Prova a modificare il testo di ricerca o l’ordinamento.'"
+      ></app-empty-state>
     </ng-template>
+
+    <app-dialog [open]="bookmarkPendingDeleteId !== null" title="Eliminare il bookmark?" (closed)="cancelBookmarkDelete()">
+      <p class="bookmark-delete-description">“{{ pendingBookmarkDeleteTitle() }}” verrà rimosso definitivamente.</p>
+      <div class="bookmark-delete-actions">
+        <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelBookmarkDelete()">Annulla</button>
+        <button type="button" class="bookmark-danger-action" (click)="confirmBookmarkDelete()">Elimina</button>
+      </div>
+    </app-dialog>
   </section>
 
   <ng-template #pgnLibraryView>
@@ -97,136 +125,183 @@
           <div>
             <h2>{{ item.name }}</h2>
             <p>{{ item.games.length }} partite disponibili</p>
-            <span class="woodpecker-status-pill" [ngClass]="woodpeckerStatusClass(item.id)">{{ woodpeckerStatusLabel(item.id) }}</span>
+            <app-status-badge [tone]="woodpeckerStatusTone(item.id)">{{ woodpeckerStatusLabel(item.id) }}</app-status-badge>
           </div>
         </header>
 
         <section class="opened-item-controls">
-          <label class="mode-select">
-            Modalità
-            <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
-              <option value="view">Visualizzazione</option>
-              <option value="puzzle">Puzzle</option>
-            </select>
-          </label>
-
-          <div class="opened-item-actions">
-            <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)"
-              (click)="onResumeItem(item.id)">Riprendi</button>
-            <button type="button" class="dashboard-button" (click)="onOpenDashboard(item.id)">Dashboard
-              Woodpecker</button>
-            <button type="button" class="remove-item-button" *ngIf="hasWoodpeckerSession(item.id)"
-              (click)="onDeleteWoodpeckerSession(item.id)">
-              Elimina sessione Woodpecker
-            </button>
-            <button type="button" class="remove-item-button" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)">Rimuovi PGN</button>
-          </div>
-
-          <label class="woodpecker-target-days" *ngIf="item.mode === 'puzzle'">
-            Durata ciclo iniziale (giorni)
-            <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
-              (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
-          </label>
-
-          <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-            <input type="checkbox" [checked]="isPuzzleAutoFirstMove(item.id)"
-              (change)="onPuzzleAutoFirstMoveChange(item.id, $event)" />
-            Auto-esegui la prima mossa all'apertura partita
-          </label>
-
-          <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-            <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)"
-              (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
-            Vai al puzzle successivo quando risolto
-          </label>
-
-          <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-            <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)"
-              (change)="onPuzzleAutoRotateChange(item.id, $event)" />
-            Ruota automaticamente la scacchiera in base al tratto
-          </label>
-
-          <label class="puzzle-option" *ngIf="item.mode === 'puzzle'">
-            <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)"
-              (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
-            Metodo Woodpecker (ripetizione a cicli)
-          </label>
-
-          <div class="batch-drill-box" *ngIf="item.mode === 'puzzle'">
-            <label class="puzzle-option batch-header-option">
-              <input type="checkbox" [checked]="isPuzzleBatchEnabled(item.id)"
-                (change)="onPuzzleBatchEnabledChange(item.id, $event)" />
-              <strong>Modalità Micro-Set (intervallo limitato)</strong>
+          <div class="opened-control-row">
+            <label class="mode-select">
+              Modalità
+              <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
+                <option value="view">Visualizzazione</option>
+                <option value="puzzle">Puzzle</option>
+              </select>
             </label>
 
-            <div class="batch-drill-content" *ngIf="isPuzzleBatchEnabled(item.id)">
-              <div class="batch-range-row">
-                <label class="batch-field">
-                  Da puzzle:
-                  <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeFrom(item.id)"
-                    (input)="onPuzzleBatchRangeFromChange(item.id, $event)" />
-                </label>
-                <label class="batch-field">
-                  A puzzle:
-                  <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeTo(item.id, item.games.length)"
-                    (input)="onPuzzleBatchRangeToChange(item.id, $event, item.games.length)" />
-                </label>
-              </div>
-
-              <label class="puzzle-option sub-option">
-                <input type="checkbox" [checked]="isPuzzleBatchLoop(item.id)"
-                  (change)="onPuzzleBatchLoopChange(item.id, $event)" />
-                Ripeti a ciclo continuo questo set (senza andare oltre)
-              </label>
-
-              <label class="puzzle-option sub-option">
-                <input type="checkbox" [checked]="isPuzzleBatchShuffle(item.id)"
-                  (change)="onPuzzleBatchShuffleChange(item.id, $event)" />
-                Rimescola l'ordine (Shuffle) se sbagli o torni indietro
-              </label>
-
-              <button type="button" class="start-batch-button" (click)="startBatchDrill(item)">
-                <app-icon name="play"></app-icon>
-                Avvia Micro-Set ({{ puzzleBatchRangeFrom(item.id) }} - {{ puzzleBatchRangeTo(item.id, item.games.length) }})
+            <div class="opened-item-actions" role="group" aria-label="Azioni PGN">
+              <button type="button" class="opened-icon-action dashboard" aria-label="Apri dashboard Woodpecker"
+                title="Dashboard Woodpecker" (click)="onOpenDashboard(item.id)">
+                <app-icon name="chart"></app-icon>
+              </button>
+              <button type="button" class="opened-icon-action danger" *ngIf="hasWoodpeckerSession(item.id)"
+                aria-label="Elimina sessione Woodpecker" title="Elimina sessione Woodpecker"
+                (click)="onDeleteWoodpeckerSession(item.id)">
+                <app-icon name="trash"></app-icon>
+              </button>
+              <button type="button" class="opened-icon-action danger" *ngIf="canRemoveItem()"
+                aria-label="Rimuovi PGN dalla libreria" title="Rimuovi PGN"
+                (click)="onRemoveItem(item)">
+                <app-icon name="trash"></app-icon>
               </button>
             </div>
           </div>
+
+          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)"
+            (click)="onResumeItem(item.id)">Riprendi allenamento</button>
+
+          <div class="training-disclosures" *ngIf="item.mode === 'puzzle'">
+            <details class="training-disclosure">
+              <summary>
+                <span class="disclosure-copy">
+                  <strong>Opzioni puzzle</strong>
+                  <small>Automazioni durante l'esercizio</small>
+                </span>
+              </summary>
+              <div class="disclosure-content">
+                <label class="puzzle-option">
+                  <input type="checkbox" [checked]="isPuzzleAutoFirstMove(item.id)"
+                    (change)="onPuzzleAutoFirstMoveChange(item.id, $event)" />
+                  Auto-esegui la prima mossa all'apertura partita
+                </label>
+
+                <label class="puzzle-option">
+                  <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)"
+                    (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
+                  Vai al puzzle successivo quando risolto
+                </label>
+
+                <label class="puzzle-option">
+                  <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)"
+                    (change)="onPuzzleAutoRotateChange(item.id, $event)" />
+                  Ruota automaticamente la scacchiera in base al tratto
+                </label>
+              </div>
+            </details>
+
+            <details class="training-disclosure">
+              <summary>
+                <span class="disclosure-copy">
+                  <strong>Metodo Woodpecker</strong>
+                  <small>Ripetizione strutturata a cicli</small>
+                </span>
+                <span class="disclosure-state" *ngIf="isPuzzleWoodpecker(item.id)">Attivo</span>
+              </summary>
+              <div class="disclosure-content">
+                <label class="puzzle-option">
+                  <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)"
+                    (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
+                  Usa il metodo Woodpecker
+                </label>
+
+                <label class="woodpecker-target-days" *ngIf="isPuzzleWoodpecker(item.id)">
+                  Durata ciclo iniziale (giorni)
+                  <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
+                    (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
+                </label>
+              </div>
+            </details>
+
+            <details class="training-disclosure batch-drill-box">
+              <summary>
+                <span class="disclosure-copy">
+                  <strong>Micro-Set</strong>
+                  <small>Allenamento su un intervallo limitato</small>
+                </span>
+                <span class="disclosure-state" *ngIf="isPuzzleBatchEnabled(item.id)">Attivo</span>
+              </summary>
+              <div class="disclosure-content">
+                <label class="puzzle-option batch-header-option">
+                  <input type="checkbox" [checked]="isPuzzleBatchEnabled(item.id)"
+                    (change)="onPuzzleBatchEnabledChange(item.id, $event)" />
+                  Abilita Micro-Set
+                </label>
+
+                <div class="batch-drill-content" *ngIf="isPuzzleBatchEnabled(item.id)">
+                  <div class="batch-range-row">
+                    <label class="batch-field">
+                      Da puzzle:
+                      <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeFrom(item.id)"
+                        (input)="onPuzzleBatchRangeFromChange(item.id, $event)" />
+                    </label>
+                    <label class="batch-field">
+                      A puzzle:
+                      <input type="number" min="1" [max]="item.games.length" [value]="puzzleBatchRangeTo(item.id, item.games.length)"
+                        (input)="onPuzzleBatchRangeToChange(item.id, $event, item.games.length)" />
+                    </label>
+                  </div>
+
+                  <label class="puzzle-option sub-option">
+                    <input type="checkbox" [checked]="isPuzzleBatchLoop(item.id)"
+                      (change)="onPuzzleBatchLoopChange(item.id, $event)" />
+                    Ripeti a ciclo continuo questo set (senza andare oltre)
+                  </label>
+
+                  <label class="puzzle-option sub-option">
+                    <input type="checkbox" [checked]="isPuzzleBatchShuffle(item.id)"
+                      (change)="onPuzzleBatchShuffleChange(item.id, $event)" />
+                    Rimescola l'ordine (Shuffle) se sbagli o torni indietro
+                  </label>
+
+                  <button type="button" class="start-batch-button" (click)="startBatchDrill(item)">
+                    <app-icon name="play"></app-icon>
+                    Avvia Micro-Set ({{ puzzleBatchRangeFrom(item.id) }} - {{ puzzleBatchRangeTo(item.id, item.games.length) }})
+                  </button>
+                </div>
+              </div>
+            </details>
+          </div>
         </section>
 
-        <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
-          Filtra partite
-          <input [id]="'item-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"
-            placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)" />
-        </label>
-
-        <div class="header-filters">
-          <label>
-            Bianco
-            <input type="text" [value]="headerFilterValue(item.id, 'white')" placeholder="Es. Carlsen"
-              (input)="onHeaderFilterInput(item.id, 'white', $event)" />
+        <section class="game-search-controls" aria-label="Ricerca partite">
+          <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
+            Cerca nelle partite
+            <input [id]="'item-game-filter-' + item.id" type="search" [value]="itemGameFilter(item.id)"
+              placeholder="Giocatore, evento, risultato o numero" (input)="onItemGameFilterInput(item.id, $event)" />
           </label>
 
-          <label>
-            Nero
-            <input type="text" [value]="headerFilterValue(item.id, 'black')" placeholder="Es. Nakamura"
-              (input)="onHeaderFilterInput(item.id, 'black', $event)" />
-          </label>
+          <details class="advanced-filters">
+            <summary>Filtri avanzati</summary>
+            <div class="header-filters">
+              <label>
+                Bianco
+                <input type="text" [value]="headerFilterValue(item.id, 'white')" placeholder="Es. Carlsen"
+                  (input)="onHeaderFilterInput(item.id, 'white', $event)" />
+              </label>
 
-          <label>
-            Evento
-            <input type="text" [value]="headerFilterValue(item.id, 'event')" placeholder="Es. Candidates"
-              (input)="onHeaderFilterInput(item.id, 'event', $event)" />
-          </label>
+              <label>
+                Nero
+                <input type="text" [value]="headerFilterValue(item.id, 'black')" placeholder="Es. Nakamura"
+                  (input)="onHeaderFilterInput(item.id, 'black', $event)" />
+              </label>
 
-          <label>
-            Risultato
-            <select [value]="headerFilterValue(item.id, 'result')"
-              (change)="onHeaderFilterInput(item.id, 'result', $event)">
-              <option value="">Tutti</option>
-              <option *ngFor="let result of resultOptions(item)" [value]="result">{{ result }}</option>
-            </select>
-          </label>
-        </div>
+              <label>
+                Evento
+                <input type="text" [value]="headerFilterValue(item.id, 'event')" placeholder="Es. Candidates"
+                  (input)="onHeaderFilterInput(item.id, 'event', $event)" />
+              </label>
+
+              <label>
+                Risultato
+                <select [value]="headerFilterValue(item.id, 'result')"
+                  (change)="onHeaderFilterInput(item.id, 'result', $event)">
+                  <option value="">Tutti</option>
+                  <option *ngFor="let result of resultOptions(item)" [value]="result">{{ result }}</option>
+                </select>
+              </label>
+            </div>
+          </details>
+        </section>
 
         <ng-container *ngIf="filteredGameEntries(item) as entries">
           <div class="games-table-wrap" *ngIf="entries.length > 0; else emptyFilteredList">
@@ -295,7 +370,7 @@
             <div class="title-row">
               <div class="card-title-group">
                 <h2 class="card-title" [title]="item.name">{{ item.name }}</h2>
-                <span class="woodpecker-status-pill compact" [ngClass]="woodpeckerStatusClass(item.id)">{{ woodpeckerStatusLabel(item.id) }}</span>
+                <app-status-badge [tone]="woodpeckerStatusTone(item.id)">{{ woodpeckerStatusLabel(item.id) }}</app-status-badge>
               </div>
               <span class="games-badge">{{ item.games.length }} partite</span>
             </div>
@@ -389,7 +464,10 @@
     </ng-template>
 
     <ng-template #emptyState>
-      <div class="empty-state">{{ activeEmptyStateLabel() }}</div>
+      <app-empty-state
+        [title]="activeEmptyStateLabel()"
+        [description]="activeTab === 'famous-tactics' ? 'Le raccolte disponibili compariranno qui.' : 'Importa uno o più file PGN per iniziare.'"
+      ></app-empty-state>
     </ng-template>
   </ng-template>
 </section>

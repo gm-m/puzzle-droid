@@ -264,6 +264,14 @@
     background: #0f172a;
     border-color: #0f172a;
   }
+
+  &.compact {
+    flex: 0 0 auto;
+    align-self: stretch;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-sm);
+    white-space: nowrap;
+  }
 }
 
 .puzzle-status {
@@ -1111,6 +1119,11 @@ button {
 }
 
 @media (max-width: 900px) {
+  .library-game-context,
+  .analysis-engine-region > .turn-indicator {
+    display: none;
+  }
+
   .analysis-engine-region {
     order: 2;
   }
@@ -1125,25 +1138,6 @@ button {
 }
 
 @media (max-width: 640px) {
-  .library-game-context {
-    gap: var(--space-1);
-  }
-
-  .library-game-title {
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .library-game-picker-trigger {
-    width: var(--control-height);
-    min-width: var(--control-height);
-    justify-content: center;
-    padding-inline: 0;
-  }
-
-  .library-game-picker-label {
-    display: none;
-  }
-
   .puzzle-status {
     gap: 0.35rem;
     padding: 0.625rem 0.7rem;

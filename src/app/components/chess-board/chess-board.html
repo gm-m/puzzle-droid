@@ -1,1 +1,11 @@
-<div #boardHost class="board cg-board-wrap" [ngClass]="['theme-' + boardTheme, 'pieces-' + pieceSet, is3d ? 'is-3d' : '']"></div>
+<div
+  #boardHost
+  class="board cg-board-wrap"
+  role="img"
+  [attr.aria-label]="boardAriaLabel()"
+  aria-describedby="board-position-description"
+  [ngClass]="['theme-' + boardTheme, 'pieces-' + pieceSet, is3d ? 'is-3d' : '']"
+></div>
+<p id="board-position-description" class="sr-only" aria-live="polite" aria-atomic="true">
+  {{ boardPositionDescription() }}
+</p>

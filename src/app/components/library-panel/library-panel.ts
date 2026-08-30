@@ -3,6 +3,10 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
+import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
+import { EmptyStateComponent } from '../ui/empty-state/empty-state';
+import { LoadingIndicatorComponent } from '../ui/loading-indicator/loading-indicator';
+import { StatusBadgeComponent, type StatusBadgeTone } from '../ui/status-badge/status-badge';
 
 export interface LibraryModeChange {
   id: string;
@@ -40,6 +44,12 @@ export interface LibraryWoodpeckerTargetDaysChange {
   targetDays: number;
 }
 
+export interface LibraryUploadResult {
+  fileName: string;
+  status: 'success' | 'error';
+  message: string;
+}
+
 type LibraryViewTab = 'pgn' | 'famous-tactics' | 'bookmarks';
 
 interface LibraryFilteredGameEntry {
@@ -62,7 +72,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
   selector: 'app-library-panel',
-  imports: [CommonModule, AppIconComponent],
+  imports: [CommonModule, AppIconComponent, AppDialogComponent, EmptyStateComponent, LoadingIndicatorComponent, StatusBadgeComponent],
   templateUrl: './library-panel.html',
   styleUrl: './library-panel.scss',
 })
@@ -72,6 +82,8 @@ export class LibraryPanelComponent {
   @Input() openedItemId: string | null = null;
   @Input() positionBookmarks: PositionBookmark[] = [];
   @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
+  @Input() isUploadInProgress = false;
+  @Input() uploadResults: LibraryUploadResult[] = [];
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
@@ -90,6 +102,7 @@ export class LibraryPanelComponent {
   activeTab: LibraryViewTab = 'pgn';
   expandedItemId: string | null = null;
   editingBookmarkId: string | null = null;
+  bookmarkPendingDeleteId: string | null = null;
   bookmarkSearch = '';
   bookmarkSort: BookmarkSortOption = 'newest';
   private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
@@ -169,18 +182,26 @@ export class LibraryPanelComponent {
   }
 
   deleteBookmark(bookmarkId: string): void {
-    const bookmark = this.positionBookmarks.find((entry) => entry.id === bookmarkId);
-    const confirmed =
-      typeof window === 'undefined' ||
-      window.confirm(`Eliminare il bookmark "${bookmark?.title ?? 'senza titolo'}"? Questa azione non può essere annullata.`);
-    if (!confirmed) {
-      return;
-    }
+    this.bookmarkPendingDeleteId = bookmarkId;
+  }
+
+  cancelBookmarkDelete(): void {
+    this.bookmarkPendingDeleteId = null;
+  }
+
+  confirmBookmarkDelete(): void {
+    const bookmarkId = this.bookmarkPendingDeleteId;
+    if (!bookmarkId) return;
 
     this.positionBookmarkDeleted.emit(bookmarkId);
     if (this.editingBookmarkId === bookmarkId) {
       this.editingBookmarkId = null;
     }
+    this.bookmarkPendingDeleteId = null;
+  }
+
+  pendingBookmarkDeleteTitle(): string {
+    return this.positionBookmarks.find((entry) => entry.id === this.bookmarkPendingDeleteId)?.title ?? 'questo bookmark';
   }
 
   isEditingBookmark(bookmarkId: string): boolean {
@@ -278,10 +299,6 @@ export class LibraryPanelComponent {
         moveCount: Math.max(0, game.positions.length - 1),
       }))
       .filter((entry) => {
-        if (!query) {
-          return true;
-        }
-
         const haystack = [
           entry.title,
           entry.game.white ?? '',
@@ -362,6 +379,12 @@ export class LibraryPanelComponent {
     }
 
     return 'status-idle';
+  }
+
+  woodpeckerStatusTone(itemId: string): StatusBadgeTone {
+    if (this.hasResumeSession(itemId)) return 'success';
+    if (this.hasWoodpeckerSession(itemId)) return 'info';
+    return 'neutral';
   }
 
   onResumeItem(itemId: string): void {

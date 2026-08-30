@@ -5,16 +5,23 @@
       <h1>Dashboard progresso per PGN</h1>
     </div>
 
-    <div class="header-actions">
-      <a class="nav-link" routerLink="/library">
-        <app-icon name="arrow-left"></app-icon>
-        Torna alla libreria
-      </a>
-      <a class="nav-link" routerLink="/analysis">Vai ad analisi</a>
-    </div>
+    <nav class="header-actions" aria-label="Navigazione principale">
+      <a class="nav-link" routerLink="/analysis">Analisi</a>
+      <a class="nav-link" routerLink="/library">Libreria</a>
+      <a class="nav-link" routerLink="/settings">Impostazioni</a>
+    </nav>
   </header>
 
   <ng-container *ngIf="data() as vm; else emptyState">
+    <section class="panel next-action-panel" *ngIf="vm.hasResumeSession && vm.resumePuzzleIndex !== null">
+      <div>
+        <p class="section-kicker">Cosa fare adesso</p>
+        <h2>Continua dalla review in sospeso</h2>
+        <p>Riprendi dal puzzle {{ vm.resumePuzzleIndex + 1 }} del ciclo {{ vm.currentCycle }}.</p>
+      </div>
+      <button type="button" class="resume-button" (click)="resumeWoodpecker(vm)">Riprendi review</button>
+    </section>
+
     <section class="panel hero-panel">
       <div class="hero-top">
         <div class="hero-copy">
@@ -24,14 +31,6 @@
         </div>
 
         <div class="hero-actions">
-          <button
-            type="button"
-            class="resume-button"
-            *ngIf="vm.hasResumeSession && vm.resumePuzzleIndex !== null"
-            (click)="resumeWoodpecker(vm)"
-          >
-            Riprendi review
-          </button>
           <span class="risk-pill" [ngClass]="riskClass(vm.deadlineRisk)">Rischio {{ vm.deadlineRisk }}</span>
         </div>
       </div>
@@ -41,12 +40,6 @@
           <p>Progresso ciclo</p>
           <h2>{{ vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow }}/{{ vm.currentCyclePuzzles.length }}</h2>
           <small>puzzle completati</small>
-        </article>
-
-        <article class="kpi-card">
-          <p>Review queue</p>
-          <h2>{{ vm.hardSetQueue.length }}</h2>
-          <small>puzzle da ripassare</small>
         </article>
 
         <article class="kpi-card">
@@ -67,19 +60,14 @@
           <small>risoluzioni corrette consecutive</small>
         </article>
 
-        <article class="kpi-card">
-          <p>Puzzle critici</p>
-          <h2>{{ vm.failedPuzzles.length }}</h2>
-          <small>nel ciclo corrente</small>
-        </article>
       </div>
     </section>
 
     <section class="panel panel-priority">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Cosa fare adesso</p>
-          <h3>Hard set / review queue</h3>
+          <p class="section-kicker">Priorità</p>
+          <h3>Prossimi puzzle da ripassare</h3>
         </div>
         <span class="section-count">{{ vm.hardSetQueue.length }}</span>
       </div>
@@ -136,24 +124,6 @@
         </article>
       </div>
 
-      <div class="overview-stats">
-        <article class="overview-stat">
-          <span>Totale puzzle</span>
-          <strong>{{ vm.currentCyclePuzzles.length }}</strong>
-        </article>
-        <article class="overview-stat">
-          <span>Completati</span>
-          <strong>{{ vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow }}</strong>
-        </article>
-        <article class="overview-stat">
-          <span>In review</span>
-          <strong>{{ vm.hardSetQueue.length }}</strong>
-        </article>
-        <article class="overview-stat">
-          <span>Errati</span>
-          <strong>{{ vm.currentCycleStatusCounts.failed }}</strong>
-        </article>
-      </div>
     </section>
 
     <section class="panel">

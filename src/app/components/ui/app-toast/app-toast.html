@@ -1,0 +1,6 @@
+<aside class="toast" [class]="'toast ' + tone()" role="status" aria-live="polite" aria-atomic="true">
+  <span>{{ message() }}</span>
+  <button type="button" aria-label="Chiudi notifica" (click)="closed.emit()">
+    <app-icon name="close"></app-icon>
+  </button>
+</aside>

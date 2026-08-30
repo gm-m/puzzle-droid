@@ -1,0 +1,7 @@
+<section class="empty" role="status">
+  <strong>{{ title() }}</strong>
+  @if (description()) {
+    <p>{{ description() }}</p>
+  }
+  <ng-content></ng-content>
+</section>
