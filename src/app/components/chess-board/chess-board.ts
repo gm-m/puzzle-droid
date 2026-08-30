@@ -37,6 +37,8 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   @Input() pieceSet: 'cburnett' | 'merida' | 'alpha' | 'kosal' = 'cburnett';
   @Input() is3d = false;
   @Input() highlightLastMove = true;
+  @Input() hidePieces = false;
+  @Input() lastMove: [Key, Key] | null = null;
 
   @Output() moved = new EventEmitter<BoardMove>();
 
@@ -50,6 +52,7 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       fen: this.fen,
       orientation: this.orientation,
       turnColor: this.turnColor,
+      lastMove: this.lastMove ?? undefined,
       addPieceZIndex: this.is3d,
       coordinates: this.showCoordinates,
       highlight: {
@@ -73,7 +76,8 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
   boardAriaLabel(): string {
     const orientationLabel = this.orientation === 'white' ? 'bianco in basso' : 'nero in basso';
     const turnLabel = this.turnColor === 'white' ? 'Bianco' : 'Nero';
-    return `Scacchiera, ${orientationLabel}. Al tratto: ${turnLabel}.`;
+    const visibilityLabel = this.hidePieces ? ' Pezzi nascosti per la modalità memoria visiva.' : '';
+    return `Scacchiera, ${orientationLabel}. Al tratto: ${turnLabel}.${visibilityLabel}`;
   }
 
   boardPositionDescription(): string {
@@ -94,12 +98,14 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
       changes['puzzleHintSquare'] ||
       changes['showCoordinates'] ||
       changes['is3d'] ||
-      changes['highlightLastMove']
+      changes['highlightLastMove'] ||
+      changes['lastMove']
     ) {
       this.boardApi.set({
         fen: this.fen,
         orientation: this.orientation,
         turnColor: this.turnColor,
+        lastMove: this.lastMove ?? undefined,
         addPieceZIndex: this.is3d,
         coordinates: this.showCoordinates,
         highlight: {

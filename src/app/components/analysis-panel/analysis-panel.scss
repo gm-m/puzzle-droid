@@ -758,6 +758,16 @@ button {
   }
 }
 
+.blindfold-reveal {
+  border: 1px solid var(--warning-border);
+  background: var(--warning-soft);
+  color: var(--warning);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--warning-soft) 70%, var(--warning-border));
+  }
+}
+
 .batch-shuffle-button {
   background: color-mix(in srgb, #3b82f6 15%, var(--surface-2));
   color: #2563eb;

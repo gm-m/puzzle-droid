@@ -162,6 +162,17 @@
             <app-icon name="hint"></app-icon>
           </button>
           <button
+            *ngIf="showBlindfoldControl"
+            type="button"
+            class="blindfold-reveal compact-action icon-action"
+            aria-label="Mostra i pezzi e marca il tentativo come assistito"
+            [disabled]="!canRevealBlindfold"
+            title="Mostra pezzi (tentativo assistito)"
+            (click)="revealBlindfoldPieces.emit()"
+          >
+            <app-icon name="eye"></app-icon>
+          </button>
+          <button
             type="button"
             class="surrender compact-action icon-action"
             aria-label="Arrenditi"

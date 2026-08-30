@@ -122,6 +122,8 @@
           [showSurrender]="showSurrenderButton()"
           [showPuzzleSkipMove]="showPuzzleAssistanceButtons()"
           [showPuzzleHint]="showPuzzleAssistanceButtons()"
+          [showBlindfoldControl]="isBlindfoldMode()"
+          [canRevealBlindfold]="arePuzzlePiecesHidden()"
           [showWoodpeckerInfo]="showWoodpeckerInfo()"
           [woodpeckerCycleLabel]="woodpeckerCycleLabel()"
           [woodpeckerProgressLabel]="woodpeckerProgressLabel()"
@@ -164,6 +166,7 @@
           (surrenderPuzzle)="onPuzzleSurrender()"
           (skipPuzzleMove)="onPuzzleSkipMove()"
           (hintPuzzleMove)="onPuzzleHint()"
+          (revealBlindfoldPieces)="revealBlindfoldPieces()"
           (shuffleBatch)="shuffleBatchNow()"
         ></app-analysis-panel>
 
@@ -177,13 +180,15 @@
             [turnColor]="turnColor()"
             [legalDests]="legalDests()"
             [orientation]="boardOrientation()"
-            [bestMoveArrow]="bestMoveArrow()"
-            [puzzleHintSquare]="puzzleHintSquare()"
+            [bestMoveArrow]="arePuzzlePiecesHidden() ? null : bestMoveArrow()"
+            [puzzleHintSquare]="arePuzzlePiecesHidden() ? null : puzzleHintSquare()"
             [showCoordinates]="settings().showCoordinates"
             [boardTheme]="settings().boardTheme"
             [pieceSet]="settings().pieceSet"
             [is3d]="settings().is3d"
             [highlightLastMove]="settings().highlightLastMove"
+            [hidePieces]="arePuzzlePiecesHidden()"
+            [lastMove]="boardLastMove()"
             (moved)="onBoardMove($event)"
           ></app-chess-board>
         </section>

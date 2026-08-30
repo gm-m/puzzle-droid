@@ -230,6 +230,27 @@
   }
 }
 
+.woodpecker-delete-session {
+  justify-self: start;
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--danger-soft);
+  }
+}
+
 .games-mobile-list {
   display: none;
   gap: 0.75rem;
@@ -399,6 +420,46 @@
     width: 1.1rem;
     height: 1.1rem;
     accent-color: #3b82f6;
+  }
+}
+
+.blindfold-help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+.blindfold-duration {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 600;
+
+}
+
+.blindfold-duration-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  input {
+    width: 5rem;
+    min-height: var(--control-height);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font: inherit;
+  }
+
+  span {
+    color: var(--text-muted);
+    font-weight: 500;
   }
 }
 
@@ -859,7 +920,7 @@
 }
 
 .batch-header-option {
-  color: var(--primary);
+  color: var(--text-primary);
   font-size: 0.92rem;
 }
 

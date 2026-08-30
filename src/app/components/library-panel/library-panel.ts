@@ -25,6 +25,9 @@ export interface LibraryGameSelection {
   autoAdvanceOnSuccess: boolean;
   autoRotateBoardOnTurn: boolean;
   woodpeckerEnabled: boolean;
+  blindfoldEnabled: boolean;
+  blindfoldObservationSeconds: number;
+  blindfoldShowAfterAutoMove: boolean;
   batchConfig?: PuzzleBatchConfig;
 }
 
@@ -37,6 +40,14 @@ export interface LibraryWoodpeckerSessionInfo {
 export interface LibraryResumeRequest {
   itemId: string;
   puzzleIndex: number;
+  autoPlayFirstMove: boolean;
+  autoAdvanceOnSuccess: boolean;
+  autoRotateBoardOnTurn: boolean;
+  woodpeckerEnabled: boolean;
+  blindfoldEnabled: boolean;
+  blindfoldObservationSeconds: number;
+  blindfoldShowAfterAutoMove: boolean;
+  batchConfig?: PuzzleBatchConfig;
 }
 
 export interface LibraryWoodpeckerTargetDaysChange {
@@ -109,6 +120,9 @@ export class LibraryPanelComponent {
   private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
   private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
   private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
+  private readonly puzzleBlindfoldByItem = new Map<string, boolean>();
+  private readonly puzzleBlindfoldSecondsByItem = new Map<string, number>();
+  private readonly puzzleBlindfoldShowAfterAutoMoveByItem = new Map<string, boolean>();
   private readonly puzzleBatchEnabledByItem = new Map<string, boolean>();
   private readonly puzzleBatchRangeFromByItem = new Map<string, number>();
   private readonly puzzleBatchRangeToByItem = new Map<string, number>();
@@ -393,7 +407,17 @@ export class LibraryPanelComponent {
       return;
     }
 
-    this.resumeRequested.emit({ itemId, puzzleIndex });
+    this.resumeRequested.emit({
+      itemId,
+      puzzleIndex,
+      autoPlayFirstMove: this.isPuzzleAutoFirstMove(itemId),
+      autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(itemId),
+      autoRotateBoardOnTurn: this.isPuzzleAutoRotate(itemId),
+      woodpeckerEnabled: true,
+      blindfoldEnabled: this.isPuzzleBlindfold(itemId),
+      blindfoldObservationSeconds: this.puzzleBlindfoldSeconds(itemId),
+      blindfoldShowAfterAutoMove: this.isPuzzleBlindfoldShowAfterAutoMove(itemId),
+    });
   }
 
   onDeleteWoodpeckerSession(itemId: string): void {
@@ -452,6 +476,9 @@ export class LibraryPanelComponent {
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
       autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),
       woodpeckerEnabled: this.isPuzzleWoodpecker(item.id),
+      blindfoldEnabled: this.isPuzzleBlindfold(item.id),
+      blindfoldObservationSeconds: this.puzzleBlindfoldSeconds(item.id),
+      blindfoldShowAfterAutoMove: this.isPuzzleBlindfoldShowAfterAutoMove(item.id),
       batchConfig,
     });
   }
@@ -495,6 +522,31 @@ export class LibraryPanelComponent {
 
   isPuzzleAutoRotate(itemId: string): boolean {
     return this.puzzleAutoRotateByItem.get(itemId) ?? true;
+  }
+
+  onPuzzleBlindfoldChange(itemId: string, event: Event): void {
+    this.puzzleBlindfoldByItem.set(itemId, (event.target as HTMLInputElement).checked);
+  }
+
+  isPuzzleBlindfold(itemId: string): boolean {
+    return this.puzzleBlindfoldByItem.get(itemId) ?? false;
+  }
+
+  onPuzzleBlindfoldSecondsChange(itemId: string, event: Event): void {
+    const seconds = Number((event.target as HTMLInputElement).value);
+    if (Number.isFinite(seconds)) this.puzzleBlindfoldSecondsByItem.set(itemId, Math.min(60, Math.max(1, Math.trunc(seconds))));
+  }
+
+  puzzleBlindfoldSeconds(itemId: string): number {
+    return this.puzzleBlindfoldSecondsByItem.get(itemId) ?? 2;
+  }
+
+  onPuzzleBlindfoldShowAfterAutoMoveChange(itemId: string, event: Event): void {
+    this.puzzleBlindfoldShowAfterAutoMoveByItem.set(itemId, (event.target as HTMLInputElement).checked);
+  }
+
+  isPuzzleBlindfoldShowAfterAutoMove(itemId: string): boolean {
+    return this.puzzleBlindfoldShowAfterAutoMoveByItem.get(itemId) ?? false;
   }
 
   onPuzzleWoodpeckerChange(itemId: string, event: Event): void {
@@ -569,6 +621,9 @@ export class LibraryPanelComponent {
     this.puzzleAutoAdvanceByItem.delete(itemId);
     this.puzzleAutoRotateByItem.delete(itemId);
     this.puzzleWoodpeckerByItem.delete(itemId);
+    this.puzzleBlindfoldByItem.delete(itemId);
+    this.puzzleBlindfoldSecondsByItem.delete(itemId);
+    this.puzzleBlindfoldShowAfterAutoMoveByItem.delete(itemId);
     this.puzzleBatchEnabledByItem.delete(itemId);
     this.puzzleBatchRangeFromByItem.delete(itemId);
     this.puzzleBatchRangeToByItem.delete(itemId);

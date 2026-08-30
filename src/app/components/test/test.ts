@@ -68,6 +68,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly currentFen = signal('');
   readonly turnColor = signal<'white' | 'black'>('white');
   readonly legalDests = signal<Map<Key, Key[]>>(new Map());
+  readonly boardLastMove = signal<[Key, Key] | null>(null);
 
   readonly moveHistory = signal<string[]>([]);
   readonly moveCursor = signal(0);
@@ -100,6 +101,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly isPuzzleAssisted = signal(false);
   readonly isPuzzleAutoPlaying = signal(false);
   readonly puzzleAutoRotateBoardOnTurn = signal(true);
+  readonly isBlindfoldMode = signal(false);
+  readonly arePuzzlePiecesHidden = signal(false);
+  readonly blindfoldCountdown = signal(0);
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
   readonly famousTacticsItems = signal<PgnLibraryItem[]>([]);
@@ -122,6 +126,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
   private puzzleAutoMoveTimer: ReturnType<typeof setTimeout> | null = null;
   private puzzleAutoNextGameTimer: ReturnType<typeof setTimeout> | null = null;
+  private blindfoldTimer: ReturnType<typeof setInterval> | null = null;
+  private blindfoldRevealUsed = false;
   private boardResizeObserver: ResizeObserver | null = null;
   private currentLibrarySelection: LibraryGameSelection | null = null;
   private currentWoodpeckerSessionKey: string | null = null;
@@ -185,6 +191,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.routeQueryParamsSubscription = null;
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
     if (this.boardResizeObserver) {
       this.boardResizeObserver.disconnect();
       this.boardResizeObserver = null;
@@ -651,12 +658,19 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     const puzzleIndex = this.clamp(request.puzzleIndex, 0, Math.max(0, item.games.length - 1));
-    void this.router.navigate(['/analysis'], {
-      queryParams: {
-        resumeWoodpecker: 1,
-        pgnId: request.itemId,
-        puzzleIndex,
-      },
+    const game = item.games[puzzleIndex];
+    if (!game) return;
+
+    this.selectLibraryGame(item, game, puzzleIndex, {
+      mode: 'puzzle',
+      autoPlayFirstMove: request.autoPlayFirstMove,
+      autoAdvanceOnSuccess: request.autoAdvanceOnSuccess,
+      autoRotateBoardOnTurn: request.autoRotateBoardOnTurn,
+      woodpeckerEnabled: request.woodpeckerEnabled,
+      blindfoldEnabled: request.blindfoldEnabled,
+      blindfoldObservationSeconds: request.blindfoldObservationSeconds,
+      blindfoldShowAfterAutoMove: request.blindfoldShowAfterAutoMove,
+      batchConfig: request.batchConfig,
     });
   }
 
@@ -761,9 +775,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.historyInitialFen = selection.initialFen;
+    this.boardLastMove.set(null);
     const fullHistory = [...selection.fullUciHistory];
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = {
       ...selection,
@@ -819,6 +835,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.isPuzzleAssisted.set(false);
       this.puzzleHintSquare.set(null);
       this.puzzleAutoRotateBoardOnTurn.set(selection.autoRotateBoardOnTurn);
+      this.isBlindfoldMode.set(selection.blindfoldEnabled);
+      this.arePuzzlePiecesHidden.set(false);
+      this.blindfoldCountdown.set(0);
+      this.blindfoldRevealUsed = false;
       if (selection.autoRotateBoardOnTurn) {
         this.boardOrientation.set(this.getPuzzleInitialOrientation(selection.initialFen, fullHistory, selection.autoPlayFirstMove));
       }
@@ -831,6 +851,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.isPuzzleAssisted.set(false);
       this.puzzleHintSquare.set(null);
       this.puzzleAutoRotateBoardOnTurn.set(false);
+      this.isBlindfoldMode.set(false);
+      this.arePuzzlePiecesHidden.set(false);
+      this.blindfoldCountdown.set(0);
+      this.blindfoldRevealUsed = false;
       this.puzzleMessage.set('');
       this.puzzleAttemptStartedAt = null;
     }
@@ -848,6 +872,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     if (selection.mode === 'puzzle') {
       if (selection.autoPlayFirstMove && fullHistory.length > 0) {
         this.schedulePuzzleAutoMove(0, 'Prima mossa in arrivo...');
+      } else if (selection.blindfoldEnabled) {
+        this.startBlindfoldObservation(selection.blindfoldObservationSeconds);
       } else {
         this.puzzleMessage.set('Puzzle avviato. Fai la prima mossa corretta.');
         this.markPuzzleAttemptStart();
@@ -874,6 +900,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
+    this.boardLastMove.set([playedMove.from as Key, playedMove.to as Key]);
     const branch = this.moveHistory().slice(0, this.moveCursor());
     const uci = this.toUci(playedMove.from as Key, playedMove.to as Key, playedMove.promotion);
     const updatedHistory = [...branch, uci];
@@ -990,6 +1017,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   resetBoard(): void {
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
     this.currentLibraryGameTitle.set('');
@@ -998,12 +1026,16 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.chess.reset();
+    this.boardLastMove.set(null);
     this.historyInitialFen = ChessWorkspaceComponent.STARTING_FEN;
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
     this.isPuzzleAssisted.set(false);
     this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
+    this.isBlindfoldMode.set(false);
+    this.arePuzzlePiecesHidden.set(false);
+    this.blindfoldRevealUsed = false;
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
@@ -1030,6 +1062,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
     this.currentLibraryGameTitle.set('');
@@ -1038,11 +1071,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.historyInitialFen = this.chess.fen();
+    this.boardLastMove.set(null);
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
     this.isPuzzleAssisted.set(false);
     this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
+    this.isBlindfoldMode.set(false);
+    this.arePuzzlePiecesHidden.set(false);
+    this.blindfoldRevealUsed = false;
     this.puzzleMessage.set('');
     this.moveHistory.set([]);
     this.moveCursor.set(0);
@@ -1088,6 +1125,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
     this.isPuzzleAutoPlaying.set(false);
     this.currentLibrarySelection = null;
     this.currentLibraryGameTitle.set('');
@@ -1096,11 +1134,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleAttemptStartedAt = null;
     this.closeLibraryGamePicker();
     this.historyInitialFen = game.initialFen;
+    this.boardLastMove.set(null);
     this.isPuzzleMode.set(false);
     this.isPuzzleSurrendered.set(false);
     this.isPuzzleAssisted.set(false);
     this.puzzleHintSquare.set(null);
     this.puzzleAutoRotateBoardOnTurn.set(false);
+    this.isBlindfoldMode.set(false);
+    this.arePuzzlePiecesHidden.set(false);
+    this.blindfoldRevealUsed = false;
     this.puzzleMessage.set('');
     this.moveHistory.set(fullHistory);
     this.moveCursor.set(fullHistory.length);
@@ -1218,6 +1260,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
+    this.clearBlindfoldTimer();
+    this.arePuzzlePiecesHidden.set(false);
     this.isPuzzleAutoPlaying.set(false);
     this.puzzleHintSquare.set(null);
     const location = this.getCurrentLibraryGameLocation();
@@ -1693,6 +1737,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
+    this.boardLastMove.set([result.from as Key, result.to as Key]);
     const newCursor = cursor + 1;
     this.moveCursor.set(newCursor);
     this.puzzleReplayLimit.update((currentLimit) => Math.max(currentLimit, newCursor));
@@ -1704,6 +1749,57 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.schedulePuzzleAutoMove(newCursor, 'Corretto. Mossa avversaria in arrivo...');
+  }
+
+  revealBlindfoldPieces(): void {
+    if (!this.isBlindfoldMode() || !this.arePuzzlePiecesHidden()) return;
+
+    this.clearBlindfoldTimer();
+    this.arePuzzlePiecesHidden.set(false);
+    this.blindfoldCountdown.set(0);
+    this.blindfoldRevealUsed = true;
+    const expectedUci = this.moveHistory()[this.moveCursor()] ?? '';
+    if (expectedUci) {
+      this.markCurrentPuzzleAssistedFailure(
+        expectedUci,
+        'Pezzi mostrati: puzzle segnato come assistito e aggiunto alla review SRS.',
+        false,
+      );
+    } else {
+      this.isPuzzleAssisted.set(true);
+      this.puzzleMessage.set('Pezzi mostrati: tentativo assistito.');
+    }
+  }
+
+  private startBlindfoldObservation(seconds: number): void {
+    this.clearBlindfoldTimer();
+    if (!this.isBlindfoldMode() || this.blindfoldRevealUsed) {
+      this.isPuzzleAutoPlaying.set(false);
+      this.arePuzzlePiecesHidden.set(false);
+      this.puzzleMessage.set('Tocca a te.');
+      this.markPuzzleAttemptStart();
+      return;
+    }
+
+    let remaining = Math.max(1, Math.trunc(seconds));
+    this.isPuzzleAutoPlaying.set(true);
+    this.arePuzzlePiecesHidden.set(false);
+    this.blindfoldCountdown.set(remaining);
+    this.puzzleMessage.set(`Memorizza la posizione: ${remaining}s.`);
+    this.blindfoldTimer = setInterval(() => {
+      remaining -= 1;
+      this.blindfoldCountdown.set(Math.max(0, remaining));
+      if (remaining > 0) {
+        this.puzzleMessage.set(`Memorizza la posizione: ${remaining}s.`);
+        return;
+      }
+
+      this.clearBlindfoldTimer();
+      this.isPuzzleAutoPlaying.set(false);
+      this.arePuzzlePiecesHidden.set(true);
+      this.puzzleMessage.set('Pezzi nascosti. Trova la continuazione corretta.');
+      this.markPuzzleAttemptStart();
+    }, 1000);
   }
 
   private schedulePuzzleAutoMove(ply: number, pendingMessage: string): void {
@@ -1750,8 +1846,22 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         return;
       }
 
-      this.puzzleMessage.set('Tocca a te.');
-      this.markPuzzleAttemptStart();
+      if (this.isBlindfoldMode()) {
+        if (ply === 0) {
+          this.startBlindfoldObservation(this.currentLibrarySelection?.blindfoldObservationSeconds ?? 2);
+        } else if (this.currentLibrarySelection?.blindfoldShowAfterAutoMove) {
+          this.startBlindfoldObservation(1);
+        } else {
+          this.arePuzzlePiecesHidden.set(!this.blindfoldRevealUsed);
+          this.puzzleMessage.set(
+            this.blindfoldRevealUsed ? 'Tocca a te.' : `Risposta: ${result.san}. Pezzi ancora nascosti.`,
+          );
+          this.markPuzzleAttemptStart();
+        }
+      } else {
+        this.puzzleMessage.set('Tocca a te.');
+        this.markPuzzleAttemptStart();
+      }
     }, ChessWorkspaceComponent.PUZZLE_AUTO_MOVE_DELAY_MS);
   }
 
@@ -1769,7 +1879,17 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
+  private clearBlindfoldTimer(): void {
+    if (this.blindfoldTimer !== null) {
+      clearInterval(this.blindfoldTimer);
+      this.blindfoldTimer = null;
+    }
+    this.blindfoldCountdown.set(0);
+  }
+
   private handlePuzzleSolved(solvedUci?: string, theme: TacticalTheme = 'Manovra'): void {
+    this.clearBlindfoldTimer();
+    this.arePuzzlePiecesHidden.set(false);
     const location = this.getCurrentLibraryGameLocation();
     if (this.isPuzzleAssisted()) {
       this.handleAssistedPuzzleCompleted(location);
@@ -1902,7 +2022,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.markPuzzleAttemptStart();
   }
 
-  private markCurrentPuzzleAssistedFailure(expectedUci: string, fallbackMessage: string): void {
+  private markCurrentPuzzleAssistedFailure(expectedUci: string, fallbackMessage: string, skipped = true): void {
     this.batchHasMistake.set(true);
     if (this.isPuzzleAssisted()) {
       this.puzzleMessage.set(fallbackMessage);
@@ -1917,7 +2037,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
       this.handleWoodpeckerFailed(location, expectedUci, theme, elapsedMs, {
         restartAttempt: false,
-        skipped: true,
+        skipped,
         message: fallbackMessage,
       });
       return;
@@ -2380,7 +2500,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     overrides?: Partial<
       Pick<
         LibraryGameSelection,
-        'mode' | 'autoPlayFirstMove' | 'autoAdvanceOnSuccess' | 'autoRotateBoardOnTurn' | 'woodpeckerEnabled' | 'batchConfig'
+        'mode' | 'autoPlayFirstMove' | 'autoAdvanceOnSuccess' | 'autoRotateBoardOnTurn' | 'woodpeckerEnabled' | 'blindfoldEnabled' | 'blindfoldObservationSeconds' | 'blindfoldShowAfterAutoMove' | 'batchConfig'
       >
     >,
   ): void {
@@ -2402,6 +2522,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       autoAdvanceOnSuccess: overrides?.autoAdvanceOnSuccess ?? reference?.autoAdvanceOnSuccess ?? true,
       autoRotateBoardOnTurn: overrides?.autoRotateBoardOnTurn ?? reference?.autoRotateBoardOnTurn ?? true,
       woodpeckerEnabled: overrides?.woodpeckerEnabled ?? reference?.woodpeckerEnabled ?? false,
+      blindfoldEnabled: overrides?.blindfoldEnabled ?? reference?.blindfoldEnabled ?? false,
+      blindfoldObservationSeconds: overrides?.blindfoldObservationSeconds ?? reference?.blindfoldObservationSeconds ?? 2,
+      blindfoldShowAfterAutoMove: overrides?.blindfoldShowAfterAutoMove ?? reference?.blindfoldShowAfterAutoMove ?? false,
       batchConfig: overrides?.batchConfig ?? reference?.batchConfig,
     });
   }

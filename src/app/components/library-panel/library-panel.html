@@ -144,11 +144,6 @@
                 title="Dashboard Woodpecker" (click)="onOpenDashboard(item.id)">
                 <app-icon name="chart"></app-icon>
               </button>
-              <button type="button" class="opened-icon-action danger" *ngIf="hasWoodpeckerSession(item.id)"
-                aria-label="Elimina sessione Woodpecker" title="Elimina sessione Woodpecker"
-                (click)="onDeleteWoodpeckerSession(item.id)">
-                <app-icon name="trash"></app-icon>
-              </button>
               <button type="button" class="opened-icon-action danger" *ngIf="canRemoveItem()"
                 aria-label="Rimuovi PGN dalla libreria" title="Rimuovi PGN"
                 (click)="onRemoveItem(item)">
@@ -186,6 +181,31 @@
                     (change)="onPuzzleAutoRotateChange(item.id, $event)" />
                   Ruota automaticamente la scacchiera in base al tratto
                 </label>
+
+                <label class="puzzle-option">
+                  <input type="checkbox" [checked]="isPuzzleBlindfold(item.id)"
+                    (change)="onPuzzleBlindfoldChange(item.id, $event)" />
+                  Modalità memoria visiva
+                </label>
+
+                <p class="blindfold-help" *ngIf="isPuzzleBlindfold(item.id)">
+                  I pezzi verranno nascosti ma resteranno interattivi. Mostrarli durante il puzzle segnerà il tentativo come assistito.
+                </p>
+
+                <label class="blindfold-duration" *ngIf="isPuzzleBlindfold(item.id)">
+                  Mostra la posizione per
+                  <span class="blindfold-duration-field">
+                    <input type="number" min="1" max="60" inputmode="numeric"
+                      [value]="puzzleBlindfoldSeconds(item.id)" (input)="onPuzzleBlindfoldSecondsChange(item.id, $event)" />
+                    <span>secondi</span>
+                  </span>
+                </label>
+
+                <label class="puzzle-option" *ngIf="isPuzzleBlindfold(item.id)">
+                  <input type="checkbox" [checked]="isPuzzleBlindfoldShowAfterAutoMove(item.id)"
+                    (change)="onPuzzleBlindfoldShowAfterAutoMoveChange(item.id, $event)" />
+                  Mostra brevemente i pezzi dopo le mosse di risposta
+                </label>
               </div>
             </details>
 
@@ -209,6 +229,12 @@
                   <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
                     (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
                 </label>
+
+                <button type="button" class="woodpecker-delete-session" *ngIf="hasWoodpeckerSession(item.id)"
+                  (click)="onDeleteWoodpeckerSession(item.id)">
+                  <app-icon name="trash"></app-icon>
+                  Elimina sessione Woodpecker
+                </button>
               </div>
             </details>
 

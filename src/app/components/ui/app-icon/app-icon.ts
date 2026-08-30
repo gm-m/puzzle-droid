@@ -23,7 +23,8 @@ export type AppIconName =
   | 'hint'
   | 'surrender'
   | 'chart'
-  | 'trash';
+  | 'trash'
+  | 'eye';
 
 @Component({
   selector: 'app-icon',

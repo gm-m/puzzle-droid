@@ -9,6 +9,17 @@
   box-shadow: 0 8px 24px rgba(20, 20, 20, 0.2);
 }
 
+.board.blindfold-active {
+  ::ng-deep piece {
+    opacity: 0;
+  }
+
+  ::ng-deep square.selected,
+  ::ng-deep square.move-dest {
+    background: transparent;
+  }
+}
+
 .board.is-3d {
   aspect-ratio: auto;
   height: auto;

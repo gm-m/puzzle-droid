@@ -4,7 +4,7 @@
   role="img"
   [attr.aria-label]="boardAriaLabel()"
   aria-describedby="board-position-description"
-  [ngClass]="['theme-' + boardTheme, 'pieces-' + pieceSet, is3d ? 'is-3d' : '']"
+  [ngClass]="['theme-' + boardTheme, 'pieces-' + pieceSet, is3d ? 'is-3d' : '', hidePieces ? 'blindfold-active' : '']"
 ></div>
 <p id="board-position-description" class="sr-only" aria-live="polite" aria-atomic="true">
   {{ boardPositionDescription() }}
