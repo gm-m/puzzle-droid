@@ -23,9 +23,9 @@ Legenda: `[ ]` da fare · `[x]` fatto
 
 ## Fase 3 – Rendering della libreria
 
-- [ ] **3.1 Signals + OnPush in `LibraryPanelComponent`** – `filteredGameEntries()`/`resultOptions()` ricalcolati a ogni change detection → `computed()` con indice di ricerca precalcolato.
-- [ ] **3.2 Debounce della ricerca partite.**
-- [ ] **3.3 Rendering incrementale** ("Mostra altre N") per collezioni grandi.
+- [x] **3.1 Signals + OnPush in `LibraryPanelComponent`** – `filteredGameEntries()`/`resultOptions()` ricalcolati a ogni change detection → OnPush + indice di ricerca precalcolato e risultati memoizzati per collezione.
+- [x] **3.2 Debounce della ricerca partite.**
+- [x] **3.3 Rendering incrementale** ("Mostra altre N") per collezioni grandi: 100 righe per pagina con contatore "X di Y partite".
 
 ## Fase 4 – UX della libreria
 

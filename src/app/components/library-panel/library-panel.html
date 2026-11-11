@@ -293,7 +293,8 @@
           <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
             Cerca nelle partite
             <input [id]="'item-game-filter-' + item.id" type="search" [value]="itemGameFilter(item.id)"
-              placeholder="Giocatore, evento, risultato o numero" (input)="onItemGameFilterInput(item.id, $event)" />
+              placeholder="Giocatore, evento, risultato o numero" (input)="onItemGameFilterInput(item.id, $event)"
+              (change)="applyItemGameFilter(item.id, gameFilterInput.value)" #gameFilterInput />
           </label>
 
           <details class="advanced-filters">
@@ -346,7 +347,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let entry of entries; trackBy: trackByGameEntry" (click)="onGameClick(item, entry.game, entry.index)" style="cursor: pointer;">
+                <tr *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry" (click)="onGameClick(item, entry.game, entry.index)" style="cursor: pointer;">
                   <td>
                     <button
                       type="button"
@@ -377,7 +378,7 @@
           </div>
 
           <div class="games-mobile-list" *ngIf="isCompactLayout()">
-            <article class="games-mobile-card" *ngFor="let entry of entries; trackBy: trackByGameEntry">
+            <article class="games-mobile-card" *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry">
               <button type="button" class="games-mobile-select" (click)="onGameClick(item, entry.game, entry.index)">
                 <div class="games-mobile-head">
                   <strong>{{ entry.title }}</strong>
@@ -400,6 +401,13 @@
                 </select>
               </label>
             </article>
+          </div>
+
+          <div class="games-list-footer" aria-live="polite">
+            <span>{{ visibleGameEntries(item).length }} di {{ entries.length }} partite</span>
+            <button type="button" class="show-more-games" *ngIf="hiddenGameEntriesCount(item) > 0" (click)="showMoreGameEntries(item.id)">
+              Mostra altre {{ hiddenGameEntriesCount(item) < 100 ? hiddenGameEntriesCount(item) : 100 }}
+            </button>
           </div>
           </ng-container>
         </ng-container>
@@ -493,15 +501,20 @@
             <label class="game-filter" [attr.for]="'item-inline-game-filter-' + item.id">
               Filtra partite
               <input [id]="'item-inline-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"
-                placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)" />
+                placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)"
+                (change)="applyItemGameFilter(item.id, inlineGameFilterInput.value)" #inlineGameFilterInput />
             </label>
 
             <ng-container *ngIf="filteredGameEntries(item) as entries">
-              <article class="library-game" *ngFor="let entry of entries; trackBy: trackByGameEntry">
+              <article class="library-game" *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry">
                 <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
                   {{ entry.title }}
                 </button>
               </article>
+
+              <button type="button" class="show-more-games" *ngIf="hiddenGameEntriesCount(item) > 0" (click)="showMoreGameEntries(item.id)">
+                Mostra altre partite ({{ hiddenGameEntriesCount(item) }} rimanenti)
+              </button>
 
               <p class="game-filter-empty" *ngIf="entries.length === 0">Nessuna partita trovata con questo filtro.</p>
             </ng-container>

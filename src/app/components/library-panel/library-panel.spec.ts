@@ -108,7 +108,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should make resume the only primary card action when a session is available', () => {
-    component.items = [
+    fixture.componentRef.setInput('items', [
       {
         id: 'pgn-1',
         name: 'Allenamento.pgn',
@@ -116,10 +116,10 @@ describe('LibraryPanelComponent', () => {
         mode: 'puzzle',
         games: [],
       },
-    ];
-    component.woodpeckerSessionInfoByItemId = {
+    ]);
+    fixture.componentRef.setInput('woodpeckerSessionInfoByItemId', {
       'pgn-1': { hasSession: true, resumePuzzleIndex: 4 },
-    };
+    });
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
@@ -136,7 +136,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should make open the primary card action when no session can be resumed', () => {
-    component.items = [
+    fixture.componentRef.setInput('items', [
       {
         id: 'pgn-1',
         name: 'Allenamento.pgn',
@@ -144,7 +144,7 @@ describe('LibraryPanelComponent', () => {
         mode: 'view',
         games: [],
       },
-    ];
+    ]);
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
@@ -185,6 +185,61 @@ describe('LibraryPanelComponent', () => {
 
     expect(component.itemGameFilter(item.id)).toBe('');
     expect(component.filteredGameEntries(item).map((entry) => entry.game.id)).toEqual(['game-1']);
+  });
+
+  describe('game list', () => {
+    const makeItem = (gameCount: number) => ({
+      id: 'pgn-big',
+      name: 'Grande.pgn',
+      pgn: '',
+      mode: 'view' as const,
+      games: Array.from({ length: gameCount }, (_, index) => ({
+        id: `big-${index + 1}`,
+        initialFen: '',
+        uciMoves: [],
+        positions: [],
+        plyCount: 10,
+        white: index % 2 === 0 ? 'Carlsen' : 'Caruana',
+      })),
+    });
+
+    it('should render large collections incrementally', () => {
+      const item = makeItem(250);
+
+      expect(component.filteredGameEntries(item).length).toBe(250);
+      expect(component.visibleGameEntries(item).length).toBe(100);
+      expect(component.hiddenGameEntriesCount(item)).toBe(150);
+
+      component.showMoreGameEntries(item.id);
+      expect(component.visibleGameEntries(item).length).toBe(200);
+    });
+
+    it('should memoize filtered entries until filters change', () => {
+      const item = makeItem(10);
+      const first = component.filteredGameEntries(item);
+
+      expect(component.filteredGameEntries(item)).toBe(first);
+
+      component.applyItemGameFilter(item.id, 'caruana');
+      expect(component.filteredGameEntries(item).length).toBe(5);
+    });
+
+    it('should debounce the free-text search', () => {
+      jasmine.clock().install();
+      try {
+        const item = makeItem(10);
+        const input = document.createElement('input');
+        input.value = 'carlsen';
+
+        component.onItemGameFilterInput(item.id, { target: input } as unknown as Event);
+        expect(component.filteredGameEntries(item).length).toBe(10);
+
+        jasmine.clock().tick(200);
+        expect(component.filteredGameEntries(item).length).toBe(5);
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    });
   });
 
   describe('puzzle options', () => {

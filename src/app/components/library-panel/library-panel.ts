@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
@@ -116,6 +116,14 @@ const DEFAULT_PUZZLE_OPTIONS: PuzzleItemOptions = {
 
 const PUZZLE_OPTIONS_STORAGE_KEY = 'puzzle-droid-library-puzzle-options-v1';
 const COMPACT_LAYOUT_QUERY = '(max-width: 767px)';
+const GAME_LIST_PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 150;
+
+interface GameSearchIndex {
+  entries: LibraryFilteredGameEntry[];
+  fields: { haystack: string; white: string; black: string; event: string }[];
+  resultOptions: string[];
+}
 const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
@@ -123,6 +131,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
   imports: [CommonModule, AppIconComponent, AppDialogComponent, EmptyStateComponent, LoadingIndicatorComponent, StatusBadgeComponent],
   templateUrl: './library-panel.html',
   styleUrl: './library-panel.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LibraryPanelComponent {
   @Input() items: PgnLibraryItem[] = [];
@@ -161,8 +170,21 @@ export class LibraryPanelComponent {
   private readonly puzzleOptionsByItem = new Map<string, PuzzleItemOptions>(loadPersistedPuzzleOptions());
   private readonly gameFilterByItem = new Map<string, string>();
   private readonly headerFiltersByItem = new Map<string, LibraryHeaderFilters>();
+  private readonly visibleLimitByItem = new Map<string, number>();
+  /** Bumped on every filter/paging change so OnPush templates re-render after debounced updates. */
+  private readonly filterRevision = signal(0);
+  private readonly searchIndexByGames = new WeakMap<PgnLibraryGame[], GameSearchIndex>();
+  private readonly filteredEntriesCache = new Map<string, { games: PgnLibraryGame[]; key: string; entries: LibraryFilteredGameEntry[] }>();
+  private readonly visibleEntriesCache = new Map<
+    string,
+    { source: LibraryFilteredGameEntry[]; limit: number; entries: LibraryFilteredGameEntry[] }
+  >();
+  private gameFilterDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => clearTimeout(this.gameFilterDebounceTimer));
+
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return;
     }
@@ -171,7 +193,7 @@ export class LibraryPanelComponent {
     const syncLayout = () => this.isCompactLayout.set(mediaQuery.matches);
     syncLayout();
     mediaQuery.addEventListener('change', syncLayout);
-    inject(DestroyRef).onDestroy(() => mediaQuery.removeEventListener('change', syncLayout));
+    destroyRef.onDestroy(() => mediaQuery.removeEventListener('change', syncLayout));
   }
 
   onFilesInput(event: Event): void {
@@ -313,7 +335,14 @@ export class LibraryPanelComponent {
 
   onItemGameFilterInput(itemId: string, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
+    clearTimeout(this.gameFilterDebounceTimer);
+    this.gameFilterDebounceTimer = setTimeout(() => this.applyItemGameFilter(itemId, value), SEARCH_DEBOUNCE_MS);
+  }
+
+  applyItemGameFilter(itemId: string, value: string): void {
+    clearTimeout(this.gameFilterDebounceTimer);
     this.gameFilterByItem.set(itemId, value);
+    this.onFiltersChanged(itemId);
   }
 
   itemGameFilter(itemId: string): string {
@@ -327,6 +356,7 @@ export class LibraryPanelComponent {
       [key]: rawValue,
     };
     this.headerFiltersByItem.set(itemId, next);
+    this.onFiltersChanged(itemId);
   }
 
   headerFilterValue(itemId: string, key: keyof LibraryHeaderFilters): string {
@@ -334,59 +364,99 @@ export class LibraryPanelComponent {
   }
 
   resultOptions(item: PgnLibraryItem): string[] {
-    return [...new Set(item.games.map((game) => (game.result ?? '').trim()).filter((value) => value.length > 0))].sort((a, b) =>
-      a.localeCompare(b),
-    );
+    return this.searchIndex(item).resultOptions;
   }
 
+  /** Filtered entries, memoized per item until its games or filters change. */
   filteredGameEntries(item: PgnLibraryItem): LibraryFilteredGameEntry[] {
+    this.filterRevision();
     const query = this.itemGameFilter(item.id).trim().toLowerCase();
     const headerFilters = this.itemHeaderFilters(item.id);
     const whiteFilter = headerFilters.white.trim().toLowerCase();
     const blackFilter = headerFilters.black.trim().toLowerCase();
     const eventFilter = headerFilters.event.trim().toLowerCase();
     const resultFilter = headerFilters.result.trim();
+    const key = [query, whiteFilter, blackFilter, eventFilter, resultFilter].join('\u0000');
 
-    return item.games
-      .map((game, index) => ({
-        game,
-        index,
-        title: this.gameTitle(index, item),
-        moveCount: game.plyCount ?? Math.max(0, game.positions.length - 1),
-      }))
-      .filter((entry) => {
-        const haystack = [
-          entry.title,
-          entry.game.white ?? '',
-          entry.game.black ?? '',
-          entry.game.event ?? '',
-          entry.game.result ?? '',
-        ]
-          .join(' ')
-          .toLowerCase();
+    const cached = this.filteredEntriesCache.get(item.id);
+    if (cached && cached.games === item.games && cached.key === key) {
+      return cached.entries;
+    }
 
-        if (query && !haystack.includes(query)) {
-          return false;
-        }
+    const index = this.searchIndex(item);
+    const entries = index.entries.filter((entry, position) => {
+      const fields = index.fields[position];
+      return (
+        (!query || fields.haystack.includes(query)) &&
+        (!whiteFilter || fields.white.includes(whiteFilter)) &&
+        (!blackFilter || fields.black.includes(blackFilter)) &&
+        (!eventFilter || fields.event.includes(eventFilter)) &&
+        (!resultFilter || (entry.game.result ?? '*') === resultFilter)
+      );
+    });
 
-        if (whiteFilter && !(entry.game.white ?? '').toLowerCase().includes(whiteFilter)) {
-          return false;
-        }
+    this.filteredEntriesCache.set(item.id, { games: item.games, key, entries });
+    return entries;
+  }
 
-        if (blackFilter && !(entry.game.black ?? '').toLowerCase().includes(blackFilter)) {
-          return false;
-        }
+  /** First page(s) of the filtered entries: large collections are rendered incrementally. */
+  visibleGameEntries(item: PgnLibraryItem): LibraryFilteredGameEntry[] {
+    const entries = this.filteredGameEntries(item);
+    const limit = this.visibleLimit(item.id);
+    const cached = this.visibleEntriesCache.get(item.id);
+    if (cached && cached.source === entries && cached.limit === limit) {
+      return cached.entries;
+    }
 
-        if (eventFilter && !(entry.game.event ?? '').toLowerCase().includes(eventFilter)) {
-          return false;
-        }
+    const visible = entries.length <= limit ? entries : entries.slice(0, limit);
+    this.visibleEntriesCache.set(item.id, { source: entries, limit, entries: visible });
+    return visible;
+  }
 
-        if (resultFilter && (entry.game.result ?? '*') !== resultFilter) {
-          return false;
-        }
+  hiddenGameEntriesCount(item: PgnLibraryItem): number {
+    return Math.max(0, this.filteredGameEntries(item).length - this.visibleLimit(item.id));
+  }
 
-        return true;
-      });
+  showMoreGameEntries(itemId: string): void {
+    this.visibleLimitByItem.set(itemId, this.visibleLimit(itemId) + GAME_LIST_PAGE_SIZE);
+    this.filterRevision.update((value) => value + 1);
+  }
+
+  private visibleLimit(itemId: string): number {
+    return this.visibleLimitByItem.get(itemId) ?? GAME_LIST_PAGE_SIZE;
+  }
+
+  private searchIndex(item: PgnLibraryItem): GameSearchIndex {
+    const cached = this.searchIndexByGames.get(item.games);
+    if (cached) {
+      return cached;
+    }
+
+    const entries = item.games.map((game, index) => ({
+      game,
+      index,
+      title: this.gameTitle(index, item),
+      moveCount: game.plyCount ?? Math.max(0, game.positions.length - 1),
+    }));
+    const index: GameSearchIndex = {
+      entries,
+      fields: entries.map(({ game, title }) => ({
+        haystack: [title, game.white ?? '', game.black ?? '', game.event ?? '', game.result ?? ''].join(' ').toLowerCase(),
+        white: (game.white ?? '').toLowerCase(),
+        black: (game.black ?? '').toLowerCase(),
+        event: (game.event ?? '').toLowerCase(),
+      })),
+      resultOptions: [...new Set(item.games.map((game) => (game.result ?? '').trim()).filter((value) => value.length > 0))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    };
+    this.searchIndexByGames.set(item.games, index);
+    return index;
+  }
+
+  private onFiltersChanged(itemId: string): void {
+    this.visibleLimitByItem.delete(itemId);
+    this.filterRevision.update((value) => value + 1);
   }
 
   onRemoveItem(item: PgnLibraryItem): void {
@@ -684,6 +754,9 @@ export class LibraryPanelComponent {
     }
     this.gameFilterByItem.delete(itemId);
     this.headerFiltersByItem.delete(itemId);
+    this.visibleLimitByItem.delete(itemId);
+    this.filteredEntriesCache.delete(itemId);
+    this.visibleEntriesCache.delete(itemId);
     if (this.expandedItemId === itemId) {
       this.expandedItemId = null;
     }
