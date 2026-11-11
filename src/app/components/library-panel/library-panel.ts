@@ -160,7 +160,7 @@ export class LibraryPanelComponent {
   @Output() readonly puzzlePlayerColorChanged = new EventEmitter<LibraryPuzzlePlayerColorChange>();
 
   activeTab: LibraryViewTab = 'pgn';
-  expandedItemId: string | null = null;
+  woodpeckerSessionPendingDelete: PgnLibraryItem | null = null;
   editingBookmarkId: string | null = null;
   bookmarkPendingDeleteId: string | null = null;
   bookmarkSearch = '';
@@ -174,6 +174,7 @@ export class LibraryPanelComponent {
   /** Bumped on every filter/paging change so OnPush templates re-render after debounced updates. */
   private readonly filterRevision = signal(0);
   private readonly searchIndexByGames = new WeakMap<PgnLibraryGame[], GameSearchIndex>();
+  private readonly collectionStatsByGames = new WeakMap<PgnLibraryGame[], { events: string; averageMoves: string }>();
   private readonly filteredEntriesCache = new Map<string, { games: PgnLibraryGame[]; key: string; entries: LibraryFilteredGameEntry[] }>();
   private readonly visibleEntriesCache = new Map<
     string,
@@ -325,12 +326,49 @@ export class LibraryPanelComponent {
     this.closeRequested.emit();
   }
 
-  toggleItemExpansion(itemId: string): void {
-    this.expandedItemId = this.expandedItemId === itemId ? null : itemId;
+  /** Card metadata: header details for single games, aggregated stats for collections. */
+  cardSummary(item: PgnLibraryItem): { label: string; value: string }[] {
+    if (item.games.length <= 1) {
+      return [
+        { label: 'Evento', value: item.event || '-' },
+        { label: 'Risultato', value: item.result || '-' },
+        { label: 'Bianco', value: item.white || '-' },
+        { label: 'Nero', value: item.black || '-' },
+      ];
+    }
+
+    const stats = this.collectionStats(item);
+    const resumeIndex = this.resumePuzzleIndex(item.id);
+    return [
+      { label: 'Modalità', value: item.mode === 'puzzle' ? 'Puzzle' : 'Visualizzazione' },
+      { label: 'Eventi', value: stats.events },
+      { label: 'Mosse medie', value: stats.averageMoves },
+      { label: 'Progresso', value: resumeIndex === null ? '-' : `${Math.min(resumeIndex + 1, item.games.length)} / ${item.games.length}` },
+    ];
   }
 
-  isExpanded(itemId: string): boolean {
-    return this.expandedItemId === itemId;
+  trackByItem(_: number, item: PgnLibraryItem): string {
+    return item.id;
+  }
+
+  trackByMetaLabel(_: number, meta: { label: string }): string {
+    return meta.label;
+  }
+
+  private collectionStats(item: PgnLibraryItem): { events: string; averageMoves: string } {
+    const cached = this.collectionStatsByGames.get(item.games);
+    if (cached) {
+      return cached;
+    }
+
+    const events = [...new Set(item.games.map((game) => game.event?.trim()).filter((event): event is string => Boolean(event) && event !== '?'))];
+    const totalPlies = item.games.reduce((sum, game) => sum + (game.plyCount ?? 0), 0);
+    const stats = {
+      events: events.length === 0 ? '-' : events.length === 1 ? events[0] : `${events.length} eventi`,
+      averageMoves: String(Math.round(totalPlies / item.games.length / 2)),
+    };
+    this.collectionStatsByGames.set(item.games, stats);
+    return stats;
   }
 
   onItemGameFilterInput(itemId: string, event: Event): void {
@@ -538,8 +576,20 @@ export class LibraryPanelComponent {
     });
   }
 
-  onDeleteWoodpeckerSession(itemId: string): void {
-    this.woodpeckerSessionDeleteRequested.emit(itemId);
+  onDeleteWoodpeckerSession(item: PgnLibraryItem): void {
+    this.woodpeckerSessionPendingDelete = item;
+  }
+
+  cancelWoodpeckerSessionDelete(): void {
+    this.woodpeckerSessionPendingDelete = null;
+  }
+
+  confirmWoodpeckerSessionDelete(): void {
+    const item = this.woodpeckerSessionPendingDelete;
+    if (!item) return;
+
+    this.woodpeckerSessionPendingDelete = null;
+    this.woodpeckerSessionDeleteRequested.emit(item.id);
   }
 
   woodpeckerInitialTargetDays(item: PgnLibraryItem): number {
@@ -757,9 +807,6 @@ export class LibraryPanelComponent {
     this.visibleLimitByItem.delete(itemId);
     this.filteredEntriesCache.delete(itemId);
     this.visibleEntriesCache.delete(itemId);
-    if (this.expandedItemId === itemId) {
-      this.expandedItemId = null;
-    }
   }
 
   gameTitle(index: number, item: PgnLibraryItem): string {

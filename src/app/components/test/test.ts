@@ -708,13 +708,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const confirmed =
-      typeof window === 'undefined' ||
-      window.confirm(`Eliminare la sessione Woodpecker per "${item.name}"? Il progresso del ciclo corrente andrà perso.`);
-    if (!confirmed) {
-      return;
-    }
-
     const legacyKey = this.getWoodpeckerSessionKey(item);
     const directKey = item.id;
     const nextSessions = { ...this.woodpeckerSessionsByKey };

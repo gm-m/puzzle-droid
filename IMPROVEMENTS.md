@@ -11,7 +11,7 @@ Legenda: `[ ]` da fare · `[x]` fatto
 - [x] **1.5 Un solo layout per la lista partite** – tabella desktop e card mobile sono entrambe nel DOM (una nascosta via CSS); renderizzare solo quella attiva via `matchMedia`.
 - [x] **1.6 Validazione Micro-Set** – "Da" > "A" consentito, "Da" senza max, clamp durante la digitazione.
 - [x] **1.7 Conferma rimozione PGN con `app-dialog`** al posto di `window.confirm` (coerente con i bookmark, migliore su WebView Android).
-- [ ] **1.8 Conferma eliminazione sessione Woodpecker con `app-dialog`** (usa ancora `window.confirm` in `test.ts`).
+- [x] **1.8 Conferma eliminazione sessione Woodpecker con `app-dialog`** (usa ancora `window.confirm` in `test.ts`).
 
 ## Fase 2 – Parsing e memoria
 
@@ -29,9 +29,9 @@ Legenda: `[ ]` da fare · `[x]` fatto
 
 ## Fase 4 – UX della libreria
 
-- [ ] **4.1 Card semplificate** – una CTA primaria, azioni secondarie raggruppate, azioni distruttive solo nella vista di dettaglio.
-- [ ] **4.2 Metadati aggregati nella card** (n. partite, progresso Woodpecker) invece di quelli della prima partita.
-- [ ] **4.3 Rimuovere "Anteprima partite" inline** (duplica la vista di dettaglio).
+- [x] **4.1 Card semplificate** – una CTA primaria, azioni secondarie raggruppate, azioni distruttive solo nella vista di dettaglio.
+- [x] **4.2 Metadati aggregati nella card** (modalità, eventi, mosse medie, progresso Woodpecker) invece di quelli della prima partita; per PGN a partita singola restano gli header.
+- [x] **4.3 Rimuovere "Anteprima partite" inline** (duplica la vista di dettaglio).
 - [ ] **4.4 Stato per puzzle nella lista** (risolto / sbagliato / mai tentato) dai dati Woodpecker.
 - [ ] **4.5 Ricerca/ordinamento collezioni, rilevamento duplicati in import, risultati import chiudibili.**
 

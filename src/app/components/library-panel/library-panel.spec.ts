@@ -130,9 +130,36 @@ describe('LibraryPanelComponent', () => {
 
     expect(primaryActions.length).toBe(1);
     expect(primaryActions[0].textContent?.trim()).toBe('Riprendi dal puzzle 5');
-    expect(secondaryActions).toContain('Apri PGN');
-    expect(secondaryActions).toContain('Anteprima partite');
-    expect(secondaryActions).toContain('Dashboard Woodpecker');
+    expect(secondaryActions).toEqual(['Apri PGN', 'Dashboard Woodpecker']);
+    expect(compiled.querySelector('.card-danger-action')).toBeNull();
+  });
+
+  it('should summarize collections with aggregated metadata', () => {
+    const games = [
+      { id: 'g1', initialFen: '', uciMoves: [], positions: [], plyCount: 20, event: 'Linares' },
+      { id: 'g2', initialFen: '', uciMoves: [], positions: [], plyCount: 40, event: 'Wijk' },
+    ];
+    const item = { id: 'pgn-multi', name: 'Multi.pgn', pgn: '', mode: 'puzzle' as const, games, event: 'Linares' };
+    component.woodpeckerSessionInfoByItemId = { 'pgn-multi': { hasSession: true, resumePuzzleIndex: 1 } };
+
+    expect(component.cardSummary(item)).toEqual([
+      { label: 'Modalità', value: 'Puzzle' },
+      { label: 'Eventi', value: '2 eventi' },
+      { label: 'Mosse medie', value: '15' },
+      { label: 'Progresso', value: '2 / 2' },
+    ]);
+  });
+
+  it('should confirm before deleting a Woodpecker session', () => {
+    const item = { id: 'pgn-1', name: 'Allenamento.pgn', pgn: '', mode: 'puzzle' as const, games: [] };
+    spyOn(component.woodpeckerSessionDeleteRequested, 'emit');
+
+    component.onDeleteWoodpeckerSession(item);
+    expect(component.woodpeckerSessionDeleteRequested.emit).not.toHaveBeenCalled();
+
+    component.confirmWoodpeckerSessionDelete();
+    expect(component.woodpeckerSessionDeleteRequested.emit).toHaveBeenCalledWith('pgn-1');
+    expect(component.woodpeckerSessionPendingDelete).toBeNull();
   });
 
   it('should make open the primary card action when no session can be resumed', () => {

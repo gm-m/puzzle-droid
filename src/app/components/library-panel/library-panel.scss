@@ -485,44 +485,6 @@
   }
 }
 
-.card-details {
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border-color);
-  display: grid;
-  gap: 0.75rem;
-}
-
-.library-game {
-  display: grid;
-  gap: 0.4rem;
-
-  h3 {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--text-primary);
-    font-weight: 700;
-  }
-}
-
-.game-select-button {
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  background: var(--surface-2);
-  color: var(--text-primary);
-  padding: 0.6rem 0.75rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: #e2e8f0;
-    border-color: #94a3b8;
-  }
-}
-
 .game-filter {
   display: grid;
   gap: 0.4rem;
@@ -1191,8 +1153,7 @@
 }
 
 .card-primary-action,
-.card-secondary-action,
-.card-danger-action {
+.card-secondary-action {
   min-height: var(--control-height);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-4);
@@ -1237,27 +1198,6 @@
   &:hover {
     border-color: var(--border-strong);
     background: var(--surface-3);
-  }
-}
-
-.card-danger-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  border-top: 1px solid var(--border-color);
-  padding-top: var(--space-3);
-}
-
-.card-danger-action {
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--danger);
-
-  &:hover {
-    border-color: var(--danger-border);
-    background: var(--danger-soft);
-    color: var(--danger-hover);
   }
 }
 

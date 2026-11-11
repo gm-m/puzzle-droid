@@ -231,7 +231,7 @@
                 </label>
 
                 <button type="button" class="woodpecker-delete-session" *ngIf="hasWoodpeckerSession(item.id)"
-                  (click)="onDeleteWoodpeckerSession(item.id)">
+                  (click)="onDeleteWoodpeckerSession(item)">
                   <app-icon name="trash"></app-icon>
                   Elimina sessione Woodpecker
                 </button>
@@ -420,7 +420,7 @@
 
     <ng-template #itemsOverview>
       <div class="library-grid" *ngIf="visibleItems().length > 0; else emptyState">
-        <article class="game-card" *ngFor="let item of visibleItems()">
+        <article class="game-card" *ngFor="let item of visibleItems(); trackBy: trackByItem">
           <header class="card-header">
             <div class="title-row">
               <div class="card-title-group">
@@ -432,14 +432,10 @@
           </header>
 
           <div class="card-meta">
-            <div class="meta-item"><span class="meta-label">Evento</span> <span class="meta-value"
-                [title]="item.event || '-'">{{ item.event || '-' }}</span></div>
-            <div class="meta-item"><span class="meta-label">Risultato</span> <span class="meta-value">{{ item.result ||
-                '-' }}</span></div>
-            <div class="meta-item"><span class="meta-label">Bianco</span> <span class="meta-value"
-                [title]="item.white || '-'">{{ item.white || '-' }}</span></div>
-            <div class="meta-item"><span class="meta-label">Nero</span> <span class="meta-value"
-                [title]="item.black || '-'">{{ item.black || '-' }}</span></div>
+            <div class="meta-item" *ngFor="let meta of cardSummary(item); trackBy: trackByMetaLabel">
+              <span class="meta-label">{{ meta.label }}</span>
+              <span class="meta-value" [title]="meta.value">{{ meta.value }}</span>
+            </div>
           </div>
 
           <div class="card-actions-wrapper">
@@ -468,57 +464,11 @@
               >
                 Apri {{ activePgnTabLabel() }}
               </button>
-              <button
-                type="button"
-                class="card-secondary-action"
-                [attr.aria-expanded]="isExpanded(item.id)"
-                [attr.aria-controls]="'card-details-' + item.id"
-                (click)="toggleItemExpansion(item.id)"
-              >
-                {{ isExpanded(item.id) ? 'Nascondi' : 'Anteprima' }} partite
-              </button>
               <button type="button" class="card-secondary-action" (click)="onOpenDashboard(item.id)">
                 Dashboard Woodpecker
               </button>
             </div>
-
-            <div class="card-danger-actions" role="group" aria-label="Azioni distruttive" *ngIf="hasWoodpeckerSession(item.id) || canRemoveItem()">
-              <button
-                type="button"
-                class="card-danger-action"
-                *ngIf="hasWoodpeckerSession(item.id)"
-                (click)="onDeleteWoodpeckerSession(item.id)"
-              >
-                Elimina sessione
-              </button>
-              <button type="button" class="card-danger-action" *ngIf="canRemoveItem()" (click)="onRemoveItem(item)">
-                Rimuovi PGN
-              </button>
-            </div>
           </div>
-
-          <section class="card-details" [id]="'card-details-' + item.id" *ngIf="isExpanded(item.id)">
-            <label class="game-filter" [attr.for]="'item-inline-game-filter-' + item.id">
-              Filtra partite
-              <input [id]="'item-inline-game-filter-' + item.id" type="text" [value]="itemGameFilter(item.id)"
-                placeholder="Es. Carlsen, Partita 12, 1-0" (input)="onItemGameFilterInput(item.id, $event)"
-                (change)="applyItemGameFilter(item.id, inlineGameFilterInput.value)" #inlineGameFilterInput />
-            </label>
-
-            <ng-container *ngIf="filteredGameEntries(item) as entries">
-              <article class="library-game" *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry">
-                <button type="button" class="game-select-button" (click)="onGameClick(item, entry.game, entry.index)">
-                  {{ entry.title }}
-                </button>
-              </article>
-
-              <button type="button" class="show-more-games" *ngIf="hiddenGameEntriesCount(item) > 0" (click)="showMoreGameEntries(item.id)">
-                Mostra altre partite ({{ hiddenGameEntriesCount(item) }} rimanenti)
-              </button>
-
-              <p class="game-filter-empty" *ngIf="entries.length === 0">Nessuna partita trovata con questo filtro.</p>
-            </ng-container>
-          </section>
         </article>
       </div>
     </ng-template>
@@ -543,6 +493,17 @@
     <div class="bookmark-delete-actions">
       <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelItemRemoval()">Annulla</button>
       <button type="button" class="bookmark-danger-action" (click)="confirmItemRemoval()">Rimuovi</button>
+    </div>
+  </app-dialog>
+
+  <app-dialog [open]="woodpeckerSessionPendingDelete !== null" title="Eliminare la sessione Woodpecker?"
+    (closed)="cancelWoodpeckerSessionDelete()">
+    <p class="bookmark-delete-description">
+      Il progresso del ciclo corrente di “{{ woodpeckerSessionPendingDelete?.name }}” andrà perso.
+    </p>
+    <div class="bookmark-delete-actions">
+      <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelWoodpeckerSessionDelete()">Annulla</button>
+      <button type="button" class="bookmark-danger-action" (click)="confirmWoodpeckerSessionDelete()">Elimina sessione</button>
     </div>
   </app-dialog>
 </section>
