@@ -352,7 +352,7 @@ export class LibraryPanelComponent {
         game,
         index,
         title: this.gameTitle(index, item),
-        moveCount: Math.max(0, game.positions.length - 1),
+        moveCount: game.plyCount ?? Math.max(0, game.positions.length - 1),
       }))
       .filter((entry) => {
         const haystack = [

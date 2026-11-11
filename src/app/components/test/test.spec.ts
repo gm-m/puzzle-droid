@@ -282,6 +282,19 @@ describe('ChessWorkspaceComponent', () => {
       expect(second.positions[1].san).toBe('Ra8#');
     });
 
+    it('should defer move parsing until positions are accessed and estimate the ply count', () => {
+      const loadSpy = spyOn(component as unknown as { loadPgnWithFallback(pgn: string): unknown }, 'loadPgnWithFallback').and.callThrough();
+      const [game] = parse('[Event "Lazy"]\n\n1. e4 {ok} e5 (1... c5 2. Nf3) 2. Nf3 $1 Nc6 3. O-O-O?? 1-0');
+
+      expect(game.event).toBe('Lazy');
+      expect(game.plyCount).toBe(5);
+      expect(loadSpy).not.toHaveBeenCalled();
+
+      void game.positions;
+      void game.uciMoves;
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('should keep only the initial position for unparseable movetext', () => {
       const [game] = parse('[Event "Rotto"]\n\n1. e5 e4 *');
 

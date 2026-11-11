@@ -18,7 +18,8 @@ Legenda: `[ ]` da fare · `[x]` fatto
 - [x] **2.1 Parsing in un solo passaggio** – oggi ogni partita passa da `chess.js.loadPgn` 2-3 volte (+ replay). Usare `history({ verbose: true })` (`after` = FEN) e `getComments()` dalla stessa istanza. Benchmark sui 35 puzzle inclusi: ~780 ms → ~290 ms (desktop).
 - [x] **2.2 Eliminare la crescita O(n²) di `uciHistory`** – ogni posizione copia tutta la storia; `onGameClick` ricopia tutto di nuovo.
 - [x] **2.3 Persistenza su IndexedDB** – PGN raw fuori da `localStorage` (limite ~5 MB), metadati separati, niente riscrittura completa a ogni keystroke. Migrazione automatica dal vecchio `localStorage`, backup export/import aggiornati, stato di caricamento in libreria.
-- [ ] **2.4 Parsing lazy / Web Worker** – solo header all'avvio, mosse al primo accesso; parsing fuori dal main thread.
+- [x] **2.4 Parsing lazy** – all'avvio solo header + conteggio mosse stimato (~0,7 ms per 35 partite vs ~290 ms); le mosse vengono analizzate al primo accesso alla partita.
+- [ ] **2.5 Web Worker per l'import** – il parsing completo in fase di upload resta sul main thread.
 
 ## Fase 3 – Rendering della libreria
 

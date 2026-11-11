@@ -3372,14 +3372,21 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private parseSinglePgnGame(pgn: string, itemId: string, gameIndex: number): PgnLibraryGame | null {
     const headers = this.parsePgnHeaders(pgn);
     const initialFen = this.resolveInitialFen(headers['FEN']);
-    const { moves, commentByFen } = this.loadPgnWithFallback(pgn);
-    const leadingComment = this.extractLeadingPgnComment(pgn);
 
-    if (!commentByFen.has(initialFen) && leadingComment) {
-      commentByFen.set(initialFen, leadingComment);
-    }
-
-    const { positions, uciMoves } = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
+    // Move parsing is by far the most expensive step (chess.js loadPgn): defer it until the game's
+    // positions are actually needed, so loading a large library only costs a header scan.
+    let resolved: { positions: PgnLibraryPosition[]; uciMoves: string[] } | null = null;
+    const resolve = () => {
+      if (!resolved) {
+        const { moves, commentByFen } = this.loadPgnWithFallback(pgn);
+        const leadingComment = this.extractLeadingPgnComment(pgn);
+        if (!commentByFen.has(initialFen) && leadingComment) {
+          commentByFen.set(initialFen, leadingComment);
+        }
+        resolved = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
+      }
+      return resolved;
+    };
 
     return {
       id: `${itemId}-g${gameIndex + 1}`,
@@ -3388,9 +3395,36 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       black: headers['Black'],
       result: headers['Result'],
       initialFen,
-      uciMoves,
-      positions,
+      plyCount: this.countMainlinePlies(pgn),
+      get uciMoves() {
+        return resolve().uciMoves;
+      },
+      get positions() {
+        return resolve().positions;
+      },
     };
+  }
+
+  /** Cheap mainline ply count from the movetext, without validating moves. */
+  private countMainlinePlies(pgn: string): number {
+    let movetext = pgn
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .filter((line) => !/^\s*\[[^\]]*\]\s*$/.test(line) && !line.trimStart().startsWith('%'))
+      .join(' ')
+      .replace(/\{[^}]*\}/g, ' ')
+      .replace(/;[^\n]*/g, ' ');
+
+    while (/\([^()]*\)/.test(movetext)) {
+      movetext = movetext.replace(/\([^()]*\)/g, ' ');
+    }
+
+    return movetext
+      .replace(/\$\d+/g, ' ')
+      .replace(/\d+\.(\.\.)?/g, ' ')
+      .replace(/(1-0|0-1|1\/2-1\/2|\*)\s*$/, ' ')
+      .split(/\s+/)
+      .filter((token) => /^[a-hKQRBNO0]/.test(token)).length;
   }
 
   /**

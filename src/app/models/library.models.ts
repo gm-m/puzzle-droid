@@ -20,6 +20,8 @@ export interface PgnLibraryGame {
   black?: string;
   result?: string;
   initialFen: string;
+  /** Mainline length estimated from the movetext (available without parsing the moves). */
+  plyCount?: number;
   /** Full mainline in UCI; the history at position `p` is `uciMoves.slice(0, p.ply)`. */
   uciMoves: string[];
   positions: PgnLibraryPosition[];
