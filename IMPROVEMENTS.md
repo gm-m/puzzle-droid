@@ -11,12 +11,13 @@ Legenda: `[ ]` da fare · `[x]` fatto
 - [x] **1.5 Un solo layout per la lista partite** – tabella desktop e card mobile sono entrambe nel DOM (una nascosta via CSS); renderizzare solo quella attiva via `matchMedia`.
 - [x] **1.6 Validazione Micro-Set** – "Da" > "A" consentito, "Da" senza max, clamp durante la digitazione.
 - [x] **1.7 Conferma rimozione PGN con `app-dialog`** al posto di `window.confirm` (coerente con i bookmark, migliore su WebView Android).
+- [ ] **1.8 Conferma eliminazione sessione Woodpecker con `app-dialog`** (usa ancora `window.confirm` in `test.ts`).
 
 ## Fase 2 – Parsing e memoria
 
 - [x] **2.1 Parsing in un solo passaggio** – oggi ogni partita passa da `chess.js.loadPgn` 2-3 volte (+ replay). Usare `history({ verbose: true })` (`after` = FEN) e `getComments()` dalla stessa istanza. Benchmark sui 35 puzzle inclusi: ~780 ms → ~290 ms (desktop).
 - [x] **2.2 Eliminare la crescita O(n²) di `uciHistory`** – ogni posizione copia tutta la storia; `onGameClick` ricopia tutto di nuovo.
-- [ ] **2.3 Persistenza su IndexedDB** – PGN raw fuori da `localStorage` (limite ~5 MB), metadati separati, niente riscrittura completa a ogni keystroke.
+- [x] **2.3 Persistenza su IndexedDB** – PGN raw fuori da `localStorage` (limite ~5 MB), metadati separati, niente riscrittura completa a ogni keystroke. Migrazione automatica dal vecchio `localStorage`, backup export/import aggiornati, stato di caricamento in libreria.
 - [ ] **2.4 Parsing lazy / Web Worker** – solo header all'avvio, mosse al primo accesso; parsing fuori dal main thread.
 
 ## Fase 3 – Rendering della libreria

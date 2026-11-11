@@ -130,6 +130,7 @@ export class LibraryPanelComponent {
   @Input() openedItemId: string | null = null;
   @Input() positionBookmarks: PositionBookmark[] = [];
   @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
+  @Input() isLoading = false;
   @Input() isUploadInProgress = false;
   @Input() uploadResults: LibraryUploadResult[] = [];
   @Input() puzzlePlayerColorByGameId: Record<string, PuzzlePlayerColor> = {};

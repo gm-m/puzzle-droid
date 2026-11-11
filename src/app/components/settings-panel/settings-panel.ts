@@ -70,8 +70,8 @@ export class SettingsPanelComponent {
     this.setBackupFeedback('Impostazioni ripristinate ai valori predefiniti.', 'success');
   }
 
-  exportBackup(): void {
-    const payload = this.woodpeckerAnalytics.exportBackupBundle();
+  async exportBackup(): Promise<void> {
+    const payload = await this.woodpeckerAnalytics.exportBackupBundle();
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -94,7 +94,7 @@ export class SettingsPanelComponent {
     this.setBackupFeedback(`Importazione di ${file.name} in corso…`, 'info');
     try {
       const raw = await file.text();
-      const result = this.woodpeckerAnalytics.importBackupBundle(raw);
+      const result = await this.woodpeckerAnalytics.importBackupBundle(raw);
       this.setBackupFeedback(`${file.name}: ${result.message}`, result.ok ? 'success' : 'error');
     } catch {
       this.setBackupFeedback(`${file.name}: impossibile leggere il file selezionato.`, 'error');

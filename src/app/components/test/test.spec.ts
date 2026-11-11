@@ -42,8 +42,8 @@ describe('ChessWorkspaceComponent', () => {
       recordAttempt: jasmine.createSpy('recordAttempt'),
       getDashboardData: jasmine.createSpy('getDashboardData').and.returnValue(null),
       getAvailablePgns: jasmine.createSpy('getAvailablePgns').and.returnValue([]),
-      exportBackupBundle: jasmine.createSpy('exportBackupBundle').and.returnValue('{}'),
-      importBackupBundle: jasmine.createSpy('importBackupBundle').and.returnValue({ ok: true, message: 'ok' }),
+      exportBackupBundle: jasmine.createSpy('exportBackupBundle').and.resolveTo('{}'),
+      importBackupBundle: jasmine.createSpy('importBackupBundle').and.resolveTo({ ok: true, message: 'ok' }),
     };
 
     routerNavigateSpy = jasmine.createSpy('navigate').and.resolveTo(true);

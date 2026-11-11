@@ -39,6 +39,7 @@ export interface PgnLibraryItem {
   pgn: string;
   mode: LibraryMode;
   woodpeckerInitialTargetDays?: number;
+  createdAt?: number;
   games: PgnLibraryGame[];
   event?: string;
   white?: string;

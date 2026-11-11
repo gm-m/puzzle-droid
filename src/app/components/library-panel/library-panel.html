@@ -511,6 +511,11 @@
     </ng-template>
 
     <ng-template #emptyState>
+      <app-loading-indicator *ngIf="isLoading; else emptyStateMessage" class="library-loading"
+        label="Caricamento della libreria" [visibleLabel]="true"></app-loading-indicator>
+    </ng-template>
+
+    <ng-template #emptyStateMessage>
       <app-empty-state
         [title]="activeEmptyStateLabel()"
         [description]="activeTab === 'famous-tactics' ? 'Le raccolte disponibili compariranno qui.' : 'Importa uno o più file PGN per iniziare.'"

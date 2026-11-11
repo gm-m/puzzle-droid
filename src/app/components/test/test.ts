@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
@@ -28,19 +28,12 @@ import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '..
 
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { StockfishService } from '../../services/stockfish.service';
+import { LibraryStorageService, type PersistedLibraryItem } from '../../services/library-storage.service';
 
 interface LibraryGameListEntry {
   id: string;
   index: number;
   title: string;
-}
-
-interface PersistedLibraryItem {
-  id: string;
-  name: string;
-  pgn: string;
-  mode: LibraryMode;
-  woodpeckerInitialTargetDays?: number;
 }
 
 type AppView = 'analysis' | 'library' | 'settings';
@@ -56,7 +49,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
   private static readonly DAY_MS = 24 * 60 * 60 * 1000;
-  private static readonly LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
   private static readonly POSITION_BOOKMARKS_STORAGE_KEY = 'puzzle-droid-position-bookmarks-v1';
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
@@ -109,6 +101,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   readonly libraryItems = signal<PgnLibraryItem[]>([]);
   readonly famousTacticsItems = signal<PgnLibraryItem[]>([]);
+  readonly isLibraryLoading = signal(true);
   readonly isLibraryUploadInProgress = signal(false);
   readonly libraryUploadResults = signal<LibraryUploadResult[]>([]);
   readonly libraryOpenedItemId = signal<string | null>(null);
@@ -145,6 +138,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private routeParamsSubscription: Subscription | null = null;
   private routeQueryParamsSubscription: Subscription | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private isLibraryReady = false;
+  private readonly libraryStorage = inject(LibraryStorageService);
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -162,8 +157,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   ngOnInit(): void {
-    this.loadLibraryItems();
-    void this.loadFamousTacticsItems();
+    void this.initializeLibrary();
     this.loadPositionBookmarks();
     this.loadPuzzlePlayerColors();
     this.loadWoodpeckerSessions();
@@ -298,7 +292,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     pgnId: string | null,
     rawPuzzleIndex: string | null,
   ): void {
-    if (resumeWoodpecker !== '1' || !pgnId) {
+    if (resumeWoodpecker !== '1' || !pgnId || !this.isLibraryReady) {
       return;
     }
 
@@ -558,6 +552,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
                 pgn,
                 mode: 'view',
                 woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
+                createdAt: uploadId - index,
                 games,
                 event: firstGame.event,
                 white: firstGame.white,
@@ -583,7 +578,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.libraryUploadResults.set(parsed.map(({ result }) => result));
       if (parsedItems.length > 0) {
         this.libraryItems.update((items) => [...parsedItems, ...items]);
-        if (!this.persistLibraryItems()) {
+        if (!(await this.persistLibraryItems(parsedItems))) {
           this.libraryUploadResults.set(
             parsed.map(({ result }) =>
               result.status === 'success'
@@ -611,7 +606,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.libraryItems.update((items) =>
       items.map((item) => (item.id === change.id ? { ...item, mode: change.mode } : item)),
     );
-    this.persistLibraryItems();
+    void this.persistLibraryItemById(change.id);
   }
 
   onLibraryPuzzlePlayerColorChanged(change: LibraryPuzzlePlayerColorChange): void {
@@ -632,7 +627,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     const removingOpenedItem = this.libraryOpenedItemId() === itemId;
     const removedGameIds = new Set(this.findLibraryItemById(itemId)?.games.map((game) => game.id) ?? []);
     this.libraryItems.update((items) => items.filter((item) => item.id !== itemId));
-    this.persistLibraryItems();
+    this.libraryStorage.deleteItem(itemId).catch(() => this.showToast('Impossibile rimuovere il PGN dall’archivio locale.', 'error'));
     if (removedGameIds.size > 0) {
       this.puzzlePlayerColorByGameId.update((colors) =>
         Object.fromEntries(Object.entries(colors).filter(([gameId]) => !removedGameIds.has(gameId))),
@@ -741,7 +736,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.libraryItems.update((items) =>
       items.map((item) => (item.id === change.itemId ? { ...item, woodpeckerInitialTargetDays: targetDays } : item)),
     );
-    this.persistLibraryItems();
+    void this.persistLibraryItemById(change.itemId);
 
     const item = this.findLibraryItemById(change.itemId);
     if (!item) {
@@ -2703,23 +2698,23 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.persistWoodpeckerSessions();
   }
 
-  private loadLibraryItems(): void {
-    if (typeof localStorage === 'undefined') {
-      return;
+  private async initializeLibrary(): Promise<void> {
+    try {
+      await Promise.all([this.loadLibraryItems(), this.loadFamousTacticsItems()]);
+    } finally {
+      this.isLibraryReady = true;
+      this.isLibraryLoading.set(false);
     }
 
+    const params = this.route.snapshot.queryParamMap;
+    this.syncOpenedLibraryItemFromQuery(params.get('libraryItem'));
+    this.tryResumeWoodpeckerFromQuery(params.get('resumeWoodpecker'), params.get('pgnId'), params.get('puzzleIndex'));
+  }
+
+  private async loadLibraryItems(): Promise<void> {
     try {
-      const raw = localStorage.getItem(ChessWorkspaceComponent.LIBRARY_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) {
-        return;
-      }
-
-      const restored = parsed
+      const persisted = await this.libraryStorage.loadAll();
+      const restored = persisted
         .map((entry, index) => this.normalizePersistedLibraryItem(entry, index))
         .filter((item): item is PersistedLibraryItem => item !== null)
         .map((item) => {
@@ -2732,6 +2727,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
             pgn: item.pgn,
             mode: item.mode,
             woodpeckerInitialTargetDays: this.getNormalizedTargetDays(item.woodpeckerInitialTargetDays),
+            createdAt: item.createdAt,
             games,
             event: firstGame?.event,
             white: firstGame?.white,
@@ -2740,17 +2736,21 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
           } as PgnLibraryItem;
         });
 
-      this.libraryItems.set(restored);
+      // Keep anything imported while the archive was still loading.
+      this.libraryItems.update((current) => {
+        const restoredIds = new Set(restored.map((item) => item.id));
+        return [...current.filter((item) => !restoredIds.has(item.id)), ...restored];
+      });
     } catch {
-      this.libraryItems.set([]);
+      this.showToast('Impossibile caricare la libreria salvata.', 'error');
     }
   }
 
   private async loadFamousTacticsItems(): Promise<void> {
     const items = await Promise.all(
       ChessWorkspaceComponent.FAMOUS_TACTICS_ASSETS.map(async (assetName) => {
-        const response = await fetch(`assets/pgn/${assetName}`);
-        if (!response.ok) {
+        const response = await fetch(`assets/pgn/${assetName}`).catch(() => null);
+        if (!response?.ok) {
           return null;
         }
 
@@ -2775,7 +2775,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     );
 
     this.famousTacticsItems.set(items.filter((item): item is PgnLibraryItem => item !== null));
-    this.syncOpenedLibraryItemFromQuery(this.route.snapshot.queryParamMap.get('libraryItem'));
   }
 
   private allLibraryItems(): PgnLibraryItem[] {
@@ -2822,21 +2821,25 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  private persistLibraryItems(): boolean {
-    if (typeof localStorage === 'undefined') {
-      return true;
+  private async persistLibraryItemById(itemId: string): Promise<void> {
+    const item = this.libraryItems().find((entry) => entry.id === itemId);
+    if (item) {
+      await this.persistLibraryItems([item]);
     }
+  }
 
-    const serialized: PersistedLibraryItem[] = this.libraryItems().map((item) => ({
+  private async persistLibraryItems(items: PgnLibraryItem[]): Promise<boolean> {
+    const serialized: PersistedLibraryItem[] = items.map((item) => ({
       id: item.id,
       name: item.name,
       pgn: item.pgn,
       mode: item.mode,
       woodpeckerInitialTargetDays: this.getNormalizedTargetDays(item.woodpeckerInitialTargetDays),
+      createdAt: item.createdAt,
     }));
 
     try {
-      localStorage.setItem(ChessWorkspaceComponent.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
+      await this.libraryStorage.putItems(serialized);
       return true;
     } catch {
       this.showToast(
@@ -2920,6 +2923,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       pgn: rawPgn,
       mode: candidate.mode === 'puzzle' ? 'puzzle' : 'view',
       woodpeckerInitialTargetDays: this.getNormalizedTargetDays(candidate.woodpeckerInitialTargetDays),
+      createdAt: typeof candidate.createdAt === 'number' ? candidate.createdAt : undefined,
     };
   }
 
@@ -3067,6 +3071,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private syncOpenedLibraryItemFromQuery(rawItemId: string | null): void {
     if (!rawItemId) {
       this.libraryOpenedItemId.set(null);
+      return;
+    }
+
+    if (!this.isLibraryReady) {
       return;
     }
 

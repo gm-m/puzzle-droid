@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { LibraryStorageService, type PersistedLibraryItem } from './library-storage.service';
 import {
   type FailedPuzzleSummary,
   type HardSetPuzzleSummary,
@@ -19,7 +20,6 @@ import {
 } from '../models/woodpecker.models';
 
 const SETTINGS_STORAGE_KEY = 'puzzle-droid-settings-v1';
-const LIBRARY_STORAGE_KEY = 'puzzle-droid-library-items-v1';
 const WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
 const WOODPECKER_ANALYTICS_STORAGE_KEY = 'puzzle-droid-woodpecker-analytics-v1';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,6 +43,7 @@ export interface RecordAttemptInput {
   providedIn: 'root',
 })
 export class WoodpeckerAnalyticsService {
+  private readonly libraryStorage = inject(LibraryStorageService);
   private analyticsByPgnId: Record<string, WoodpeckerPgnAnalytics> = this.loadAnalytics();
 
   recordAttempt(input: RecordAttemptInput): void {
@@ -158,12 +159,12 @@ export class WoodpeckerAnalyticsService {
       .sort((a, b) => a.pgnName.localeCompare(b.pgnName));
   }
 
-  exportBackupBundle(): string {
+  async exportBackupBundle(): Promise<string> {
     const bundle: PuzzleDroidBackupBundle = {
       version: 1,
       exportedAt: Date.now(),
       settings: this.readJson(SETTINGS_STORAGE_KEY),
-      libraryItems: this.readJson(LIBRARY_STORAGE_KEY),
+      libraryItems: await this.libraryStorage.loadAll(),
       woodpeckerSessions: this.readJson(WOODPECKER_STORAGE_KEY),
       woodpeckerAnalytics: this.analyticsByPgnId,
     };
@@ -171,9 +172,15 @@ export class WoodpeckerAnalyticsService {
     return JSON.stringify(bundle, null, 2);
   }
 
-  importBackupBundle(rawText: string): { ok: boolean; message: string } {
+  async importBackupBundle(rawText: string): Promise<{ ok: boolean; message: string }> {
+    let parsed: Partial<PuzzleDroidBackupBundle>;
     try {
-      const parsed = JSON.parse(rawText) as Partial<PuzzleDroidBackupBundle>;
+      parsed = JSON.parse(rawText) as Partial<PuzzleDroidBackupBundle>;
+    } catch {
+      return { ok: false, message: 'Impossibile importare il backup: JSON non valido.' };
+    }
+
+    try {
       if (!parsed || typeof parsed !== 'object') {
         return { ok: false, message: 'Formato backup non valido.' };
       }
@@ -182,7 +189,13 @@ export class WoodpeckerAnalyticsService {
         this.writeJson(SETTINGS_STORAGE_KEY, parsed.settings ?? null);
       }
       if ('libraryItems' in parsed) {
-        this.writeJson(LIBRARY_STORAGE_KEY, parsed.libraryItems ?? []);
+        const libraryItems = Array.isArray(parsed.libraryItems) ? parsed.libraryItems : [];
+        await this.libraryStorage.replaceAll(
+          libraryItems.filter(
+            (entry): entry is PersistedLibraryItem =>
+              Boolean(entry) && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.pgn === 'string',
+          ),
+        );
       }
       if ('woodpeckerSessions' in parsed) {
         this.writeJson(WOODPECKER_STORAGE_KEY, parsed.woodpeckerSessions ?? {});
@@ -194,7 +207,7 @@ export class WoodpeckerAnalyticsService {
 
       return { ok: true, message: 'Backup importato. Ricarica la pagina per applicare tutti i dati.' };
     } catch {
-      return { ok: false, message: 'Impossibile importare il backup: JSON non valido.' };
+      return { ok: false, message: 'Impossibile importare il backup: spazio di archiviazione insufficiente o dati non validi.' };
     }
   }
 
@@ -606,18 +619,7 @@ export class WoodpeckerAnalyticsService {
       return direct;
     }
 
-    const rawLibraryItems = this.readJson(LIBRARY_STORAGE_KEY);
-    if (!Array.isArray(rawLibraryItems)) {
-      return null;
-    }
-
-    const item = rawLibraryItems.find((entry) => {
-      if (!entry || typeof entry !== 'object') {
-        return false;
-      }
-
-      return (entry as { id?: unknown }).id === pgnId;
-    }) as { name?: unknown; pgn?: unknown } | undefined;
+    const item = this.libraryStorage.snapshot().find((entry) => entry.id === pgnId);
 
     if (!item || typeof item.name !== 'string' || typeof item.pgn !== 'string') {
       return null;
