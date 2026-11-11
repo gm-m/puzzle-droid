@@ -258,6 +258,28 @@
 
 .games-mobile-card {
   display: grid;
+  gap: 0.4rem;
+}
+
+.player-color-select {
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  cursor: pointer;
+}
+
+.games-mobile-color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .games-mobile-select {

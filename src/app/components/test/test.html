@@ -133,6 +133,8 @@
           [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
           [showBatchDrillInfo]="isBatchDrillActive()"
           [batchDrillProgressLabel]="batchDrillProgressLabel()"
+          [showPuzzlePlayerColor]="showPuzzlePlayerColorControl()"
+          [puzzlePlayerColor]="currentPuzzlePlayerColor()"
           [boardOrientation]="boardOrientation()"
           [turnColor]="turnColor()"
           [showBestMoveArrow]="showBestMoveArrow()"
@@ -168,6 +170,7 @@
           (hintPuzzleMove)="onPuzzleHint()"
           (revealBlindfoldPieces)="revealBlindfoldPieces()"
           (shuffleBatch)="shuffleBatchNow()"
+          (puzzlePlayerColorChanged)="onPuzzlePlayerColorChanged($event)"
         ></app-analysis-panel>
 
         <section class="board-section">
@@ -205,6 +208,8 @@
         [woodpeckerSessionInfoByItemId]="libraryWoodpeckerSessionInfoByItemId()"
         [isUploadInProgress]="isLibraryUploadInProgress()"
         [uploadResults]="libraryUploadResults()"
+        [puzzlePlayerColorByGameId]="puzzlePlayerColorByGameId()"
+        (puzzlePlayerColorChanged)="onLibraryPuzzlePlayerColorChanged($event)"
         (filesSelected)="onLibraryFilesSelected($event)"
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"

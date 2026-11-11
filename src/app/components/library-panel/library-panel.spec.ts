@@ -152,6 +152,20 @@ describe('LibraryPanelComponent', () => {
     expect(primaryAction?.textContent?.trim()).toBe('Apri PGN');
   });
 
+  it('should expose and emit the per-game puzzle player color', () => {
+    spyOn(component.puzzlePlayerColorChanged, 'emit');
+    component.puzzlePlayerColorByGameId = { 'game-2': 'black' };
+    const select = document.createElement('select');
+    select.innerHTML = '<option value="white">Bianco</option>';
+    select.value = 'white';
+
+    component.onPuzzlePlayerColorChange('game-1', { target: select } as unknown as Event);
+
+    expect(component.puzzlePlayerColor('game-1')).toBe('auto');
+    expect(component.puzzlePlayerColor('game-2')).toBe('black');
+    expect(component.puzzlePlayerColorChanged.emit).toHaveBeenCalledWith({ gameId: 'game-1', color: 'white' });
+  });
+
   it('should apply advanced filters without requiring a general search query', () => {
     const item = {
       id: 'pgn-1',

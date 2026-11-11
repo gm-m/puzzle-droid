@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 
 import { ChessWorkspaceComponent } from './test';
+import type { LibraryGameSelection } from '../library-panel/library-panel';
 import { SettingsService } from '../../services/settings.service';
 import { StockfishService } from '../../services/stockfish.service';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
@@ -161,6 +162,86 @@ describe('ChessWorkspaceComponent', () => {
     expect(writeTextSpy).toHaveBeenCalledWith('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
     expect(component.toastMessage()).toBe('FEN copiata negli appunti.');
     expect(component.toastTone()).toBe('success');
+  });
+
+  describe('puzzle player color', () => {
+    const startFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const buildSelection = (overrides: Partial<LibraryGameSelection> = {}): LibraryGameSelection => ({
+      itemId: 'pgn-1',
+      gameId: 'pgn-1-g1',
+      gameTitle: 'Partita 1',
+      mode: 'puzzle',
+      initialFen: startFen,
+      fullUciHistory: ['e2e4', 'e7e5', 'g1f3', 'b8c6'],
+      positions: [],
+      autoPlayFirstMove: false,
+      autoAdvanceOnSuccess: false,
+      autoRotateBoardOnTurn: true,
+      woodpeckerEnabled: false,
+      blindfoldEnabled: false,
+      blindfoldObservationSeconds: 2,
+      blindfoldShowAfterAutoMove: false,
+      ...overrides,
+    });
+
+    beforeEach(() => jasmine.clock().install());
+    afterEach(() => jasmine.clock().uninstall());
+
+    it('should let the user play white by default', () => {
+      component.onLibraryGameSelected(buildSelection());
+      jasmine.clock().tick(1000);
+
+      expect(component.moveCursor()).toBe(0);
+      expect(component.turnColor()).toBe('white');
+      expect(component.boardOrientation()).toBe('white');
+      expect(component.puzzleMessage()).toBe('Puzzle avviato. Fai la prima mossa corretta.');
+    });
+
+    it('should auto-play white moves when the user chooses black', () => {
+      component.onLibraryPuzzlePlayerColorChanged({ gameId: 'pgn-1-g1', color: 'black' });
+      component.onLibraryGameSelected(buildSelection());
+      jasmine.clock().tick(1000);
+
+      expect(component.moveCursor()).toBe(1);
+      expect(component.turnColor()).toBe('black');
+      expect(component.boardOrientation()).toBe('black');
+      expect(component.puzzleMessage()).toBe('Giochi col Nero. Tocca a te.');
+
+      component.onBoardMove({ from: 'e7', to: 'e5' });
+      jasmine.clock().tick(1000);
+
+      expect(component.moveCursor()).toBe(3);
+      expect(component.turnColor()).toBe('black');
+      expect(component.puzzleMessage()).toBe('Tocca a te.');
+    });
+
+    it('should restart the current puzzle with the new color when changed in game', () => {
+      component.onLibraryGameSelected(buildSelection());
+      component.onBoardMove({ from: 'e2', to: 'e4' });
+      jasmine.clock().tick(1000);
+      expect(component.moveCursor()).toBe(2);
+
+      component.onPuzzlePlayerColorChanged('black');
+
+      expect(component.currentPuzzlePlayerColor()).toBe('black');
+      expect(component.moveCursor()).toBe(0);
+      expect(component.boardOrientation()).toBe('black');
+
+      jasmine.clock().tick(1000);
+
+      expect(component.moveCursor()).toBe(1);
+      expect(component.turnColor()).toBe('black');
+      expect(component.puzzlePlayerColorByGameId()).toEqual({ 'pgn-1-g1': 'black' });
+    });
+
+    it('should ignore the auto first move option when the user chooses the side to move', () => {
+      component.onLibraryPuzzlePlayerColorChanged({ gameId: 'pgn-1-g1', color: 'white' });
+      component.onLibraryGameSelected(buildSelection({ autoPlayFirstMove: true, autoRotateBoardOnTurn: false }));
+      jasmine.clock().tick(1000);
+
+      expect(component.moveCursor()).toBe(0);
+      expect(component.boardOrientation()).toBe('white');
+    });
   });
 
   it('should close the navigation menu with Escape', () => {

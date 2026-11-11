@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import type { EngineLine, EngineScore } from '../../models/engine.models';
+import type { PuzzlePlayerColor } from '../../models/library.models';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
 
 export interface LineMoveSelection {
@@ -98,6 +99,8 @@ export class AnalysisPanelComponent {
   @Input() showLibraryGamePicker = false;
   @Input() showBatchDrillInfo = false;
   @Input() batchDrillProgressLabel = '';
+  @Input() showPuzzlePlayerColor = false;
+  @Input() puzzlePlayerColor: PuzzlePlayerColor = 'auto';
 
   isEngineSettingsOpen = false;
   isQuickMenuOpen = false;
@@ -130,6 +133,12 @@ export class AnalysisPanelComponent {
   @Output() readonly copyFenRequested = new EventEmitter<void>();
   @Output() readonly openLibraryGamePickerRequested = new EventEmitter<void>();
   @Output() readonly shuffleBatch = new EventEmitter<void>();
+  @Output() readonly puzzlePlayerColorChanged = new EventEmitter<PuzzlePlayerColor>();
+
+  onPuzzlePlayerColorChange(event: Event): void {
+    this.puzzlePlayerColorChanged.emit((event.target as HTMLSelectElement).value as PuzzlePlayerColor);
+    this.isQuickMenuOpen = false;
+  }
 
   toggleEngineSettings(): void {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;

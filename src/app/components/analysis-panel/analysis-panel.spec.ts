@@ -54,6 +54,27 @@ describe('AnalysisPanelComponent', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('should offer the puzzle player color in the quick menu only in puzzle mode', async () => {
+    spyOn(component.puzzlePlayerColorChanged, 'emit');
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    compiled.querySelector<HTMLButtonElement>('.quick-menu-trigger')?.click();
+    await fixture.whenStable();
+    expect(compiled.querySelector('.quick-menu .puzzle-player-color')).toBeNull();
+
+    fixture.componentRef.setInput('showPuzzlePlayerColor', true);
+    await fixture.whenStable();
+
+    const select = compiled.querySelector<HTMLSelectElement>('.quick-menu .puzzle-player-color select');
+    expect(select?.value).toBe('auto');
+    select!.value = 'black';
+    select!.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    expect(component.puzzlePlayerColorChanged.emit).toHaveBeenCalledWith('black');
+    expect(compiled.querySelector('.quick-menu')).toBeNull();
+  });
+
   it('should keep keyboard focus inside the bookmark dialog', async () => {
     const compiled = fixture.nativeElement as HTMLElement;
 

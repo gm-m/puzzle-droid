@@ -307,6 +307,38 @@
   flex-wrap: nowrap;
 }
 
+.puzzle-player-color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  span {
+    display: grid;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  select {
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.3rem 0.45rem;
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface-1);
+    cursor: pointer;
+  }
+}
+
 .puzzle-status-message,
 .woodpecker-summary {
   margin: 0;

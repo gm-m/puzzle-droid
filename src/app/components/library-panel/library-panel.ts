@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
@@ -50,6 +50,11 @@ export interface LibraryResumeRequest {
   batchConfig?: PuzzleBatchConfig;
 }
 
+export interface LibraryPuzzlePlayerColorChange {
+  gameId: string;
+  color: PuzzlePlayerColor;
+}
+
 export interface LibraryWoodpeckerTargetDaysChange {
   itemId: string;
   targetDays: number;
@@ -95,6 +100,7 @@ export class LibraryPanelComponent {
   @Input() woodpeckerSessionInfoByItemId: Record<string, LibraryWoodpeckerSessionInfo> = {};
   @Input() isUploadInProgress = false;
   @Input() uploadResults: LibraryUploadResult[] = [];
+  @Input() puzzlePlayerColorByGameId: Record<string, PuzzlePlayerColor> = {};
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
@@ -109,6 +115,7 @@ export class LibraryPanelComponent {
   @Output() readonly positionBookmarkDeleted = new EventEmitter<string>();
   @Output() readonly woodpeckerSessionDeleteRequested = new EventEmitter<string>();
   @Output() readonly woodpeckerTargetDaysChanged = new EventEmitter<LibraryWoodpeckerTargetDaysChange>();
+  @Output() readonly puzzlePlayerColorChanged = new EventEmitter<LibraryPuzzlePlayerColorChange>();
 
   activeTab: LibraryViewTab = 'pgn';
   expandedItemId: string | null = null;
@@ -495,6 +502,15 @@ export class LibraryPanelComponent {
     }
 
     this.onGameClick(item, targetGame, from);
+  }
+
+  puzzlePlayerColor(gameId: string): PuzzlePlayerColor {
+    return this.puzzlePlayerColorByGameId[gameId] ?? 'auto';
+  }
+
+  onPuzzlePlayerColorChange(gameId: string, event: Event): void {
+    const color = (event.target as HTMLSelectElement).value as PuzzlePlayerColor;
+    this.puzzlePlayerColorChanged.emit({ gameId, color });
   }
 
   onPuzzleAutoFirstMoveChange(itemId: string, event: Event): void {

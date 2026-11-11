@@ -341,6 +341,7 @@
                   <th scope="col">Evento</th>
                   <th scope="col">Risultato</th>
                   <th scope="col">Mosse</th>
+                  <th scope="col" *ngIf="item.mode === 'puzzle'">Gioca con</th>
                 </tr>
               </thead>
               <tbody>
@@ -360,6 +361,15 @@
                   <td>{{ entry.game.event || '-' }}</td>
                   <td>{{ entry.game.result || '*' }}</td>
                   <td>{{ entry.moveCount }}</td>
+                  <td *ngIf="item.mode === 'puzzle'" (click)="$event.stopPropagation()">
+                    <select class="player-color-select" [value]="puzzlePlayerColor(entry.game.id)"
+                      [attr.aria-label]="'Colore con cui giocare la partita ' + (entry.index + 1)"
+                      (change)="onPuzzlePlayerColorChange(entry.game.id, $event)">
+                      <option value="auto">Auto</option>
+                      <option value="white">Bianco</option>
+                      <option value="black">Nero</option>
+                    </select>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -379,6 +389,15 @@
                   <span><em>Risultato</em> {{ entry.game.result || '*' }}</span>
                 </div>
               </button>
+              <label class="games-mobile-color" *ngIf="item.mode === 'puzzle'">
+                Gioca con
+                <select class="player-color-select" [value]="puzzlePlayerColor(entry.game.id)"
+                  (change)="onPuzzlePlayerColorChange(entry.game.id, $event)">
+                  <option value="auto">Auto</option>
+                  <option value="white">Bianco</option>
+                  <option value="black">Nero</option>
+                </select>
+              </label>
             </article>
           </div>
         </ng-container>

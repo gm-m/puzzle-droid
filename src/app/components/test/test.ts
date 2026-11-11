@@ -12,6 +12,7 @@ import {
   LibraryPanelComponent,
   type LibraryGameSelection,
   type LibraryModeChange,
+  type LibraryPuzzlePlayerColorChange,
   type LibraryResumeRequest,
   type LibraryUploadResult,
   type LibraryWoodpeckerSessionInfo,
@@ -22,7 +23,7 @@ import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { AppToastComponent } from '../ui/app-toast/app-toast';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
 import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '../../models/woodpecker.models';
 
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
@@ -60,6 +61,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly WOODPECKER_MAX_CYCLES = 7;
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
+  private static readonly PUZZLE_PLAYER_COLORS_STORAGE_KEY = 'puzzle-droid-puzzle-player-colors-v1';
   private static readonly FAMOUS_TACTICS_ASSETS = ['tattiche-vol-1.pgn'];
 
   readonly activeView = signal<AppView>('analysis');
@@ -115,6 +117,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly libraryGameFilter = signal('');
   readonly woodpeckerSession = signal<WoodpeckerSession | null>(null);
   readonly positionBookmarks = signal<PositionBookmark[]>([]);
+  readonly puzzlePlayerColorByGameId = signal<Record<string, PuzzlePlayerColor>>({});
   readonly activeBatchConfig = signal<PuzzleBatchConfig | null>(null);
   readonly batchQueue = signal<number[]>([]);
   readonly batchCursor = signal<number>(0);
@@ -162,6 +165,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.loadLibraryItems();
     void this.loadFamousTacticsItems();
     this.loadPositionBookmarks();
+    this.loadPuzzlePlayerColors();
     this.loadWoodpeckerSessions();
     this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
       this.syncViewFromRoute(params.get('view'));
@@ -601,11 +605,31 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.persistLibraryItems();
   }
 
+  onLibraryPuzzlePlayerColorChanged(change: LibraryPuzzlePlayerColorChange): void {
+    this.puzzlePlayerColorByGameId.update((colors) => {
+      const next = { ...colors };
+      if (change.color === 'auto') {
+        delete next[change.gameId];
+      } else {
+        next[change.gameId] = change.color;
+      }
+      return next;
+    });
+    this.persistPuzzlePlayerColors();
+  }
+
   onLibraryItemRemoved(itemId: string): void {
     const removingCurrentSelection = this.currentLibrarySelection?.itemId === itemId;
     const removingOpenedItem = this.libraryOpenedItemId() === itemId;
+    const removedGameIds = new Set(this.findLibraryItemById(itemId)?.games.map((game) => game.id) ?? []);
     this.libraryItems.update((items) => items.filter((item) => item.id !== itemId));
     this.persistLibraryItems();
+    if (removedGameIds.size > 0) {
+      this.puzzlePlayerColorByGameId.update((colors) =>
+        Object.fromEntries(Object.entries(colors).filter(([gameId]) => !removedGameIds.has(gameId))),
+      );
+      this.persistPuzzlePlayerColors();
+    }
 
     if (removingOpenedItem) {
       this.libraryOpenedItemId.set(null);
@@ -777,6 +801,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.historyInitialFen = selection.initialFen;
     this.boardLastMove.set(null);
     const fullHistory = [...selection.fullUciHistory];
+    const playerColor = this.puzzlePlayerColorByGameId()[selection.gameId] ?? 'auto';
+    const initialSideToMove = this.chess.turn() === 'w' ? 'white' : 'black';
+    const autoPlayFirstMove = playerColor === 'auto' ? selection.autoPlayFirstMove : initialSideToMove !== playerColor;
     this.clearPuzzleAutoMoveTimer();
     this.clearPuzzleAutoNextGameTimer();
     this.clearBlindfoldTimer();
@@ -839,8 +866,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.arePuzzlePiecesHidden.set(false);
       this.blindfoldCountdown.set(0);
       this.blindfoldRevealUsed = false;
-      if (selection.autoRotateBoardOnTurn) {
-        this.boardOrientation.set(this.getPuzzleInitialOrientation(selection.initialFen, fullHistory, selection.autoPlayFirstMove));
+      if (playerColor !== 'auto') {
+        this.boardOrientation.set(playerColor);
+      } else if (selection.autoRotateBoardOnTurn) {
+        this.boardOrientation.set(this.getPuzzleInitialOrientation(selection.initialFen, fullHistory, autoPlayFirstMove));
       }
       this.stockfish.stop();
       this.puzzleMessage.set('Puzzle avviato.');
@@ -870,12 +899,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.analyzePosition();
 
     if (selection.mode === 'puzzle') {
-      if (selection.autoPlayFirstMove && fullHistory.length > 0) {
-        this.schedulePuzzleAutoMove(0, 'Prima mossa in arrivo...');
+      if (autoPlayFirstMove && fullHistory.length > 0) {
+        this.schedulePuzzleAutoMove(0, `${this.puzzlePlayerColorNotice()}Prima mossa in arrivo...`);
       } else if (selection.blindfoldEnabled) {
         this.startBlindfoldObservation(selection.blindfoldObservationSeconds);
       } else {
-        this.puzzleMessage.set('Puzzle avviato. Fai la prima mossa corretta.');
+        this.puzzleMessage.set(`Puzzle avviato. ${this.puzzlePlayerColorNotice()}Fai la prima mossa corretta.`);
         this.markPuzzleAttemptStart();
       }
     }
@@ -1556,6 +1585,30 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     return this.isPuzzleMode() && !this.isPuzzleSurrendered();
   }
 
+  showPuzzlePlayerColorControl(): boolean {
+    return this.isPuzzleMode() && this.currentLibrarySelection !== null;
+  }
+
+  currentPuzzlePlayerColor(): PuzzlePlayerColor {
+    const gameId = this.currentLibrarySelection?.gameId;
+    return (gameId && this.puzzlePlayerColorByGameId()[gameId]) || 'auto';
+  }
+
+  private puzzlePlayerColorNotice(): string {
+    const color = this.currentPuzzlePlayerColor();
+    return color === 'auto' ? '' : `Giochi col ${color === 'white' ? 'Bianco' : 'Nero'}. `;
+  }
+
+  onPuzzlePlayerColorChanged(color: PuzzlePlayerColor): void {
+    const selection = this.currentLibrarySelection;
+    if (!selection || selection.mode !== 'puzzle') {
+      return;
+    }
+
+    this.onLibraryPuzzlePlayerColorChanged({ gameId: selection.gameId, color });
+    this.onLibraryGameSelected(selection);
+  }
+
   showPuzzleAssistanceButtons(): boolean {
     return this.isPuzzleActive() && !this.isPuzzleAutoPlaying();
   }
@@ -1859,7 +1912,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
           this.markPuzzleAttemptStart();
         }
       } else {
-        this.puzzleMessage.set('Tocca a te.');
+        this.puzzleMessage.set(`${ply === 0 ? this.puzzlePlayerColorNotice() : ''}Tocca a te.`);
         this.markPuzzleAttemptStart();
       }
     }, ChessWorkspaceComponent.PUZZLE_AUTO_MOVE_DELAY_MS);
@@ -2798,6 +2851,42 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     try {
       localStorage.setItem(ChessWorkspaceComponent.POSITION_BOOKMARKS_STORAGE_KEY, JSON.stringify(this.positionBookmarks()));
+    } catch {
+      // Ignore persistence errors (private mode / quota).
+    }
+  }
+
+  private loadPuzzlePlayerColors(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(ChessWorkspaceComponent.PUZZLE_PLAYER_COLORS_STORAGE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return;
+      }
+
+      const restored: Record<string, PuzzlePlayerColor> = {};
+      for (const [gameId, color] of Object.entries(parsed)) {
+        if (color === 'white' || color === 'black') {
+          restored[gameId] = color;
+        }
+      }
+      this.puzzlePlayerColorByGameId.set(restored);
+    } catch {
+      this.puzzlePlayerColorByGameId.set({});
+    }
+  }
+
+  private persistPuzzlePlayerColors(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      localStorage.setItem(ChessWorkspaceComponent.PUZZLE_PLAYER_COLORS_STORAGE_KEY, JSON.stringify(this.puzzlePlayerColorByGameId()));
     } catch {
       // Ignore persistence errors (private mode / quota).
     }

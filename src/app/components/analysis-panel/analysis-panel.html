@@ -401,6 +401,18 @@
         <app-icon name="rotate"></app-icon>
         Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
       </button>
+
+      <label *ngIf="showPuzzlePlayerColor" class="puzzle-player-color">
+        <span>
+          Gioca con
+          <small>Cambiarlo fa ripartire il puzzle</small>
+        </span>
+        <select [value]="puzzlePlayerColor" (change)="onPuzzlePlayerColorChange($event)">
+          <option value="auto">Auto</option>
+          <option value="white">Bianco</option>
+          <option value="black">Nero</option>
+        </select>
+      </label>
     </section>
   </div>
 

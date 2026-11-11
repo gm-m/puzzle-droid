@@ -1,5 +1,7 @@
 export type LibraryMode = 'view' | 'puzzle';
 
+export type PuzzlePlayerColor = 'auto' | 'white' | 'black';
+
 export interface PgnLibraryPosition {
   id: string;
   ply: number;
