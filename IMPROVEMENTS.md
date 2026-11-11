@@ -14,8 +14,8 @@ Legenda: `[ ]` da fare · `[x]` fatto
 
 ## Fase 2 – Parsing e memoria
 
-- [ ] **2.1 Parsing in un solo passaggio** – oggi ogni partita passa da `chess.js.loadPgn` 2-3 volte (+ replay). Usare `history({ verbose: true })` (`after` = FEN) e `getComments()` dalla stessa istanza.
-- [ ] **2.2 Eliminare la crescita O(n²) di `uciHistory`** – ogni posizione copia tutta la storia; `onGameClick` ricopia tutto di nuovo.
+- [x] **2.1 Parsing in un solo passaggio** – oggi ogni partita passa da `chess.js.loadPgn` 2-3 volte (+ replay). Usare `history({ verbose: true })` (`after` = FEN) e `getComments()` dalla stessa istanza. Benchmark sui 35 puzzle inclusi: ~780 ms → ~290 ms (desktop).
+- [x] **2.2 Eliminare la crescita O(n²) di `uciHistory`** – ogni posizione copia tutta la storia; `onGameClick` ricopia tutto di nuovo.
 - [ ] **2.3 Persistenza su IndexedDB** – PGN raw fuori da `localStorage` (limite ~5 MB), metadati separati, niente riscrittura completa a ogni keystroke.
 - [ ] **2.4 Parsing lazy / Web Worker** – solo header all'avvio, mosse al primo accesso; parsing fuori dal main thread.
 

@@ -10,7 +10,6 @@ export interface PgnLibraryPosition {
   san: string;
   label: string;
   fen: string;
-  uciHistory: string[];
   comment?: string;
 }
 
@@ -21,6 +20,8 @@ export interface PgnLibraryGame {
   black?: string;
   result?: string;
   initialFen: string;
+  /** Full mainline in UCI; the history at position `p` is `uciMoves.slice(0, p.ply)`. */
+  uciMoves: string[];
   positions: PgnLibraryPosition[];
 }
 

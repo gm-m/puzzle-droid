@@ -174,8 +174,8 @@ describe('LibraryPanelComponent', () => {
       pgn: '',
       mode: 'view' as const,
       games: [
-        { id: 'game-1', initialFen: '', positions: [], white: 'Carlsen', black: 'Nakamura', result: '1-0' },
-        { id: 'game-2', initialFen: '', positions: [], white: 'Kasparov', black: 'Karpov', result: '0-1' },
+        { id: 'game-1', initialFen: '', uciMoves: [], positions: [], white: 'Carlsen', black: 'Nakamura', result: '1-0' },
+        { id: 'game-2', initialFen: '', uciMoves: [], positions: [], white: 'Kasparov', black: 'Karpov', result: '0-1' },
       ],
     };
     const input = document.createElement('input');
@@ -196,6 +196,7 @@ describe('LibraryPanelComponent', () => {
       games: Array.from({ length: gameCount }, (_, index) => ({
         id: `game-${index + 1}`,
         initialFen: '',
+        uciMoves: [],
         positions: [],
       })),
     });

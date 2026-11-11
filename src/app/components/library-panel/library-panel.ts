@@ -493,7 +493,6 @@ export class LibraryPanelComponent {
   }
 
   onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {
-    const fullUciHistory = game.positions.at(-1)?.uciHistory ?? [];
     const batchConfig = this.buildBatchConfig(item);
 
     this.gameSelected.emit({
@@ -502,11 +501,8 @@ export class LibraryPanelComponent {
       gameTitle: this.gameTitle(gameIndex, item),
       mode: item.mode,
       initialFen: game.initialFen,
-      fullUciHistory: [...fullUciHistory],
-      positions: game.positions.map((position) => ({
-        ...position,
-        uciHistory: [...position.uciHistory],
-      })),
+      fullUciHistory: game.uciMoves,
+      positions: game.positions,
       autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
       autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
       autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),

@@ -817,14 +817,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.clearPuzzleAutoNextGameTimer();
     this.clearBlindfoldTimer();
     this.isPuzzleAutoPlaying.set(false);
-    this.currentLibrarySelection = {
-      ...selection,
-      fullUciHistory: [...selection.fullUciHistory],
-      positions: selection.positions.map((position) => ({
-        ...position,
-        uciHistory: [...position.uciHistory],
-      })),
-    };
+    this.currentLibrarySelection = selection;
     this.currentLibraryGameTitle.set(selection.gameTitle);
     this.syncWoodpeckerSessionForSelection();
     this.closeLibraryGamePicker();
@@ -1141,7 +1134,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const fullHistory = [...(game.positions.at(-1)?.uciHistory ?? [])];
+    const fullHistory = game.uciMoves;
 
     try {
       if (game.initialFen === ChessWorkspaceComponent.STARTING_FEN) {
@@ -2567,7 +2560,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     >,
   ): void {
     const reference = this.currentLibrarySelection;
-    const fullUciHistory = targetGame.positions.at(-1)?.uciHistory ?? [];
 
     this.onLibraryGameSelected({
       itemId: item.id,
@@ -2575,11 +2567,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       gameTitle: this.formatLibraryGameTitle(targetGame, targetIndex),
       mode: overrides?.mode ?? reference?.mode ?? item.mode,
       initialFen: targetGame.initialFen,
-      fullUciHistory: [...fullUciHistory],
-      positions: targetGame.positions.map((position) => ({
-        ...position,
-        uciHistory: [...position.uciHistory],
-      })),
+      fullUciHistory: targetGame.uciMoves,
+      positions: targetGame.positions,
       autoPlayFirstMove: overrides?.autoPlayFirstMove ?? reference?.autoPlayFirstMove ?? false,
       autoAdvanceOnSuccess: overrides?.autoAdvanceOnSuccess ?? reference?.autoAdvanceOnSuccess ?? true,
       autoRotateBoardOnTurn: overrides?.autoRotateBoardOnTurn ?? reference?.autoRotateBoardOnTurn ?? true,
@@ -3375,15 +3364,14 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private parseSinglePgnGame(pgn: string, itemId: string, gameIndex: number): PgnLibraryGame | null {
     const headers = this.parsePgnHeaders(pgn);
     const initialFen = this.resolveInitialFen(headers['FEN']);
-    const commentByFen = this.parsePgnComments(pgn);
+    const { moves, commentByFen } = this.loadPgnWithFallback(pgn);
     const leadingComment = this.extractLeadingPgnComment(pgn);
 
     if (!commentByFen.has(initialFen) && leadingComment) {
       commentByFen.set(initialFen, leadingComment);
     }
 
-    const moves = this.parseMovesWithFallback(pgn) ?? [];
-    const positions = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
+    const { positions, uciMoves } = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
 
     return {
       id: `${itemId}-g${gameIndex + 1}`,
@@ -3392,26 +3380,43 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       black: headers['Black'],
       result: headers['Result'],
       initialFen,
+      uciMoves,
       positions,
     };
   }
 
-  private parseMovesWithFallback(pgn: string): ChessMove[] | null {
+  /**
+   * Parses the PGN once with chess.js and extracts both the mainline and the comments from the same
+   * instance. Falls back to a sanitized copy (comments/variations stripped) only if the original fails.
+   */
+  private loadPgnWithFallback(pgn: string): { moves: ChessMove[]; commentByFen: Map<string, string> } {
+    const chess = new Chess();
+
+    try {
+      chess.loadPgn(pgn, { strict: false });
+      const commentByFen = new Map<string, string>();
+      for (const entry of chess.getComments()) {
+        const comment = entry.comment.trim();
+        if (comment.length > 0) {
+          commentByFen.set(entry.fen, comment);
+        }
+      }
+      return { moves: chess.history({ verbose: true }), commentByFen };
+    } catch {
+      // Try the sanitized fallback below.
+    }
+
     const sanitized = this.sanitizePgnForParser(pgn);
-    const candidates = sanitized && sanitized !== pgn ? [pgn, sanitized] : [pgn];
-
-    for (const candidate of candidates) {
-      const chess = new Chess();
-
+    if (sanitized && sanitized !== pgn) {
       try {
-        chess.loadPgn(candidate, { strict: false });
-        return chess.history({ verbose: true });
+        chess.loadPgn(sanitized, { strict: false });
+        return { moves: chess.history({ verbose: true }), commentByFen: new Map() };
       } catch {
-        // Try next fallback candidate.
+        // Unparseable PGN: keep only the initial position.
       }
     }
 
-    return null;
+    return { moves: [], commentByFen: new Map() };
   }
 
   private sanitizePgnForParser(pgn: string): string {
@@ -3447,37 +3452,29 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     itemId: string,
     gameIndex: number,
     commentByFen: Map<string, string>,
-  ): PgnLibraryPosition[] {
-    const replay = new Chess();
-    if (initialFen !== ChessWorkspaceComponent.STARTING_FEN) {
-      replay.load(initialFen);
-    }
+  ): { positions: PgnLibraryPosition[]; uciMoves: string[] } {
+    // chess.js loads the PGN from its own FEN header; if that differs from the resolved initial
+    // position (e.g. invalid FEN header), the moves don't belong to this start and are discarded.
+    const startsFromInitialFen = moves.length === 0 || moves[0].before === initialFen;
+    const mainline = startsFromInitialFen ? moves : [];
 
     const positions: PgnLibraryPosition[] = [
       {
         id: `${itemId}-g${gameIndex + 1}-p0`,
         ply: 0,
         moveNumber: 1,
-        turn: replay.turn() === 'w' ? 'white' : 'black',
+        turn: initialFen.split(' ')[1] === 'b' ? 'black' : 'white',
         san: '',
         label: 'Inizio partita',
-        fen: replay.fen(),
-        uciHistory: [],
-        comment: commentByFen.get(replay.fen()),
+        fen: initialFen,
+        comment: commentByFen.get(initialFen),
       },
     ];
+    const uciMoves: string[] = [];
 
-    const uciHistory: string[] = [];
-
-    for (let index = 0; index < moves.length; index += 1) {
-      const move = moves[index];
-      const result = replay.move({ from: move.from, to: move.to, promotion: move.promotion });
-      if (!result) {
-        break;
-      }
-
-      const uci = this.toUci(result.from as Key, result.to as Key, result.promotion);
-      uciHistory.push(uci);
+    for (let index = 0; index < mainline.length; index += 1) {
+      const move = mainline[index];
+      uciMoves.push(this.toUci(move.from as Key, move.to as Key, move.promotion));
 
       const turn = move.color === 'w' ? 'white' : 'black';
       const moveNumber = Math.floor(index / 2) + 1;
@@ -3490,31 +3487,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         turn,
         san: move.san,
         label,
-        fen: replay.fen(),
-        uciHistory: [...uciHistory],
-        comment: commentByFen.get(replay.fen()),
+        fen: move.after,
+        comment: commentByFen.get(move.after),
       });
     }
 
-    return positions;
-  }
-
-  private parsePgnComments(pgn: string): Map<string, string> {
-    const chess = new Chess();
-
-    try {
-      chess.loadPgn(pgn, { strict: false });
-    } catch (error) {
-      return new Map();
-    }
-
-    const comments = typeof chess.getComments === 'function' ? chess.getComments() : [];
-    const mappedComments = new Map(
-      comments
-        .map((entry) => [entry.fen, entry.comment.trim()] as const)
-        .filter((entry) => entry[1].length > 0),
-    );
-    return mappedComments;
+    return { positions, uciMoves };
   }
 
   private syncCurrentPgnComment(): void {
@@ -3524,7 +3502,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const currentPosition = selection.positions.find((position) => position.uciHistory.length === this.moveCursor());
+    const cursor = this.moveCursor();
+    const currentPosition =
+      selection.positions[cursor]?.ply === cursor ? selection.positions[cursor] : selection.positions.find((position) => position.ply === cursor);
     const nextComment = currentPosition?.comment?.trim() ?? '';
     this.currentPgnComment.set(nextComment);
   }
