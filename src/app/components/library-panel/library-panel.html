@@ -343,6 +343,7 @@
                   <th scope="col">Evento</th>
                   <th scope="col">Risultato</th>
                   <th scope="col">Mosse</th>
+                  <th scope="col" *ngIf="hasPuzzleStatuses(item.id)">Stato</th>
                   <th scope="col" *ngIf="item.mode === 'puzzle'">Gioca con</th>
                 </tr>
               </thead>
@@ -363,6 +364,9 @@
                   <td>{{ entry.game.event || '-' }}</td>
                   <td>{{ entry.game.result || '*' }}</td>
                   <td>{{ entry.moveCount }}</td>
+                  <td *ngIf="hasPuzzleStatuses(item.id)">
+                    <app-status-badge *ngIf="puzzleStatusBadge(item.id, entry.index) as badge" [tone]="badge.tone">{{ badge.label }}</app-status-badge>
+                  </td>
                   <td *ngIf="item.mode === 'puzzle'" (click)="$event.stopPropagation()">
                     <select class="player-color-select" [value]="puzzlePlayerColor(entry.game.id)"
                       [attr.aria-label]="'Colore con cui giocare la partita ' + (entry.index + 1)"
@@ -383,6 +387,7 @@
                 <div class="games-mobile-head">
                   <strong>{{ entry.title }}</strong>
                   <span class="games-mobile-moves">{{ entry.moveCount }} mosse</span>
+                  <app-status-badge *ngIf="puzzleStatusBadge(item.id, entry.index) as badge" [tone]="badge.tone">{{ badge.label }}</app-status-badge>
                 </div>
                 <div class="games-mobile-meta">
                   <span><em>Bianco</em> {{ entry.game.white || '-' }}</span>

@@ -139,6 +139,13 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private routeQueryParamsSubscription: Subscription | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private isLibraryReady = false;
+  private librarySessionInfoCache: {
+    items: PgnLibraryItem[];
+    famousItems: PgnLibraryItem[];
+    sessions: Record<string, WoodpeckerSession>;
+    value: Record<string, LibraryWoodpeckerSessionInfo>;
+  } | null = null;
+  private readonly pgnHashByItem = new WeakMap<PgnLibraryItem, string>();
   private readonly libraryStorage = inject(LibraryStorageService);
 
   @ViewChild('boardHostRef', { read: ElementRef })
@@ -774,18 +781,31 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     });
   }
 
+  /**
+   * Memoized on the library items and sessions references, so the (OnPush) library panel gets a
+   * stable input and PGNs aren't re-hashed on every change detection.
+   */
   libraryWoodpeckerSessionInfoByItemId(): Record<string, LibraryWoodpeckerSessionInfo> {
-    const byItem: Record<string, LibraryWoodpeckerSessionInfo> = {};
+    const items = this.libraryItems();
+    const famousItems = this.famousTacticsItems();
+    const sessions = this.woodpeckerSessionsByKey;
+    const cached = this.librarySessionInfoCache;
+    if (cached && cached.items === items && cached.famousItems === famousItems && cached.sessions === sessions) {
+      return cached.value;
+    }
 
-    for (const item of this.allLibraryItems()) {
+    const value: Record<string, LibraryWoodpeckerSessionInfo> = {};
+    for (const item of [...items, ...famousItems]) {
       const session = this.getWoodpeckerSessionForItem(item);
-      byItem[item.id] = {
+      value[item.id] = {
         hasSession: session !== null,
         resumePuzzleIndex: this.resumePuzzleIndexFromSession(session),
+        puzzleStatuses: this.woodpeckerAnalytics.getPuzzleStatuses(session),
       };
     }
 
-    return byItem;
+    this.librarySessionInfoCache = { items, famousItems, sessions, value };
+    return value;
   }
 
   onLibraryGameSelected(selection: LibraryGameSelection): void {
@@ -2999,7 +3019,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private getWoodpeckerSessionKey(item: PgnLibraryItem): string {
-    return `${item.name}|${item.games.length}|${this.hashText(item.pgn)}`;
+    let hash = this.pgnHashByItem.get(item);
+    if (hash === undefined) {
+      hash = this.hashText(item.pgn);
+      this.pgnHashByItem.set(item, hash);
+    }
+    return `${item.name}|${item.games.length}|${hash}`;
   }
 
   private hasWoodpeckerSessionForItem(item: PgnLibraryItem): boolean {

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
+import type { WoodpeckerPuzzleCycleStatus } from '../../models/woodpecker.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
@@ -35,7 +36,16 @@ export interface LibraryGameSelection {
 export interface LibraryWoodpeckerSessionInfo {
   hasSession: boolean;
   resumePuzzleIndex: number | null;
+  /** Current-cycle status per puzzle index. */
+  puzzleStatuses?: WoodpeckerPuzzleCycleStatus[];
 }
+
+const PUZZLE_STATUS_BADGES: Record<WoodpeckerPuzzleCycleStatus, { label: string; tone: StatusBadgeTone }> = {
+  solved: { label: 'Risolto', tone: 'success' },
+  slow: { label: 'Lento', tone: 'warning' },
+  failed: { label: 'Sbagliato', tone: 'danger' },
+  unseen: { label: 'Da fare', tone: 'neutral' },
+};
 
 export interface LibraryResumeRequest {
   itemId: string;
@@ -548,6 +558,16 @@ export class LibraryPanelComponent {
     }
 
     return 'status-idle';
+  }
+
+  /** Woodpecker status badge for a puzzle, or null when the collection has no active session. */
+  puzzleStatusBadge(itemId: string, puzzleIndex: number): { label: string; tone: StatusBadgeTone } | null {
+    const status = this.woodpeckerSessionInfoByItemId[itemId]?.puzzleStatuses?.[puzzleIndex];
+    return status ? PUZZLE_STATUS_BADGES[status] : null;
+  }
+
+  hasPuzzleStatuses(itemId: string): boolean {
+    return (this.woodpeckerSessionInfoByItemId[itemId]?.puzzleStatuses?.length ?? 0) > 0;
   }
 
   woodpeckerStatusTone(itemId: string): StatusBadgeTone {

@@ -153,6 +153,16 @@ export class WoodpeckerAnalyticsService {
     };
   }
 
+  /** Current-cycle status of every puzzle in the session (index = puzzle index). */
+  getPuzzleStatuses(session: WoodpeckerSession | null): WoodpeckerPuzzleCycleStatus[] {
+    if (!session || session.gameCount <= 0) {
+      return [];
+    }
+
+    const metrics = this.buildPuzzleMetrics(session, session.gameCount);
+    return Array.from({ length: session.gameCount }, (_, index) => metrics[String(index)]?.status ?? 'unseen');
+  }
+
   getAvailablePgns(): Array<{ pgnId: string; pgnName: string }> {
     return Object.values(this.analyticsByPgnId)
       .map((entry) => ({ pgnId: entry.pgnId, pgnName: entry.pgnName }))

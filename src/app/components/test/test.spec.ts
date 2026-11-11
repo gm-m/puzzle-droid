@@ -42,6 +42,7 @@ describe('ChessWorkspaceComponent', () => {
       recordAttempt: jasmine.createSpy('recordAttempt'),
       getDashboardData: jasmine.createSpy('getDashboardData').and.returnValue(null),
       getAvailablePgns: jasmine.createSpy('getAvailablePgns').and.returnValue([]),
+      getPuzzleStatuses: jasmine.createSpy('getPuzzleStatuses').and.returnValue([]),
       exportBackupBundle: jasmine.createSpy('exportBackupBundle').and.resolveTo('{}'),
       importBackupBundle: jasmine.createSpy('importBackupBundle').and.resolveTo({ ok: true, message: 'ok' }),
     };

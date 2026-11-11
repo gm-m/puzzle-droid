@@ -32,7 +32,7 @@ Legenda: `[ ]` da fare · `[x]` fatto
 - [x] **4.1 Card semplificate** – una CTA primaria, azioni secondarie raggruppate, azioni distruttive solo nella vista di dettaglio.
 - [x] **4.2 Metadati aggregati nella card** (modalità, eventi, mosse medie, progresso Woodpecker) invece di quelli della prima partita; per PGN a partita singola restano gli header.
 - [x] **4.3 Rimuovere "Anteprima partite" inline** (duplica la vista di dettaglio).
-- [ ] **4.4 Stato per puzzle nella lista** (risolto / sbagliato / mai tentato) dai dati Woodpecker.
+- [x] **4.4 Stato per puzzle nella lista** (Risolto / Lento / Sbagliato / Da fare) dai dati Woodpecker; l'input delle sessioni è ora memoizzato (prima ricalcolato, con hash di ogni PGN, a ogni change detection).
 - [ ] **4.5 Ricerca/ordinamento collezioni, rilevamento duplicati in import, risultati import chiudibili.**
 
 ## Fase 5 – Architettura

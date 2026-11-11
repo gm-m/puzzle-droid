@@ -150,6 +150,18 @@ describe('LibraryPanelComponent', () => {
     ]);
   });
 
+  it('should expose per-puzzle Woodpecker status badges', () => {
+    component.woodpeckerSessionInfoByItemId = {
+      'pgn-1': { hasSession: true, resumePuzzleIndex: 2, puzzleStatuses: ['solved', 'failed', 'unseen'] },
+    };
+
+    expect(component.hasPuzzleStatuses('pgn-1')).toBeTrue();
+    expect(component.hasPuzzleStatuses('pgn-2')).toBeFalse();
+    expect(component.puzzleStatusBadge('pgn-1', 0)).toEqual({ label: 'Risolto', tone: 'success' });
+    expect(component.puzzleStatusBadge('pgn-1', 1)).toEqual({ label: 'Sbagliato', tone: 'danger' });
+    expect(component.puzzleStatusBadge('pgn-1', 5)).toBeNull();
+  });
+
   it('should confirm before deleting a Woodpecker session', () => {
     const item = { id: 'pgn-1', name: 'Allenamento.pgn', pgn: '', mode: 'puzzle' as const, games: [] };
     spyOn(component.woodpeckerSessionDeleteRequested, 'emit');
