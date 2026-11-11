@@ -583,7 +583,16 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.libraryUploadResults.set(parsed.map(({ result }) => result));
       if (parsedItems.length > 0) {
         this.libraryItems.update((items) => [...parsedItems, ...items]);
-        this.persistLibraryItems();
+        if (!this.persistLibraryItems()) {
+          this.libraryUploadResults.set(
+            parsed.map(({ result }) =>
+              result.status === 'success'
+                ? { ...result, status: 'error', message: `${result.message} Non salvato: spazio di archiviazione esaurito.` }
+                : result,
+            ),
+          );
+          return;
+        }
       }
 
       const failedCount = parsed.length - parsedItems.length;
@@ -2751,7 +2760,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private async loadFamousTacticsItems(): Promise<void> {
     const items = await Promise.all(
       ChessWorkspaceComponent.FAMOUS_TACTICS_ASSETS.map(async (assetName) => {
-        const response = await fetch(`/assets/pgn/${assetName}`);
+        const response = await fetch(`assets/pgn/${assetName}`);
         if (!response.ok) {
           return null;
         }
@@ -2824,9 +2833,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  private persistLibraryItems(): void {
+  private persistLibraryItems(): boolean {
     if (typeof localStorage === 'undefined') {
-      return;
+      return true;
     }
 
     const serialized: PersistedLibraryItem[] = this.libraryItems().map((item) => ({
@@ -2839,8 +2848,13 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     try {
       localStorage.setItem(ChessWorkspaceComponent.LIBRARY_STORAGE_KEY, JSON.stringify(serialized));
+      return true;
     } catch {
-      // Ignore persistence errors (private mode / quota).
+      this.showToast(
+        'Spazio di archiviazione esaurito: la libreria non è stata salvata e le ultime modifiche andranno perse alla chiusura.',
+        'error',
+      );
+      return false;
     }
   }
 

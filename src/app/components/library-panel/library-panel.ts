@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
@@ -84,6 +84,38 @@ interface LibraryHeaderFilters {
 
 type BookmarkSortOption = 'newest' | 'oldest' | 'title';
 
+interface PuzzleItemOptions {
+  autoFirstMove: boolean;
+  autoAdvance: boolean;
+  autoRotate: boolean;
+  woodpecker: boolean;
+  blindfold: boolean;
+  blindfoldSeconds: number;
+  blindfoldShowAfterAutoMove: boolean;
+  batchEnabled: boolean;
+  batchFrom: number;
+  batchTo: number | null;
+  batchLoop: boolean;
+  batchShuffle: boolean;
+}
+
+const DEFAULT_PUZZLE_OPTIONS: PuzzleItemOptions = {
+  autoFirstMove: false,
+  autoAdvance: true,
+  autoRotate: true,
+  woodpecker: false,
+  blindfold: false,
+  blindfoldSeconds: 2,
+  blindfoldShowAfterAutoMove: false,
+  batchEnabled: false,
+  batchFrom: 1,
+  batchTo: null,
+  batchLoop: true,
+  batchShuffle: true,
+};
+
+const PUZZLE_OPTIONS_STORAGE_KEY = 'puzzle-droid-library-puzzle-options-v1';
+const COMPACT_LAYOUT_QUERY = '(max-width: 767px)';
 const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
@@ -123,21 +155,23 @@ export class LibraryPanelComponent {
   bookmarkPendingDeleteId: string | null = null;
   bookmarkSearch = '';
   bookmarkSort: BookmarkSortOption = 'newest';
-  private readonly puzzleAutoFirstMoveByItem = new Map<string, boolean>();
-  private readonly puzzleAutoAdvanceByItem = new Map<string, boolean>();
-  private readonly puzzleAutoRotateByItem = new Map<string, boolean>();
-  private readonly puzzleWoodpeckerByItem = new Map<string, boolean>();
-  private readonly puzzleBlindfoldByItem = new Map<string, boolean>();
-  private readonly puzzleBlindfoldSecondsByItem = new Map<string, number>();
-  private readonly puzzleBlindfoldShowAfterAutoMoveByItem = new Map<string, boolean>();
-  private readonly puzzleBatchEnabledByItem = new Map<string, boolean>();
-  private readonly puzzleBatchRangeFromByItem = new Map<string, number>();
-  private readonly puzzleBatchRangeToByItem = new Map<string, number>();
-  private readonly puzzleBatchLoopByItem = new Map<string, boolean>();
-  private readonly puzzleBatchShuffleByItem = new Map<string, boolean>();
+  itemPendingRemoval: PgnLibraryItem | null = null;
+  readonly isCompactLayout = signal(false);
+  private readonly puzzleOptionsByItem = new Map<string, PuzzleItemOptions>(loadPersistedPuzzleOptions());
   private readonly gameFilterByItem = new Map<string, string>();
   private readonly headerFiltersByItem = new Map<string, LibraryHeaderFilters>();
 
+  constructor() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(COMPACT_LAYOUT_QUERY);
+    const syncLayout = () => this.isCompactLayout.set(mediaQuery.matches);
+    syncLayout();
+    mediaQuery.addEventListener('change', syncLayout);
+    inject(DestroyRef).onDestroy(() => mediaQuery.removeEventListener('change', syncLayout));
+  }
 
   onFilesInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -355,13 +389,18 @@ export class LibraryPanelComponent {
   }
 
   onRemoveItem(item: PgnLibraryItem): void {
-    const confirmed =
-      typeof window === 'undefined' ||
-      window.confirm(`Rimuovere "${item.name}" dalla libreria? Questa azione non elimina il file dal disco.`);
-    if (!confirmed) {
-      return;
-    }
+    this.itemPendingRemoval = item;
+  }
 
+  cancelItemRemoval(): void {
+    this.itemPendingRemoval = null;
+  }
+
+  confirmItemRemoval(): void {
+    const item = this.itemPendingRemoval;
+    if (!item) return;
+
+    this.itemPendingRemoval = null;
     this.clearItemState(item.id);
     this.itemRemoved.emit(item.id);
   }
@@ -408,22 +447,23 @@ export class LibraryPanelComponent {
     return 'neutral';
   }
 
-  onResumeItem(itemId: string): void {
-    const puzzleIndex = this.resumePuzzleIndex(itemId);
+  onResumeItem(item: PgnLibraryItem): void {
+    const puzzleIndex = this.resumePuzzleIndex(item.id);
     if (puzzleIndex === null) {
       return;
     }
 
     this.resumeRequested.emit({
-      itemId,
+      itemId: item.id,
       puzzleIndex,
-      autoPlayFirstMove: this.isPuzzleAutoFirstMove(itemId),
-      autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(itemId),
-      autoRotateBoardOnTurn: this.isPuzzleAutoRotate(itemId),
+      autoPlayFirstMove: this.isPuzzleAutoFirstMove(item.id),
+      autoAdvanceOnSuccess: this.isPuzzleAutoAdvance(item.id),
+      autoRotateBoardOnTurn: this.isPuzzleAutoRotate(item.id),
       woodpeckerEnabled: true,
-      blindfoldEnabled: this.isPuzzleBlindfold(itemId),
-      blindfoldObservationSeconds: this.puzzleBlindfoldSeconds(itemId),
-      blindfoldShowAfterAutoMove: this.isPuzzleBlindfoldShowAfterAutoMove(itemId),
+      blindfoldEnabled: this.isPuzzleBlindfold(item.id),
+      blindfoldObservationSeconds: this.puzzleBlindfoldSeconds(item.id),
+      blindfoldShowAfterAutoMove: this.isPuzzleBlindfoldShowAfterAutoMove(item.id),
+      batchConfig: this.buildBatchConfig(item),
     });
   }
 
@@ -454,19 +494,7 @@ export class LibraryPanelComponent {
 
   onGameClick(item: PgnLibraryItem, game: PgnLibraryGame, gameIndex: number): void {
     const fullUciHistory = game.positions.at(-1)?.uciHistory ?? [];
-
-    let batchConfig: PuzzleBatchConfig | undefined = undefined;
-    if (item.mode === 'puzzle' && this.isPuzzleBatchEnabled(item.id)) {
-      const from = Math.max(0, this.puzzleBatchRangeFrom(item.id) - 1);
-      const to = Math.min(item.games.length - 1, Math.max(from, this.puzzleBatchRangeTo(item.id, item.games.length) - 1));
-      batchConfig = {
-        enabled: true,
-        startIndex: from,
-        endIndex: to,
-        loopBatch: this.isPuzzleBatchLoop(item.id),
-        shuffleOnMistakeOrBack: this.isPuzzleBatchShuffle(item.id),
-      };
-    }
+    const batchConfig = this.buildBatchConfig(item);
 
     this.gameSelected.emit({
       itemId: item.id,
@@ -495,7 +523,7 @@ export class LibraryPanelComponent {
       return;
     }
 
-    const from = Math.max(0, this.puzzleBatchRangeFrom(item.id) - 1);
+    const from = this.puzzleBatchRange(item).from - 1;
     const targetGame = item.games[from] ?? item.games[0];
     if (!targetGame) {
       return;
@@ -514,144 +542,155 @@ export class LibraryPanelComponent {
   }
 
   onPuzzleAutoFirstMoveChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleAutoFirstMoveByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { autoFirstMove: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleAutoFirstMove(itemId: string): boolean {
-    return this.puzzleAutoFirstMoveByItem.get(itemId) ?? false;
+    return this.puzzleOptions(itemId).autoFirstMove;
   }
 
   onPuzzleAutoAdvanceChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleAutoAdvanceByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { autoAdvance: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleAutoAdvance(itemId: string): boolean {
-    return this.puzzleAutoAdvanceByItem.get(itemId) ?? true;
+    return this.puzzleOptions(itemId).autoAdvance;
   }
 
   onPuzzleAutoRotateChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleAutoRotateByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { autoRotate: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleAutoRotate(itemId: string): boolean {
-    return this.puzzleAutoRotateByItem.get(itemId) ?? true;
+    return this.puzzleOptions(itemId).autoRotate;
   }
 
   onPuzzleBlindfoldChange(itemId: string, event: Event): void {
-    this.puzzleBlindfoldByItem.set(itemId, (event.target as HTMLInputElement).checked);
+    this.updatePuzzleOptions(itemId, { blindfold: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleBlindfold(itemId: string): boolean {
-    return this.puzzleBlindfoldByItem.get(itemId) ?? false;
+    return this.puzzleOptions(itemId).blindfold;
   }
 
   onPuzzleBlindfoldSecondsChange(itemId: string, event: Event): void {
     const seconds = Number((event.target as HTMLInputElement).value);
-    if (Number.isFinite(seconds)) this.puzzleBlindfoldSecondsByItem.set(itemId, Math.min(60, Math.max(1, Math.trunc(seconds))));
+    if (Number.isFinite(seconds)) this.updatePuzzleOptions(itemId, { blindfoldSeconds: Math.min(60, Math.max(1, Math.trunc(seconds))) });
   }
 
   puzzleBlindfoldSeconds(itemId: string): number {
-    return this.puzzleBlindfoldSecondsByItem.get(itemId) ?? 2;
+    return this.puzzleOptions(itemId).blindfoldSeconds;
   }
 
   onPuzzleBlindfoldShowAfterAutoMoveChange(itemId: string, event: Event): void {
-    this.puzzleBlindfoldShowAfterAutoMoveByItem.set(itemId, (event.target as HTMLInputElement).checked);
+    this.updatePuzzleOptions(itemId, { blindfoldShowAfterAutoMove: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleBlindfoldShowAfterAutoMove(itemId: string): boolean {
-    return this.puzzleBlindfoldShowAfterAutoMoveByItem.get(itemId) ?? false;
+    return this.puzzleOptions(itemId).blindfoldShowAfterAutoMove;
   }
 
   onPuzzleWoodpeckerChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleWoodpeckerByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { woodpecker: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleWoodpecker(itemId: string): boolean {
-    return this.puzzleWoodpeckerByItem.get(itemId) ?? false;
+    return this.puzzleOptions(itemId).woodpecker;
   }
 
   onPuzzleBatchEnabledChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleBatchEnabledByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { batchEnabled: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleBatchEnabled(itemId: string): boolean {
-    return this.puzzleBatchEnabledByItem.get(itemId) ?? false;
+    return this.puzzleOptions(itemId).batchEnabled;
   }
 
-  puzzleBatchRangeFrom(itemId: string): number {
-    const candidate = Number(this.puzzleBatchRangeFromByItem.get(itemId) ?? 1);
-    return Number.isFinite(candidate) && candidate >= 1 ? Math.trunc(candidate) : 1;
+  /** Effective 1-based batch range, always within [1, games.length] and with from <= to. */
+  puzzleBatchRange(item: PgnLibraryItem): { from: number; to: number } {
+    const total = Math.max(1, item.games.length);
+    const options = this.puzzleOptions(item.id);
+    const from = Math.min(total, Math.max(1, Math.trunc(options.batchFrom)));
+    const requestedTo = options.batchTo ?? Math.min(10, total);
+    const to = Math.min(total, Math.max(from, Math.trunc(requestedTo)));
+    return { from, to };
   }
 
-  onPuzzleBatchRangeFromChange(itemId: string, event: Event): void {
-    const value = Number((event.target as HTMLInputElement).value);
-    if (!Number.isFinite(value)) {
-      return;
+  onPuzzleBatchRangeFromChange(item: PgnLibraryItem, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = Number(input.value);
+    if (Number.isFinite(value)) {
+      const total = Math.max(1, item.games.length);
+      const batchFrom = Math.min(total, Math.max(1, Math.trunc(value)));
+      const currentTo = this.puzzleOptions(item.id).batchTo;
+      this.updatePuzzleOptions(item.id, {
+        batchFrom,
+        batchTo: currentTo !== null && currentTo < batchFrom ? batchFrom : currentTo,
+      });
     }
-    this.puzzleBatchRangeFromByItem.set(itemId, Math.max(1, Math.trunc(value)));
+    input.value = String(this.puzzleBatchRange(item).from);
   }
 
-  puzzleBatchRangeTo(itemId: string, totalGames: number): number {
-    const defaultTo = Math.min(10, Math.max(1, totalGames));
-    const candidate = Number(this.puzzleBatchRangeToByItem.get(itemId) ?? defaultTo);
-    if (!Number.isFinite(candidate)) {
-      return defaultTo;
+  onPuzzleBatchRangeToChange(item: PgnLibraryItem, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = Number(input.value);
+    if (Number.isFinite(value)) {
+      const total = Math.max(1, item.games.length);
+      this.updatePuzzleOptions(item.id, { batchTo: Math.min(total, Math.max(this.puzzleBatchRange(item).from, Math.trunc(value))) });
     }
-    return Math.max(1, Math.trunc(candidate));
-  }
-
-  onPuzzleBatchRangeToChange(itemId: string, event: Event, totalGames: number): void {
-    const value = Number((event.target as HTMLInputElement).value);
-    if (!Number.isFinite(value)) {
-      return;
-    }
-    const maxVal = Math.max(1, totalGames);
-    this.puzzleBatchRangeToByItem.set(itemId, Math.min(maxVal, Math.max(1, Math.trunc(value))));
+    input.value = String(this.puzzleBatchRange(item).to);
   }
 
   isPuzzleBatchLoop(itemId: string): boolean {
-    return this.puzzleBatchLoopByItem.get(itemId) ?? true;
+    return this.puzzleOptions(itemId).batchLoop;
   }
 
   onPuzzleBatchLoopChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleBatchLoopByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { batchLoop: (event.target as HTMLInputElement).checked });
   }
 
   isPuzzleBatchShuffle(itemId: string): boolean {
-    return this.puzzleBatchShuffleByItem.get(itemId) ?? true;
+    return this.puzzleOptions(itemId).batchShuffle;
   }
 
   onPuzzleBatchShuffleChange(itemId: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.puzzleBatchShuffleByItem.set(itemId, checked);
+    this.updatePuzzleOptions(itemId, { batchShuffle: (event.target as HTMLInputElement).checked });
+  }
+
+  private buildBatchConfig(item: PgnLibraryItem): PuzzleBatchConfig | undefined {
+    if (item.mode !== 'puzzle' || item.games.length === 0 || !this.isPuzzleBatchEnabled(item.id)) {
+      return undefined;
+    }
+
+    const { from, to } = this.puzzleBatchRange(item);
+    return {
+      enabled: true,
+      startIndex: from - 1,
+      endIndex: to - 1,
+      loopBatch: this.isPuzzleBatchLoop(item.id),
+      shuffleOnMistakeOrBack: this.isPuzzleBatchShuffle(item.id),
+    };
+  }
+
+  private puzzleOptions(itemId: string): PuzzleItemOptions {
+    return this.puzzleOptionsByItem.get(itemId) ?? DEFAULT_PUZZLE_OPTIONS;
+  }
+
+  private updatePuzzleOptions(itemId: string, patch: Partial<PuzzleItemOptions>): void {
+    this.puzzleOptionsByItem.set(itemId, { ...this.puzzleOptions(itemId), ...patch });
+    persistPuzzleOptions(this.puzzleOptionsByItem);
   }
 
   private clearItemState(itemId: string): void {
-    this.puzzleAutoFirstMoveByItem.delete(itemId);
-    this.puzzleAutoAdvanceByItem.delete(itemId);
-    this.puzzleAutoRotateByItem.delete(itemId);
-    this.puzzleWoodpeckerByItem.delete(itemId);
-    this.puzzleBlindfoldByItem.delete(itemId);
-    this.puzzleBlindfoldSecondsByItem.delete(itemId);
-    this.puzzleBlindfoldShowAfterAutoMoveByItem.delete(itemId);
-    this.puzzleBatchEnabledByItem.delete(itemId);
-    this.puzzleBatchRangeFromByItem.delete(itemId);
-    this.puzzleBatchRangeToByItem.delete(itemId);
-    this.puzzleBatchLoopByItem.delete(itemId);
-    this.puzzleBatchShuffleByItem.delete(itemId);
+    if (this.puzzleOptionsByItem.delete(itemId)) {
+      persistPuzzleOptions(this.puzzleOptionsByItem);
+    }
     this.gameFilterByItem.delete(itemId);
     this.headerFiltersByItem.delete(itemId);
     if (this.expandedItemId === itemId) {
       this.expandedItemId = null;
     }
   }
-
 
   gameTitle(index: number, item: PgnLibraryItem): string {
     const game = item.games[index];
@@ -685,4 +724,45 @@ export class LibraryPanelComponent {
     return Math.max(0, Math.trunc(value));
   }
 
+}
+
+function loadPersistedPuzzleOptions(): [string, PuzzleItemOptions][] {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PUZZLE_OPTIONS_STORAGE_KEY) ?? 'null') as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return [];
+    }
+
+    return Object.entries(parsed as Record<string, unknown>).flatMap(([itemId, raw]) => {
+      if (!raw || typeof raw !== 'object') return [];
+      const stored = raw as Partial<Record<keyof PuzzleItemOptions, unknown>>;
+      const options = { ...DEFAULT_PUZZLE_OPTIONS };
+      for (const key of Object.keys(DEFAULT_PUZZLE_OPTIONS) as (keyof PuzzleItemOptions)[]) {
+        const value = stored[key];
+        const expected = typeof DEFAULT_PUZZLE_OPTIONS[key];
+        if (typeof value === expected || (key === 'batchTo' && typeof value === 'number')) {
+          (options as Record<string, unknown>)[key] = value;
+        }
+      }
+      return [[itemId, options] as [string, PuzzleItemOptions]];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function persistPuzzleOptions(optionsByItem: Map<string, PuzzleItemOptions>): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  try {
+    localStorage.setItem(PUZZLE_OPTIONS_STORAGE_KEY, JSON.stringify(Object.fromEntries(optionsByItem)));
+  } catch {
+    // Ignore persistence errors (private mode / quota).
+  }
 }

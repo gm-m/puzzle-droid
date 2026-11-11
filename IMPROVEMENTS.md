@@ -4,13 +4,13 @@ Legenda: `[ ]` da fare · `[x]` fatto
 
 ## Fase 1 – Fix rapidi (alto impatto, basso rischio)
 
-- [ ] **1.1 Path asset tattiche famose relativo** – `fetch('/assets/pgn/...')` rompe con `--base-href /puzzle-droid/`; usare `assets/pgn/...` e caricare solo all'apertura della libreria.
-- [ ] **1.2 Persistenza opzioni puzzle per collezione** – auto-prima mossa, auto-avanzamento, rotazione, Woodpecker, memoria visiva, Micro-Set vivono in `Map` del componente e si perdono a ogni cambio vista/riavvio.
-- [ ] **1.3 "Riprendi allenamento" rispetta il Micro-Set** – `onResumeItem` non passa `batchConfig`.
-- [ ] **1.4 Errore di quota visibile** – `persistLibraryItems` ignora silenziosamente i `QuotaExceededError`: l'utente crede di aver importato il file e lo perde al riavvio.
-- [ ] **1.5 Un solo layout per la lista partite** – tabella desktop e card mobile sono entrambe nel DOM (una nascosta via CSS); renderizzare solo quella attiva via `matchMedia`.
-- [ ] **1.6 Validazione Micro-Set** – "Da" > "A" consentito, "Da" senza max, clamp durante la digitazione.
-- [ ] **1.7 Conferma rimozione PGN con `app-dialog`** al posto di `window.confirm` (coerente con i bookmark, migliore su WebView Android).
+- [x] **1.1 Path asset tattiche famose relativo** – `fetch('/assets/pgn/...')` rompe con `--base-href /puzzle-droid/`; usare `assets/pgn/...`. (Il caricamento lazy è rimandato a 2.4: serve anche per la ripresa dalla dashboard Woodpecker.)
+- [x] **1.2 Persistenza opzioni puzzle per collezione** – auto-prima mossa, auto-avanzamento, rotazione, Woodpecker, memoria visiva, Micro-Set vivono in `Map` del componente e si perdono a ogni cambio vista/riavvio.
+- [x] **1.3 "Riprendi allenamento" rispetta il Micro-Set** – `onResumeItem` non passa `batchConfig`.
+- [x] **1.4 Errore di quota visibile** – `persistLibraryItems` ignora silenziosamente i `QuotaExceededError`: l'utente crede di aver importato il file e lo perde al riavvio.
+- [x] **1.5 Un solo layout per la lista partite** – tabella desktop e card mobile sono entrambe nel DOM (una nascosta via CSS); renderizzare solo quella attiva via `matchMedia`.
+- [x] **1.6 Validazione Micro-Set** – "Da" > "A" consentito, "Da" senza max, clamp durante la digitazione.
+- [x] **1.7 Conferma rimozione PGN con `app-dialog`** al posto di `window.confirm` (coerente con i bookmark, migliore su WebView Android).
 
 ## Fase 2 – Parsing e memoria
 

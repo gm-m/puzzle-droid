@@ -8,6 +8,7 @@ describe('LibraryPanelComponent', () => {
   let fixture: ComponentFixture<LibraryPanelComponent>;
 
   beforeEach(async () => {
+    localStorage.removeItem('puzzle-droid-library-puzzle-options-v1');
     await TestBed.configureTestingModule({
       imports: [LibraryPanelComponent],
       providers: [provideZonelessChangeDetection()],
@@ -184,5 +185,87 @@ describe('LibraryPanelComponent', () => {
 
     expect(component.itemGameFilter(item.id)).toBe('');
     expect(component.filteredGameEntries(item).map((entry) => entry.game.id)).toEqual(['game-1']);
+  });
+
+  describe('puzzle options', () => {
+    const makeItem = (gameCount: number) => ({
+      id: 'pgn-puzzle',
+      name: 'Puzzle.pgn',
+      pgn: '',
+      mode: 'puzzle' as const,
+      games: Array.from({ length: gameCount }, (_, index) => ({
+        id: `game-${index + 1}`,
+        initialFen: '',
+        positions: [],
+      })),
+    });
+    const checkboxEvent = (checked: boolean) => {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = checked;
+      return { target: input } as unknown as Event;
+    };
+    const numberEvent = (value: string) => {
+      const input = document.createElement('input');
+      input.value = value;
+      return { target: input } as unknown as Event;
+    };
+
+    it('should persist options across component instances', () => {
+      component.onPuzzleWoodpeckerChange('pgn-puzzle', checkboxEvent(true));
+      component.onPuzzleAutoAdvanceChange('pgn-puzzle', checkboxEvent(false));
+
+      const other = TestBed.createComponent(LibraryPanelComponent).componentInstance;
+
+      expect(other.isPuzzleWoodpecker('pgn-puzzle')).toBeTrue();
+      expect(other.isPuzzleAutoAdvance('pgn-puzzle')).toBeFalse();
+      expect(other.isPuzzleAutoRotate('pgn-puzzle')).toBeTrue();
+    });
+
+    it('should keep the batch range within bounds and ordered', () => {
+      const item = makeItem(20);
+
+      expect(component.puzzleBatchRange(item)).toEqual({ from: 1, to: 10 });
+
+      component.onPuzzleBatchRangeFromChange(item, numberEvent('50'));
+      expect(component.puzzleBatchRange(item)).toEqual({ from: 20, to: 20 });
+
+      component.onPuzzleBatchRangeFromChange(item, numberEvent('5'));
+      component.onPuzzleBatchRangeToChange(item, numberEvent('3'));
+      expect(component.puzzleBatchRange(item)).toEqual({ from: 5, to: 5 });
+
+      component.onPuzzleBatchRangeToChange(item, numberEvent('12'));
+      expect(component.puzzleBatchRange(item)).toEqual({ from: 5, to: 12 });
+    });
+
+    it('should include the batch config when resuming a session', () => {
+      const item = makeItem(20);
+      component.woodpeckerSessionInfoByItemId = { [item.id]: { hasSession: true, resumePuzzleIndex: 6 } };
+      component.onPuzzleBatchEnabledChange(item.id, checkboxEvent(true));
+      component.onPuzzleBatchRangeFromChange(item, numberEvent('5'));
+      spyOn(component.resumeRequested, 'emit');
+
+      component.onResumeItem(item);
+
+      expect(component.resumeRequested.emit).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          puzzleIndex: 6,
+          batchConfig: jasmine.objectContaining({ enabled: true, startIndex: 4, endIndex: 9 }),
+        }),
+      );
+    });
+
+    it('should ask for confirmation before removing an item', () => {
+      const item = makeItem(1);
+      spyOn(component.itemRemoved, 'emit');
+
+      component.onRemoveItem(item);
+      expect(component.itemRemoved.emit).not.toHaveBeenCalled();
+      expect(component.itemPendingRemoval).toBe(item);
+
+      component.confirmItemRemoval();
+      expect(component.itemRemoved.emit).toHaveBeenCalledWith(item.id);
+      expect(component.itemPendingRemoval).toBeNull();
+    });
   });
 });
