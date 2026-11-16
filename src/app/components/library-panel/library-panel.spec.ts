@@ -150,6 +150,28 @@ describe('LibraryPanelComponent', () => {
     ]);
   });
 
+  it('should search and sort collections', () => {
+    const make = (id: string, name: string, gameCount: number) => ({
+      id,
+      name,
+      pgn: '',
+      mode: 'view' as const,
+      games: Array.from({ length: gameCount }, (_, index) => ({ id: `${id}-${index}`, initialFen: '', uciMoves: [], positions: [] })),
+    });
+    component.items = [make('a', 'Zeta.pgn', 1), make('b', 'Alfa.pgn', 3), make('c', 'Beta finali.pgn', 2)];
+
+    expect(component.displayedItems().map((item) => item.id)).toEqual(['a', 'b', 'c']);
+
+    component.onCollectionSortChange({ target: { value: 'name' } } as unknown as Event);
+    expect(component.displayedItems().map((item) => item.id)).toEqual(['b', 'c', 'a']);
+
+    component.onCollectionSortChange({ target: { value: 'size' } } as unknown as Event);
+    expect(component.displayedItems().map((item) => item.id)).toEqual(['b', 'c', 'a']);
+
+    component.onCollectionSearchInput({ target: { value: 'FINALI' } } as unknown as Event);
+    expect(component.displayedItems().map((item) => item.id)).toEqual(['c']);
+  });
+
   it('should expose per-puzzle Woodpecker status badges', () => {
     component.woodpeckerSessionInfoByItemId = {
       'pgn-1': { hasSession: true, resumePuzzleIndex: 2, puzzleStatuses: ['solved', 'failed', 'unseen'] },

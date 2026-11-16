@@ -212,6 +212,7 @@
         [puzzlePlayerColorByGameId]="puzzlePlayerColorByGameId()"
         (puzzlePlayerColorChanged)="onLibraryPuzzlePlayerColorChanged($event)"
         (filesSelected)="onLibraryFilesSelected($event)"
+        (uploadResultsDismissed)="libraryUploadResults.set([])"
         (modeChanged)="onLibraryModeChanged($event)"
         (gameSelected)="onLibraryGameSelected($event)"
         (itemRemoved)="onLibraryItemRemoved($event)"

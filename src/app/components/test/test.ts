@@ -522,6 +522,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.isLibraryUploadInProgress.set(true);
     this.libraryUploadResults.set([]);
     const uploadId = Date.now();
+    const existingByContent = new Map(this.libraryItems().map((item) => [item.pgn.trim(), item.name]));
 
     try {
       const parsed = await Promise.all(
@@ -541,6 +542,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
                 result: { fileName: file.name, status: 'error', message: 'Il file è vuoto.' },
               };
             }
+
+            const duplicateOf = existingByContent.get(pgn.trim());
+            if (duplicateOf !== undefined) {
+              return {
+                item: null,
+                result: { fileName: file.name, status: 'error', message: `Già presente in libreria come "${duplicateOf}".` },
+              };
+            }
+            existingByContent.set(pgn.trim(), file.name);
 
             const itemId = `${uploadId}-${index}-${file.name}`;
             const games = this.parsePgnGames(pgn, itemId).filter((game) => game.positions.length > 1);

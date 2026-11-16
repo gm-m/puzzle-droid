@@ -9,6 +9,7 @@ import type { PgnLibraryGame } from '../../models/library.models';
 import { SettingsService } from '../../services/settings.service';
 import { StockfishService } from '../../services/stockfish.service';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
+import { LibraryStorageService } from '../../services/library-storage.service';
 
 describe('ChessWorkspaceComponent', () => {
   let component: ChessWorkspaceComponent;
@@ -244,6 +245,22 @@ describe('ChessWorkspaceComponent', () => {
       expect(component.moveCursor()).toBe(0);
       expect(component.boardOrientation()).toBe('white');
     });
+  });
+
+  it('should reject PGN files whose content is already in the library', async () => {
+    const pgn = `[Event "Duplicato ${Date.now()}"]\n\n1. e4 e5 2. Nf3 *`;
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([pgn], 'uno.pgn'));
+    transfer.items.add(new File([pgn], 'due.pgn'));
+
+    await component.onLibraryFilesSelected(transfer.files);
+
+    const results = component.libraryUploadResults();
+    expect(results.map((result) => result.status)).toEqual(['success', 'error']);
+    expect(results[1].message).toContain('Già presente in libreria come "uno.pgn"');
+    expect(component.libraryItems().filter((item) => item.pgn === pgn).length).toBe(1);
+
+    await TestBed.inject(LibraryStorageService).deleteItem(component.libraryItems()[0].id);
   });
 
   describe('PGN parsing', () => {

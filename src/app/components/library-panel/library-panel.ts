@@ -93,6 +93,7 @@ interface LibraryHeaderFilters {
 }
 
 type BookmarkSortOption = 'newest' | 'oldest' | 'title';
+type CollectionSortOption = 'recent' | 'name' | 'size';
 
 interface PuzzleItemOptions {
   autoFirstMove: boolean;
@@ -155,6 +156,7 @@ export class LibraryPanelComponent {
   @Input() puzzlePlayerColorByGameId: Record<string, PuzzlePlayerColor> = {};
 
   @Output() readonly filesSelected = new EventEmitter<FileList | null>();
+  @Output() readonly uploadResultsDismissed = new EventEmitter<void>();
   @Output() readonly modeChanged = new EventEmitter<LibraryModeChange>();
   @Output() readonly gameSelected = new EventEmitter<LibraryGameSelection>();
   @Output() readonly itemRemoved = new EventEmitter<string>();
@@ -176,6 +178,9 @@ export class LibraryPanelComponent {
   bookmarkSearch = '';
   bookmarkSort: BookmarkSortOption = 'newest';
   itemPendingRemoval: PgnLibraryItem | null = null;
+  collectionSearch = '';
+  collectionSort: CollectionSortOption = 'recent';
+  private displayedItemsCache: { source: PgnLibraryItem[]; query: string; sort: CollectionSortOption; items: PgnLibraryItem[] } | null = null;
   readonly isCompactLayout = signal(false);
   private readonly puzzleOptionsByItem = new Map<string, PuzzleItemOptions>(loadPersistedPuzzleOptions());
   private readonly gameFilterByItem = new Map<string, string>();
@@ -312,6 +317,35 @@ export class LibraryPanelComponent {
 
   visibleItems(): PgnLibraryItem[] {
     return this.activeTab === 'famous-tactics' ? this.famousTacticsItems : this.items;
+  }
+
+  /** Visible collections after the collection search and sort, memoized on their inputs. */
+  displayedItems(): PgnLibraryItem[] {
+    const source = this.visibleItems();
+    const query = this.collectionSearch.trim().toLowerCase();
+    const cached = this.displayedItemsCache;
+    if (cached && cached.source === source && cached.query === query && cached.sort === this.collectionSort) {
+      return cached.items;
+    }
+
+    const filtered = query ? source.filter((item) => item.name.toLowerCase().includes(query)) : source;
+    const items =
+      this.collectionSort === 'name'
+        ? [...filtered].sort((left, right) => left.name.localeCompare(right.name, 'it'))
+        : this.collectionSort === 'size'
+          ? [...filtered].sort((left, right) => right.games.length - left.games.length)
+          : filtered;
+
+    this.displayedItemsCache = { source, query, sort: this.collectionSort, items };
+    return items;
+  }
+
+  onCollectionSearchInput(event: Event): void {
+    this.collectionSearch = (event.target as HTMLInputElement).value;
+  }
+
+  onCollectionSortChange(event: Event): void {
+    this.collectionSort = (event.target as HTMLSelectElement).value as CollectionSortOption;
   }
 
   activePgnTabLabel(): string {
