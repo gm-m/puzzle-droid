@@ -1,0 +1,20 @@
+@if (shell.tabBarVisible()) {
+  <nav class="tabbar" aria-label="Navigazione principale">
+    <a class="tab" [class.active]="isActive('/library')" routerLink="/library" (click)="onTabTap()">
+      <app-icon name="books"></app-icon>
+      <span>Libreria</span>
+    </a>
+    <a class="tab" [class.active]="isActive('/analysis')" routerLink="/analysis" (click)="onTabTap()">
+      <app-icon name="board"></app-icon>
+      <span>Analisi</span>
+    </a>
+    <a class="tab" [class.active]="isActive('/woodpecker-dashboard')" [routerLink]="woodpeckerLink()" (click)="onTabTap()">
+      <app-icon name="chart"></app-icon>
+      <span>Woodpecker</span>
+    </a>
+    <a class="tab" [class.active]="isActive('/settings')" routerLink="/settings" (click)="onTabTap()">
+      <app-icon name="settings"></app-icon>
+      <span>Impostazioni</span>
+    </a>
+  </nav>
+}

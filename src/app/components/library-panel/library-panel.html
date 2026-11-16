@@ -1,115 +1,109 @@
 <section class="library-panel">
   <ng-container *ngIf="!openedItem()">
-  <header class="library-header" [attr.aria-busy]="isUploadInProgress">
-    <h1>Libreria PGN</h1>
-    <label class="upload-button" [class.loading]="isUploadInProgress">
-      {{ isUploadInProgress ? 'Importazione…' : 'Carica PGN' }}
-      <input type="file" accept=".pgn" multiple [disabled]="isUploadInProgress"
-        aria-describedby="pgn-upload-help" (change)="onFilesInput($event)" />
-    </label>
-    <p id="pgn-upload-help" class="upload-help">File .pgn, anche multipli. Ogni file viene verificato prima dell'importazione.</p>
-  </header>
+    <!-- ==================== Library overview ==================== -->
+    <header class="library-head" [attr.aria-busy]="isUploadInProgress">
+      <div class="library-title">
+        <p class="ui-kicker">{{ libSummary() }}</p>
+        <h1 class="ui-display">Libreria</h1>
+      </div>
+      <div class="library-head-actions">
+        <button
+          type="button"
+          class="ui-icon-btn"
+          [attr.aria-label]="settings().darkMode ? 'Passa al tema chiaro' : 'Passa al tema scuro'"
+          [title]="settings().darkMode ? 'Tema chiaro' : 'Tema scuro'"
+          (click)="toggleTheme()"
+        >
+          <app-icon [name]="settings().darkMode ? 'sun' : 'moon'"></app-icon>
+        </button>
+        <label class="ui-btn ink upload-btn" [class.loading]="isUploadInProgress" aria-describedby="pgn-upload-help">
+          <app-icon name="plus"></app-icon>
+          {{ isUploadInProgress ? 'Importa…' : 'Carica' }}
+          <input type="file" accept=".pgn" multiple [disabled]="isUploadInProgress" (change)="onFilesInput($event)" />
+        </label>
+      </div>
+    </header>
 
-  <section class="upload-results" *ngIf="isUploadInProgress || uploadResults.length > 0" aria-live="polite" aria-atomic="true">
-    <app-loading-indicator *ngIf="isUploadInProgress" class="upload-progress"
-      label="Lettura e verifica dei file in corso" [visibleLabel]="true"></app-loading-indicator>
-    <ul *ngIf="uploadResults.length > 0">
-      <li *ngFor="let result of uploadResults" [class.upload-success]="result.status === 'success'"
-        [class.upload-error]="result.status === 'error'">
-        <strong>{{ result.fileName }}</strong>
-        <span>{{ result.message }}</span>
-      </li>
-    </ul>
-    <button type="button" class="upload-results-dismiss" *ngIf="!isUploadInProgress && uploadResults.length > 0"
-      aria-label="Chiudi risultati importazione" (click)="uploadResultsDismissed.emit()">
-      <app-icon name="close"></app-icon>
-    </button>
-  </section>
+    <section class="upload-results ui-card" *ngIf="isUploadInProgress || uploadResults.length > 0" aria-live="polite" aria-atomic="true">
+      <app-loading-indicator *ngIf="isUploadInProgress" class="upload-progress"
+        label="Lettura e verifica dei file in corso" [visibleLabel]="true"></app-loading-indicator>
+      <ul *ngIf="uploadResults.length > 0">
+        <li *ngFor="let result of uploadResults" [class.upload-success]="result.status === 'success'"
+          [class.upload-error]="result.status === 'error'">
+          <strong>{{ result.fileName }}</strong>
+          <span>{{ result.message }}</span>
+        </li>
+      </ul>
+      <button type="button" class="upload-results-dismiss" *ngIf="!isUploadInProgress && uploadResults.length > 0"
+        aria-label="Chiudi risultati importazione" (click)="uploadResultsDismissed.emit()">
+        <app-icon name="close"></app-icon>
+      </button>
+    </section>
 
-  <div class="library-tabs" role="group" aria-label="Vista libreria">
-    <button type="button" class="library-tab" [class.active]="activeTab === 'pgn'" [attr.aria-pressed]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">
-      PGN
-    </button>
-    <button type="button" class="library-tab" [class.active]="activeTab === 'famous-tactics'" [attr.aria-pressed]="activeTab === 'famous-tactics'" (click)="setActiveTab('famous-tactics')">
-      Tattiche da partite famose
-    </button>
-    <button type="button" class="library-tab" [class.active]="activeTab === 'bookmarks'" [attr.aria-pressed]="activeTab === 'bookmarks'" (click)="setActiveTab('bookmarks')">
-      Bookmark
-    </button>
-  </div>
-
-  <p class="hint" *ngIf="activeTab === 'pgn'">Carica file PGN, apri una card e seleziona una partita per avviarla sulla scacchiera.</p>
-  <p class="hint" *ngIf="activeTab === 'famous-tactics'">Studia tattiche estratte da partite famose realmente giocate.</p>
-  <p class="hint" *ngIf="activeTab === 'bookmarks'">Consulta le posizioni salvate e riaprile rapidamente dalla libreria.</p>
-
-  <div class="collection-toolbar" *ngIf="activeTab !== 'bookmarks' && visibleItems().length > 1">
-    <label class="collection-search">
-      <span class="sr-only">Cerca raccolte</span>
-      <input type="search" placeholder="Cerca raccolte" [value]="collectionSearch" (input)="onCollectionSearchInput($event)" />
-    </label>
-    <label class="collection-sort">
-      Ordina per
-      <select [value]="collectionSort" (change)="onCollectionSortChange($event)">
-        <option value="recent">Più recenti</option>
-        <option value="name">Nome A-Z</option>
-        <option value="size">Numero di partite</option>
-      </select>
-    </label>
-  </div>
+    <div class="library-tabs" role="group" aria-label="Vista libreria">
+      <button type="button" class="ui-pill library-tab" [class.active]="activeTab === 'pgn'"
+        [attr.aria-pressed]="activeTab === 'pgn'" (click)="setActiveTab('pgn')">PGN</button>
+      <button type="button" class="ui-pill library-tab" [class.active]="activeTab === 'famous-tactics'"
+        [attr.aria-pressed]="activeTab === 'famous-tactics'" (click)="setActiveTab('famous-tactics')">Tattiche celebri</button>
+      <button type="button" class="ui-pill library-tab" [class.active]="activeTab === 'bookmarks'"
+        [attr.aria-pressed]="activeTab === 'bookmarks'" (click)="setActiveTab('bookmarks')">Bookmark</button>
+    </div>
   </ng-container>
 
-  <section class="bookmark-library-view" *ngIf="activeTab === 'bookmarks'; else pgnLibraryView">
-    <div class="bookmark-library-toolbar" *ngIf="positionBookmarks.length > 0">
-      <label class="bookmark-library-filter">
-        Cerca bookmark
-        <input type="text" [value]="bookmarkSearch" placeholder="Titolo, nota o FEN" (input)="onBookmarkSearchInput($event)" />
+  <!-- ==================== Bookmarks tab ==================== -->
+  <section class="bookmark-view" *ngIf="!openedItem() && activeTab === 'bookmarks'">
+    <div class="collection-toolbar" *ngIf="positionBookmarks.length > 0">
+      <label class="ui-search">
+        <app-icon name="search"></app-icon>
+        <input type="search" [value]="bookmarkSearch" placeholder="Titolo, nota o FEN"
+          aria-label="Cerca bookmark" (input)="onBookmarkSearchInput($event)" />
       </label>
-
-      <label class="bookmark-library-sort">
-        Ordina per
+      <label class="bookmark-sort">
+        <span class="sr-only">Ordina bookmark</span>
         <select [value]="bookmarkSort" (change)="onBookmarkSortChange($event)">
           <option value="newest">Più recenti</option>
           <option value="oldest">Più vecchi</option>
-          <option value="title">Titolo A-Z</option>
+          <option value="title">Titolo A–Z</option>
         </select>
       </label>
     </div>
 
     <ng-container *ngIf="filteredBookmarks() as bookmarks">
-      <div class="bookmark-library-list" *ngIf="bookmarks.length > 0; else emptyBookmarksState">
-        <article class="bookmark-library-item" *ngFor="let bookmark of bookmarks">
+      <div class="bookmark-list" *ngIf="bookmarks.length > 0; else emptyBookmarksState">
+        <article class="bookmark-card ui-card" *ngFor="let bookmark of bookmarks">
           <ng-container *ngIf="!isEditingBookmark(bookmark.id); else bookmarkEditForm">
-            <button type="button" class="bookmark-library-open" (click)="onOpenBookmark(bookmark.id)">
-              <span class="bookmark-library-head">
+            <button type="button" class="bookmark-open" (click)="onOpenBookmark(bookmark.id)">
+              <span class="bookmark-head">
                 <strong>{{ bookmark.title }}</strong>
-                <span>{{ bookmark.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span class="ui-kicker">{{ bookmark.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
               </span>
-              <span class="bookmark-library-note" *ngIf="bookmark.note">{{ bookmark.note }}</span>
-              <span class="bookmark-library-fen">{{ bookmark.fen }}</span>
+              <span class="bookmark-note" *ngIf="bookmark.note">{{ bookmark.note }}</span>
+              <span class="bookmark-fen">{{ bookmark.fen }}</span>
             </button>
-
-            <div class="bookmark-library-actions">
-              <button type="button" class="bookmark-secondary-action" (click)="startBookmarkEdit(bookmark.id)">Modifica</button>
-              <button type="button" class="bookmark-danger-action" (click)="deleteBookmark(bookmark.id)">Elimina</button>
+            <div class="bookmark-actions">
+              <button type="button" class="bookmark-action edit" (click)="startBookmarkEdit(bookmark.id)">
+                <app-icon name="edit"></app-icon> Modifica
+              </button>
+              <button type="button" class="bookmark-action delete" (click)="deleteBookmark(bookmark.id)">
+                <app-icon name="trash"></app-icon> Elimina
+              </button>
             </div>
           </ng-container>
 
           <ng-template #bookmarkEditForm>
-            <form class="bookmark-library-edit" aria-label="Modifica bookmark"
+            <form class="bookmark-edit" aria-label="Modifica bookmark"
               (submit)="$event.preventDefault(); saveBookmarkEdit(bookmark.id, bookmarkTitleInput, bookmarkNoteInput)">
               <label>
                 Titolo
                 <input #bookmarkTitleInput autofocus type="text" [value]="bookmark.title" maxlength="80" />
               </label>
-
               <label>
                 Nota breve
                 <textarea #bookmarkNoteInput rows="3" maxlength="220">{{ bookmark.note }}</textarea>
               </label>
-
-              <div class="bookmark-library-actions">
-                <button type="button" class="bookmark-secondary-action" (click)="cancelBookmarkEdit()">Annulla</button>
-                <button type="submit" class="bookmark-primary-action">Salva</button>
+              <div class="bookmark-actions">
+                <button type="button" class="ui-btn subtle" (click)="cancelBookmarkEdit()">Annulla</button>
+                <button type="submit" class="ui-btn ink">Salva</button>
               </div>
             </form>
           </ng-template>
@@ -118,417 +112,381 @@
     </ng-container>
 
     <ng-template #emptyBookmarksState>
-      <app-empty-state
-        [title]="positionBookmarks.length === 0 ? 'Nessun bookmark salvato' : 'Nessun bookmark trovato'"
-        [description]="positionBookmarks.length === 0 ? 'Salva una posizione dall’area Analisi per ritrovarla qui.' : 'Prova a modificare il testo di ricerca o l’ordinamento.'"
-      ></app-empty-state>
-    </ng-template>
-
-    <app-dialog [open]="bookmarkPendingDeleteId !== null" title="Eliminare il bookmark?" (closed)="cancelBookmarkDelete()">
-      <p class="bookmark-delete-description">“{{ pendingBookmarkDeleteTitle() }}” verrà rimosso definitivamente.</p>
-      <div class="bookmark-delete-actions">
-        <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelBookmarkDelete()">Annulla</button>
-        <button type="button" class="bookmark-danger-action" (click)="confirmBookmarkDelete()">Elimina</button>
+      <div class="empty-box">
+        <span class="empty-glyph" aria-hidden="true">★</span>
+        <app-empty-state
+          [title]="positionBookmarks.length === 0 ? 'Nessun bookmark' : 'Nessun bookmark trovato'"
+          [description]="positionBookmarks.length === 0 ? 'Salva una partita o un puzzle dall’area Analisi per ritrovarlo qui.' : 'Prova a modificare il testo di ricerca o l’ordinamento.'"
+        ></app-empty-state>
       </div>
-    </app-dialog>
+    </ng-template>
   </section>
 
-  <ng-template #pgnLibraryView>
-    <ng-container *ngIf="openedItem() as item; else itemsOverview">
-      <section class="opened-item-screen">
-        <header class="opened-item-header">
-          <button type="button" class="back-to-library" (click)="onCloseOpenedItem()">
-            <app-icon name="arrow-left"></app-icon>
-            Torna a {{ activePgnTabLabel() }}
-          </button>
-          <div>
-            <h2>{{ item.name }}</h2>
-            <p>{{ item.games.length }} partite disponibili</p>
-            <app-status-badge [tone]="woodpeckerStatusTone(item.id)">{{ woodpeckerStatusLabel(item.id) }}</app-status-badge>
-          </div>
-        </header>
+  <!-- ==================== PGN / famous-tactics tab ==================== -->
+  <ng-container *ngIf="!openedItem() && activeTab !== 'bookmarks'">
+    <div class="collection-toolbar">
+      <label class="ui-search">
+        <app-icon name="search"></app-icon>
+        <input type="search" [value]="collectionSearch" placeholder="Cerca raccolte"
+          aria-label="Cerca raccolte" (input)="onCollectionSearchInput($event)" />
+      </label>
+      <button type="button" class="sort-btn" (click)="openSheet('sort')">
+        <app-icon name="sort"></app-icon>
+        {{ collectionSortLabel() }}
+      </button>
+    </div>
 
-        <section class="opened-item-controls">
-          <div class="opened-control-row">
-            <label class="mode-select">
-              Modalità
-              <select [value]="item.mode" (change)="onModeChange(item.id, $event)">
-                <option value="view">Visualizzazione</option>
-                <option value="puzzle">Puzzle</option>
-              </select>
-            </label>
+    <!-- Hero: sessione in corso -->
+    <article class="hero-card" *ngIf="heroItem() as hero">
+      <div class="hero-top">
+        <span class="ui-kicker">IN CORSO · CICLO {{ heroCycle(hero) }}</span>
+        <span class="hero-pct">{{ sessionProgressPercent(hero) }}%</span>
+      </div>
+      <div class="hero-body">
+        <h2>{{ hero.name }}</h2>
+        <p>Puzzle {{ (resumePuzzleIndexForItem(hero) ?? 0) + 1 }} di {{ hero.games.length }}</p>
+      </div>
+      <div class="hero-bar"><i [style.width.%]="sessionProgressPercent(hero)"></i></div>
+      <div class="hero-actions">
+        <button type="button" class="hero-resume" (click)="onResumeItem(hero)">
+          <app-icon name="play"></app-icon>
+          Riprendi dal puzzle {{ (resumePuzzleIndexForItem(hero) ?? 0) + 1 }}
+        </button>
+        <button type="button" class="hero-dashboard" aria-label="Dashboard Woodpecker" (click)="onOpenDashboard(hero.id)">
+          <app-icon name="chart"></app-icon>
+        </button>
+      </div>
+    </article>
 
-            <div class="opened-item-actions" role="group" aria-label="Azioni PGN">
-              <button type="button" class="opened-icon-action dashboard" aria-label="Apri dashboard Woodpecker"
-                title="Dashboard Woodpecker" (click)="onOpenDashboard(item.id)">
-                <app-icon name="chart"></app-icon>
-              </button>
-              <button type="button" class="opened-icon-action danger" *ngIf="canRemoveItem()"
-                aria-label="Rimuovi PGN dalla libreria" title="Rimuovi PGN"
-                (click)="onRemoveItem(item)">
-                <app-icon name="trash"></app-icon>
-              </button>
-            </div>
-          </div>
+    <!-- File list -->
+    <section class="file-list" *ngIf="visibleItems().length > 0 || isLoading; else emptyPgn">
+      <p class="ui-kicker file-list-kicker">FILE · {{ displayedItems().length }}</p>
+      <div class="file-row ui-card" *ngFor="let item of displayedItems(); trackBy: trackByItem">
+        <button type="button" class="file-open" (click)="onOpenItem(item.id)">
+          <span class="file-glyph" aria-hidden="true">{{ itemGlyph(item) }}</span>
+          <span class="file-copy">
+            <strong [title]="item.name">{{ item.name }}</strong>
+            <small>{{ rowMeta(item) }}</small>
+            <span class="file-progress" *ngIf="resumePuzzleIndexForItem(item) !== null">
+              <i [style.width.%]="sessionProgressPercent(item)"></i>
+              <em>{{ (resumePuzzleIndexForItem(item) ?? 0) + 1 }}/{{ item.games.length }}</em>
+            </span>
+          </span>
+        </button>
+        <button type="button" class="file-more" aria-label="Azioni su {{ item.name }}" (click)="openSheet('file', item)">
+          <app-icon name="more"></app-icon>
+        </button>
+      </div>
+      <p class="game-filter-empty" *ngIf="displayedItems().length === 0">Nessuna raccolta corrisponde alla ricerca.</p>
+      <p class="file-hint" id="pgn-upload-help">File .pgn, anche multipli. Ogni file viene verificato prima dell'importazione.</p>
+    </section>
 
-          <button type="button" class="resume-button" *ngIf="hasResumeSession(item.id)"
-            (click)="onResumeItem(item)">Riprendi allenamento</button>
-
-          <div class="training-disclosures" *ngIf="item.mode === 'puzzle'">
-            <details class="training-disclosure">
-              <summary>
-                <span class="disclosure-copy">
-                  <strong>Opzioni puzzle</strong>
-                  <small>Automazioni durante l'esercizio</small>
-                </span>
-              </summary>
-              <div class="disclosure-content">
-                <label class="puzzle-option">
-                  <input type="checkbox" [checked]="isPuzzleAutoFirstMove(item.id)"
-                    (change)="onPuzzleAutoFirstMoveChange(item.id, $event)" />
-                  Auto-esegui la prima mossa all'apertura partita
-                </label>
-
-                <label class="puzzle-option">
-                  <input type="checkbox" [checked]="isPuzzleAutoAdvance(item.id)"
-                    (change)="onPuzzleAutoAdvanceChange(item.id, $event)" />
-                  Vai al puzzle successivo quando risolto
-                </label>
-
-                <label class="puzzle-option">
-                  <input type="checkbox" [checked]="isPuzzleAutoRotate(item.id)"
-                    (change)="onPuzzleAutoRotateChange(item.id, $event)" />
-                  Ruota automaticamente la scacchiera in base al tratto
-                </label>
-
-                <label class="puzzle-option">
-                  <input type="checkbox" [checked]="isPuzzleBlindfold(item.id)"
-                    (change)="onPuzzleBlindfoldChange(item.id, $event)" />
-                  Modalità memoria visiva
-                </label>
-
-                <p class="blindfold-help" *ngIf="isPuzzleBlindfold(item.id)">
-                  I pezzi verranno nascosti ma resteranno interattivi. Mostrarli durante il puzzle segnerà il tentativo come assistito.
-                </p>
-
-                <label class="blindfold-duration" *ngIf="isPuzzleBlindfold(item.id)">
-                  Mostra la posizione per
-                  <span class="blindfold-duration-field">
-                    <input type="number" min="1" max="60" inputmode="numeric"
-                      [value]="puzzleBlindfoldSeconds(item.id)" (input)="onPuzzleBlindfoldSecondsChange(item.id, $event)" />
-                    <span>secondi</span>
-                  </span>
-                </label>
-
-                <label class="puzzle-option" *ngIf="isPuzzleBlindfold(item.id)">
-                  <input type="checkbox" [checked]="isPuzzleBlindfoldShowAfterAutoMove(item.id)"
-                    (change)="onPuzzleBlindfoldShowAfterAutoMoveChange(item.id, $event)" />
-                  Mostra brevemente i pezzi dopo le mosse di risposta
-                </label>
-              </div>
-            </details>
-
-            <details class="training-disclosure">
-              <summary>
-                <span class="disclosure-copy">
-                  <strong>Metodo Woodpecker</strong>
-                  <small>Ripetizione strutturata a cicli</small>
-                </span>
-                <span class="disclosure-state" *ngIf="isPuzzleWoodpecker(item.id)">Attivo</span>
-              </summary>
-              <div class="disclosure-content">
-                <label class="puzzle-option">
-                  <input type="checkbox" [checked]="isPuzzleWoodpecker(item.id)"
-                    (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
-                  Usa il metodo Woodpecker
-                </label>
-
-                <label class="woodpecker-target-days" *ngIf="isPuzzleWoodpecker(item.id)">
-                  Durata ciclo iniziale (giorni)
-                  <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
-                    (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
-                </label>
-
-                <button type="button" class="woodpecker-delete-session" *ngIf="hasWoodpeckerSession(item.id)"
-                  (click)="onDeleteWoodpeckerSession(item)">
-                  <app-icon name="trash"></app-icon>
-                  Elimina sessione Woodpecker
-                </button>
-              </div>
-            </details>
-
-            <details class="training-disclosure batch-drill-box">
-              <summary>
-                <span class="disclosure-copy">
-                  <strong>Micro-Set</strong>
-                  <small>Allenamento su un intervallo limitato</small>
-                </span>
-                <span class="disclosure-state" *ngIf="isPuzzleBatchEnabled(item.id)">Attivo</span>
-              </summary>
-              <div class="disclosure-content">
-                <label class="puzzle-option batch-header-option">
-                  <input type="checkbox" [checked]="isPuzzleBatchEnabled(item.id)"
-                    (change)="onPuzzleBatchEnabledChange(item.id, $event)" />
-                  Abilita Micro-Set
-                </label>
-
-                <div class="batch-drill-content" *ngIf="isPuzzleBatchEnabled(item.id)">
-                  <div class="batch-range-row" *ngIf="puzzleBatchRange(item) as range">
-                    <label class="batch-field">
-                      Da puzzle:
-                      <input type="number" min="1" [max]="item.games.length" inputmode="numeric" [value]="range.from"
-                        (change)="onPuzzleBatchRangeFromChange(item, $event)" />
-                    </label>
-                    <label class="batch-field">
-                      A puzzle:
-                      <input type="number" [min]="range.from" [max]="item.games.length" inputmode="numeric" [value]="range.to"
-                        (change)="onPuzzleBatchRangeToChange(item, $event)" />
-                    </label>
-                  </div>
-
-                  <label class="puzzle-option sub-option">
-                    <input type="checkbox" [checked]="isPuzzleBatchLoop(item.id)"
-                      (change)="onPuzzleBatchLoopChange(item.id, $event)" />
-                    Ripeti a ciclo continuo questo set (senza andare oltre)
-                  </label>
-
-                  <label class="puzzle-option sub-option">
-                    <input type="checkbox" [checked]="isPuzzleBatchShuffle(item.id)"
-                      (change)="onPuzzleBatchShuffleChange(item.id, $event)" />
-                    Rimescola l'ordine (Shuffle) se sbagli o torni indietro
-                  </label>
-
-                  <button type="button" class="start-batch-button" (click)="startBatchDrill(item)">
-                    <app-icon name="play"></app-icon>
-                    Avvia Micro-Set ({{ puzzleBatchRange(item).from }} - {{ puzzleBatchRange(item).to }})
-                  </button>
-                </div>
-              </div>
-            </details>
-          </div>
-        </section>
-
-        <section class="game-search-controls" aria-label="Ricerca partite">
-          <label class="game-filter" [attr.for]="'item-game-filter-' + item.id">
-            Cerca nelle partite
-            <input [id]="'item-game-filter-' + item.id" type="search" [value]="itemGameFilter(item.id)"
-              placeholder="Giocatore, evento, risultato o numero" (input)="onItemGameFilterInput(item.id, $event)"
-              (change)="applyItemGameFilter(item.id, gameFilterInput.value)" #gameFilterInput />
-          </label>
-
-          <details class="advanced-filters">
-            <summary>Filtri avanzati</summary>
-            <div class="header-filters">
-              <label>
-                Bianco
-                <input type="text" [value]="headerFilterValue(item.id, 'white')" placeholder="Es. Carlsen"
-                  (input)="onHeaderFilterInput(item.id, 'white', $event)" />
-              </label>
-
-              <label>
-                Nero
-                <input type="text" [value]="headerFilterValue(item.id, 'black')" placeholder="Es. Nakamura"
-                  (input)="onHeaderFilterInput(item.id, 'black', $event)" />
-              </label>
-
-              <label>
-                Evento
-                <input type="text" [value]="headerFilterValue(item.id, 'event')" placeholder="Es. Candidates"
-                  (input)="onHeaderFilterInput(item.id, 'event', $event)" />
-              </label>
-
-              <label>
-                Risultato
-                <select [value]="headerFilterValue(item.id, 'result')"
-                  (change)="onHeaderFilterInput(item.id, 'result', $event)">
-                  <option value="">Tutti</option>
-                  <option *ngFor="let result of resultOptions(item)" [value]="result">{{ result }}</option>
-                </select>
-              </label>
-            </div>
-          </details>
-        </section>
-
-        <ng-container *ngIf="filteredGameEntries(item) as entries">
-          <ng-container *ngIf="entries.length > 0; else emptyFilteredList">
-          <div class="games-table-wrap" *ngIf="!isCompactLayout()">
-            <table class="games-table">
-              <caption class="sr-only">Partite disponibili nel PGN {{ item.name }}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">Bianco</th>
-                  <th scope="col">Nero</th>
-                  <th scope="col">Evento</th>
-                  <th scope="col">Risultato</th>
-                  <th scope="col">Mosse</th>
-                  <th scope="col" *ngIf="hasPuzzleStatuses(item.id)">Stato</th>
-                  <th scope="col" *ngIf="item.mode === 'puzzle'">Gioca con</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry" (click)="onGameClick(item, entry.game, entry.index)" style="cursor: pointer;">
-                  <td>
-                    <button
-                      type="button"
-                      class="game-row-action"
-                      [attr.aria-label]="'Apri partita ' + (entry.index + 1)"
-                      (click)="$event.stopPropagation(); onGameClick(item, entry.game, entry.index)"
-                    >
-                      {{ entry.index + 1 }}
-                    </button>
-                  </td>
-                  <td>{{ entry.game.white || '-' }}</td>
-                  <td>{{ entry.game.black || '-' }}</td>
-                  <td>{{ entry.game.event || '-' }}</td>
-                  <td>{{ entry.game.result || '*' }}</td>
-                  <td>{{ entry.moveCount }}</td>
-                  <td *ngIf="hasPuzzleStatuses(item.id)">
-                    <app-status-badge *ngIf="puzzleStatusBadge(item.id, entry.index) as badge" [tone]="badge.tone">{{ badge.label }}</app-status-badge>
-                  </td>
-                  <td *ngIf="item.mode === 'puzzle'" (click)="$event.stopPropagation()">
-                    <select class="player-color-select" [value]="puzzlePlayerColor(entry.game.id)"
-                      [attr.aria-label]="'Colore con cui giocare la partita ' + (entry.index + 1)"
-                      (change)="onPuzzlePlayerColorChange(entry.game.id, $event)">
-                      <option value="auto">Auto</option>
-                      <option value="white">Bianco</option>
-                      <option value="black">Nero</option>
-                    </select>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="games-mobile-list" *ngIf="isCompactLayout()">
-            <article class="games-mobile-card" *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry">
-              <button type="button" class="games-mobile-select" (click)="onGameClick(item, entry.game, entry.index)">
-                <div class="games-mobile-head">
-                  <strong>{{ entry.title }}</strong>
-                  <span class="games-mobile-moves">{{ entry.moveCount }} mosse</span>
-                  <app-status-badge *ngIf="puzzleStatusBadge(item.id, entry.index) as badge" [tone]="badge.tone">{{ badge.label }}</app-status-badge>
-                </div>
-                <div class="games-mobile-meta">
-                  <span><em>Bianco</em> {{ entry.game.white || '-' }}</span>
-                  <span><em>Nero</em> {{ entry.game.black || '-' }}</span>
-                  <span><em>Evento</em> {{ entry.game.event || '-' }}</span>
-                  <span><em>Risultato</em> {{ entry.game.result || '*' }}</span>
-                </div>
-              </button>
-              <label class="games-mobile-color" *ngIf="item.mode === 'puzzle'">
-                Gioca con
-                <select class="player-color-select" [value]="puzzlePlayerColor(entry.game.id)"
-                  (change)="onPuzzlePlayerColorChange(entry.game.id, $event)">
-                  <option value="auto">Auto</option>
-                  <option value="white">Bianco</option>
-                  <option value="black">Nero</option>
-                </select>
-              </label>
-            </article>
-          </div>
-
-          <div class="games-list-footer" aria-live="polite">
-            <span>{{ visibleGameEntries(item).length }} di {{ entries.length }} partite</span>
-            <button type="button" class="show-more-games" *ngIf="hiddenGameEntriesCount(item) > 0" (click)="showMoreGameEntries(item.id)">
-              Mostra altre {{ hiddenGameEntriesCount(item) < 100 ? hiddenGameEntriesCount(item) : 100 }}
-            </button>
-          </div>
-          </ng-container>
-        </ng-container>
-
-        <ng-template #emptyFilteredList>
-          <p class="game-filter-empty">Nessuna partita trovata con questo filtro.</p>
+    <ng-template #emptyPgn>
+      <div class="empty-box">
+        <span class="empty-glyph" aria-hidden="true">{{ activeTab === 'famous-tactics' ? '♛' : '♞' }}</span>
+        <app-loading-indicator *ngIf="isLoading; else emptyPgnMessage" class="library-loading"
+          label="Caricamento della libreria" [visibleLabel]="true"></app-loading-indicator>
+        <ng-template #emptyPgnMessage>
+          <app-empty-state
+            [title]="activeTab === 'famous-tactics' ? 'Tattiche celebri' : 'Nessun PGN caricato'"
+            [description]="activeTab === 'famous-tactics' ? 'Raccolte curate da partite storiche, pronte da allenare.' : 'Importa uno o più file PGN per iniziare.'"
+          ></app-empty-state>
         </ng-template>
-      </section>
-    </ng-container>
-
-    <ng-template #itemsOverview>
-      <div class="library-grid" *ngIf="visibleItems().length > 0; else emptyState">
-        <article class="game-card" *ngFor="let item of displayedItems(); trackBy: trackByItem">
-          <header class="card-header">
-            <div class="title-row">
-              <div class="card-title-group">
-                <h2 class="card-title" [title]="item.name">{{ item.name }}</h2>
-                <app-status-badge [tone]="woodpeckerStatusTone(item.id)">{{ woodpeckerStatusLabel(item.id) }}</app-status-badge>
-              </div>
-              <span class="games-badge">{{ item.games.length }} partite</span>
-            </div>
-          </header>
-
-          <div class="card-meta">
-            <div class="meta-item" *ngFor="let meta of cardSummary(item); trackBy: trackByMetaLabel">
-              <span class="meta-label">{{ meta.label }}</span>
-              <span class="meta-value" [title]="meta.value">{{ meta.value }}</span>
-            </div>
-          </div>
-
-          <div class="card-actions-wrapper">
-            <div class="card-primary-actions">
-              <button
-                type="button"
-                class="card-primary-action"
-                *ngIf="hasResumeSession(item.id); else openItemPrimaryAction"
-                (click)="onResumeItem(item)"
-              >
-                {{ woodpeckerStatusLabel(item.id) }}
-              </button>
-              <ng-template #openItemPrimaryAction>
-                <button type="button" class="card-primary-action" (click)="onOpenItem(item.id)">
-                  Apri {{ activePgnTabLabel() }}
-                </button>
-              </ng-template>
-            </div>
-
-            <div class="card-secondary-actions" role="group" aria-label="Azioni secondarie">
-              <button
-                type="button"
-                class="card-secondary-action"
-                *ngIf="hasResumeSession(item.id)"
-                (click)="onOpenItem(item.id)"
-              >
-                Apri {{ activePgnTabLabel() }}
-              </button>
-              <button type="button" class="card-secondary-action" (click)="onOpenDashboard(item.id)">
-                Dashboard Woodpecker
-              </button>
-            </div>
-          </div>
-        </article>
-        <p class="game-filter-empty" *ngIf="displayedItems().length === 0">Nessuna raccolta corrisponde alla ricerca.</p>
       </div>
     </ng-template>
+  </ng-container>
 
-    <ng-template #emptyState>
-      <app-loading-indicator *ngIf="isLoading; else emptyStateMessage" class="library-loading"
-        label="Caricamento della libreria" [visibleLabel]="true"></app-loading-indicator>
-    </ng-template>
+  <!-- ==================== Detail screen ==================== -->
+  <ng-container *ngIf="openedItem() as item">
+    <section class="detail">
+      <header class="detail-head">
+        <button type="button" class="back-pill" (click)="onCloseOpenedItem()">
+          <app-icon name="chevron-left"></app-icon>
+          Libreria
+        </button>
+        <div class="detail-head-actions">
+          <button type="button" class="ui-icon-btn" aria-label="Dashboard Woodpecker" title="Dashboard Woodpecker"
+            (click)="onOpenDashboard(item.id)">
+            <app-icon name="chart"></app-icon>
+          </button>
+          <button type="button" class="ui-icon-btn danger" *ngIf="canRemoveItem()"
+            aria-label="Rimuovi PGN dalla libreria" title="Rimuovi PGN" (click)="onRemoveItem(item)">
+            <app-icon name="trash"></app-icon>
+          </button>
+        </div>
+      </header>
 
-    <ng-template #emptyStateMessage>
-      <app-empty-state
-        [title]="activeEmptyStateLabel()"
-        [description]="activeTab === 'famous-tactics' ? 'Le raccolte disponibili compariranno qui.' : 'Importa uno o più file PGN per iniziare.'"
-      ></app-empty-state>
-    </ng-template>
-  </ng-template>
+      <div class="detail-title">
+        <h2 class="ui-display">{{ item.name }}</h2>
+        <p>{{ item.games.length }} partite · {{ detailSessionLabel(item.id) }}</p>
+      </div>
 
+      <div class="ui-seg mode-seg" role="group" aria-label="Modalità">
+        <button type="button" [class.active]="item.mode === 'puzzle'"
+          [attr.aria-pressed]="item.mode === 'puzzle'" (click)="setItemMode(item, 'puzzle')">Puzzle</button>
+        <button type="button" [class.active]="item.mode === 'view'"
+          [attr.aria-pressed]="item.mode === 'view'" (click)="setItemMode(item, 'view')">Visualizzazione</button>
+      </div>
+
+      <section class="detail-settings ui-card">
+        <button type="button" class="ui-row" *ngIf="item.mode === 'puzzle'" (click)="openSheet('options')">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Opzioni puzzle</span>
+            <span class="ui-row-sub">{{ puzzleOptionsSummary(item.id) }}</span>
+          </span>
+          <span class="opt-count">{{ puzzleOptionsActiveCount(item.id) }}/4</span>
+          <app-icon name="chevron-right" class="ui-row-trail"></app-icon>
+        </button>
+
+        <label class="ui-row" [class.disabled]="item.mode !== 'puzzle'">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Metodo Woodpecker</span>
+            <span class="ui-row-sub">Ripetizione strutturata a cicli</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleWoodpecker(item.id)"
+            [disabled]="item.mode !== 'puzzle'" (change)="onPuzzleWoodpeckerChange(item.id, $event)" />
+        </label>
+
+        <div class="row-config" *ngIf="item.mode === 'puzzle' && isPuzzleWoodpecker(item.id)">
+          <label class="config-field">
+            Durata ciclo iniziale (giorni)
+            <input type="number" min="1" max="365" [value]="woodpeckerInitialTargetDays(item)"
+              (input)="onWoodpeckerTargetDaysInput(item.id, $event)" />
+          </label>
+          <button type="button" class="config-danger" *ngIf="hasWoodpeckerSession(item.id)"
+            (click)="onDeleteWoodpeckerSession(item)">
+            <app-icon name="trash"></app-icon>
+            Elimina sessione Woodpecker
+          </button>
+        </div>
+
+        <label class="ui-row" [class.disabled]="item.mode !== 'puzzle'">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Micro-Set</span>
+            <span class="ui-row-sub">Allenamento su un intervallo limitato</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleBatchEnabled(item.id)"
+            [disabled]="item.mode !== 'puzzle'" (change)="onPuzzleBatchEnabledChange(item.id, $event)" />
+        </label>
+
+        <div class="row-config" *ngIf="item.mode === 'puzzle' && isPuzzleBatchEnabled(item.id)">
+          <div class="config-range" *ngIf="puzzleBatchRange(item) as range">
+            <label class="config-field">
+              Da puzzle
+              <input type="number" min="1" [max]="item.games.length" inputmode="numeric" [value]="range.from"
+                (change)="onPuzzleBatchRangeFromChange(item, $event)" />
+            </label>
+            <label class="config-field">
+              A puzzle
+              <input type="number" [min]="range.from" [max]="item.games.length" inputmode="numeric" [value]="range.to"
+                (change)="onPuzzleBatchRangeToChange(item, $event)" />
+            </label>
+          </div>
+          <label class="config-check">
+            <input type="checkbox" [checked]="isPuzzleBatchLoop(item.id)"
+              (change)="onPuzzleBatchLoopChange(item.id, $event)" />
+            Ripeti a ciclo continuo questo set
+          </label>
+          <label class="config-check">
+            <input type="checkbox" [checked]="isPuzzleBatchShuffle(item.id)"
+              (change)="onPuzzleBatchShuffleChange(item.id, $event)" />
+            Rimescola l'ordine (Shuffle) se sbagli o torni indietro
+          </label>
+        </div>
+      </section>
+
+      <section class="games">
+        <div class="games-head">
+          <h3 class="ui-display">Partite</h3>
+          <span class="games-count">{{ filteredGameEntries(item).length }} di {{ item.games.length }}</span>
+        </div>
+
+        <div class="games-toolbar">
+          <label class="ui-search">
+            <app-icon name="search"></app-icon>
+            <input type="search" [value]="itemGameFilter(item.id)"
+              placeholder="Giocatore, evento, numero"
+              aria-label="Cerca nelle partite"
+              (input)="onItemGameFilterInput(item.id, $event)"
+              (change)="applyItemGameFilter(item.id, gameFilterInput.value)" #gameFilterInput />
+          </label>
+          <button type="button" class="filter-btn" [class.active]="hasActiveResultFilter(item.id)"
+            aria-label="Filtri avanzati" (click)="openSheet('filters')">
+            <app-icon name="filter"></app-icon>
+          </button>
+        </div>
+
+        <div class="game-list">
+          <div class="game-row ui-card" *ngFor="let entry of visibleGameEntries(item); trackBy: trackByGameEntry">
+            <span class="game-n" aria-hidden="true">{{ entry.index + 1 }}</span>
+            <button type="button" class="game-open" (click)="onGameClick(item, entry.game, entry.index)">
+              <strong>{{ gameRowTitle(entry) }}</strong>
+              <small>{{ gameRowSub(entry) }}</small>
+            </button>
+            <div class="game-side">
+              <app-status-badge *ngIf="puzzleStatusBadge(item.id, entry.index) as badge" [tone]="badge.tone">{{ badge.label }}</app-status-badge>
+              <button type="button" class="play-as" *ngIf="item.mode === 'puzzle'"
+                [attr.aria-label]="'Colore con cui giocare la partita ' + (entry.index + 1) + ': ' + playAsLabel(entry.game.id)"
+                (click)="cyclePuzzlePlayerColor(entry.game.id)">
+                <em>GIOCA CON</em>
+                <b>{{ playAsLabel(entry.game.id) }}</b>
+              </button>
+            </div>
+          </div>
+
+          <p class="game-filter-empty" *ngIf="filteredGameEntries(item).length === 0">
+            Nessuna partita corrisponde ai filtri.
+          </p>
+
+          <button type="button" class="ui-btn subtle show-more" *ngIf="hiddenGameEntriesCount(item) > 0"
+            (click)="showMoreGameEntries(item.id)">
+            Mostra altre {{ hiddenGameEntriesCount(item) < 100 ? hiddenGameEntriesCount(item) : 100 }}
+          </button>
+        </div>
+      </section>
+
+      <div class="detail-cta">
+        <button type="button" class="ui-btn accent detail-cta-btn" (click)="onStartItem(item)">
+          <app-icon name="play"></app-icon>
+          {{ ctaLabel(item) }}
+          <span class="cta-sub" *ngIf="ctaSub(item)">{{ ctaSub(item) }}</span>
+        </button>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- ==================== Bottom sheets ==================== -->
+  <app-bottom-sheet [open]="activeSheet() !== null" [title]="sheetTitle()" (closed)="closeSheet()">
+    <!-- Ordina raccolte -->
+    <ng-container *ngIf="activeSheet() === 'sort'">
+      <button type="button" class="sheet-option" *ngFor="let option of collectionSortOptions()"
+        [class.active]="collectionSort === option.value" (click)="setCollectionSort(option.value)">
+        <span>{{ option.label }}</span>
+        <app-icon *ngIf="collectionSort === option.value" name="check"></app-icon>
+      </button>
+    </ng-container>
+
+    <!-- Filtri partite -->
+    <ng-container *ngIf="activeSheet() === 'filters'">
+      <ng-container *ngIf="openedItem() as filterItem">
+        <p class="ui-kicker">RISULTATO</p>
+        <div class="chip-row">
+          <button type="button" class="ui-pill" *ngFor="let result of resultOptions(filterItem)"
+            [class.active]="isResultSelected(filterItem.id, result)"
+            (click)="toggleResultFilter(filterItem.id, result)">
+            {{ result === '*' ? '* (non indicato)' : result }}
+          </button>
+          <p class="sheet-hint" *ngIf="resultOptions(filterItem).length === 0">Nessun risultato disponibile.</p>
+        </div>
+        <div class="sheet-fields">
+          <label>
+            Bianco
+            <input type="text" [value]="headerFilterValue(filterItem.id, 'white')" placeholder="Es. Carlsen"
+              (input)="onHeaderFilterInput(filterItem.id, 'white', $event)" />
+          </label>
+          <label>
+            Nero
+            <input type="text" [value]="headerFilterValue(filterItem.id, 'black')" placeholder="Es. Nakamura"
+              (input)="onHeaderFilterInput(filterItem.id, 'black', $event)" />
+          </label>
+          <label>
+            Evento
+            <input type="text" [value]="headerFilterValue(filterItem.id, 'event')" placeholder="Es. Candidates"
+              (input)="onHeaderFilterInput(filterItem.id, 'event', $event)" />
+          </label>
+        </div>
+        <button type="button" class="ui-btn ink sheet-apply" (click)="closeSheet()">
+          Mostra {{ filteredGameEntries(filterItem).length }} partite
+        </button>
+      </ng-container>
+    </ng-container>
+
+    <!-- Opzioni puzzle -->
+    <ng-container *ngIf="activeSheet() === 'options'">
+      <ng-container *ngIf="openedItem() as optItem">
+        <label class="ui-row sheet-switch-row">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Auto-esegui la prima mossa</span>
+            <span class="ui-row-sub">All'apertura della partita</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleAutoFirstMove(optItem.id)"
+            (change)="onPuzzleAutoFirstMoveChange(optItem.id, $event)" />
+        </label>
+        <label class="ui-row sheet-switch-row">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Puzzle successivo automatico</span>
+            <span class="ui-row-sub">Quando il puzzle è risolto</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleAutoAdvance(optItem.id)"
+            (change)="onPuzzleAutoAdvanceChange(optItem.id, $event)" />
+        </label>
+        <label class="ui-row sheet-switch-row">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Ruota la scacchiera</span>
+            <span class="ui-row-sub">In base al tratto</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleAutoRotate(optItem.id)"
+            (change)="onPuzzleAutoRotateChange(optItem.id, $event)" />
+        </label>
+        <label class="ui-row sheet-switch-row">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Memoria visiva</span>
+            <span class="ui-row-sub">Nasconde i pezzi dopo un istante</span>
+          </span>
+          <input type="checkbox" class="ui-switch" [checked]="isPuzzleBlindfold(optItem.id)"
+            (change)="onPuzzleBlindfoldChange(optItem.id, $event)" />
+        </label>
+        <div class="row-config" *ngIf="isPuzzleBlindfold(optItem.id)">
+          <p class="sheet-hint">I pezzi verranno nascosti ma resteranno interattivi. Mostrarli segnerà il tentativo come assistito.</p>
+          <label class="config-field">
+            Mostra la posizione per (secondi)
+            <input type="number" min="1" max="60" inputmode="numeric"
+              [value]="puzzleBlindfoldSeconds(optItem.id)" (input)="onPuzzleBlindfoldSecondsChange(optItem.id, $event)" />
+          </label>
+          <label class="config-check">
+            <input type="checkbox" [checked]="isPuzzleBlindfoldShowAfterAutoMove(optItem.id)"
+              (change)="onPuzzleBlindfoldShowAfterAutoMoveChange(optItem.id, $event)" />
+            Mostra brevemente i pezzi dopo le mosse di risposta
+          </label>
+        </div>
+      </ng-container>
+    </ng-container>
+
+    <!-- Azioni file -->
+    <ng-container *ngIf="activeSheet() === 'file'">
+      <button type="button" class="sheet-option" (click)="openSheetItem()">Apri PGN</button>
+      <button type="button" class="sheet-option" (click)="openSheetItemDashboard()">Dashboard Woodpecker</button>
+      <button type="button" class="sheet-option danger" *ngIf="canRemoveItem()" (click)="removeSheetItem()">Elimina file</button>
+    </ng-container>
+  </app-bottom-sheet>
+
+  <!-- ==================== Conferme ==================== -->
   <app-dialog [open]="itemPendingRemoval !== null" title="Rimuovere il PGN?" (closed)="cancelItemRemoval()">
-    <p class="bookmark-delete-description">
+    <p class="dialog-description">
       “{{ itemPendingRemoval?.name }}” verrà rimosso dalla libreria. Il file sul dispositivo non viene eliminato.
     </p>
-    <div class="bookmark-delete-actions">
-      <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelItemRemoval()">Annulla</button>
-      <button type="button" class="bookmark-danger-action" (click)="confirmItemRemoval()">Rimuovi</button>
+    <div class="dialog-actions">
+      <button type="button" class="ui-btn subtle" autofocus (click)="cancelItemRemoval()">Annulla</button>
+      <button type="button" class="ui-btn danger-soft" (click)="confirmItemRemoval()">Rimuovi</button>
     </div>
   </app-dialog>
 
   <app-dialog [open]="woodpeckerSessionPendingDelete !== null" title="Eliminare la sessione Woodpecker?"
     (closed)="cancelWoodpeckerSessionDelete()">
-    <p class="bookmark-delete-description">
+    <p class="dialog-description">
       Il progresso del ciclo corrente di “{{ woodpeckerSessionPendingDelete?.name }}” andrà perso.
     </p>
-    <div class="bookmark-delete-actions">
-      <button type="button" class="bookmark-secondary-action" autofocus (click)="cancelWoodpeckerSessionDelete()">Annulla</button>
-      <button type="button" class="bookmark-danger-action" (click)="confirmWoodpeckerSessionDelete()">Elimina sessione</button>
+    <div class="dialog-actions">
+      <button type="button" class="ui-btn subtle" autofocus (click)="cancelWoodpeckerSessionDelete()">Annulla</button>
+      <button type="button" class="ui-btn danger-soft" (click)="confirmWoodpeckerSessionDelete()">Elimina sessione</button>
+    </div>
+  </app-dialog>
+
+  <app-dialog [open]="bookmarkPendingDeleteId !== null" title="Eliminare il bookmark?" (closed)="cancelBookmarkDelete()">
+    <p class="dialog-description">“{{ pendingBookmarkDeleteTitle() }}” verrà rimosso definitivamente.</p>
+    <div class="dialog-actions">
+      <button type="button" class="ui-btn subtle" autofocus (click)="cancelBookmarkDelete()">Annulla</button>
+      <button type="button" class="ui-btn danger-soft" (click)="confirmBookmarkDelete()">Elimina</button>
     </div>
   </app-dialog>
 </section>

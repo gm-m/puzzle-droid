@@ -8,16 +8,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('can switch from analysis to library and see both library tabs', async ({ page }) => {
-  await expect(page.getByRole('button', { name: 'Analisi' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Analisi' })).toBeVisible();
   await expect(page.locator('app-analysis-panel')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Varianti engine' })).toBeVisible();
   await expect(page.locator('.engine-state')).toContainText(/Pronto|Analisi in corso/);
 
-  await page.getByRole('button', { name: 'Libreria' }).click();
+  await page.getByRole('link', { name: 'Libreria' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Libreria PGN' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Libreria', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'PGN', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Bookmark' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bookmark', exact: true })).toBeVisible();
 });
 
 test('keeps a single analysis panel and prioritizes the board on mobile', async ({ page }) => {

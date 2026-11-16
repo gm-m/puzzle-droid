@@ -169,6 +169,30 @@ export class WoodpeckerAnalyticsService {
       .sort((a, b) => a.pgnName.localeCompare(b.pgnName));
   }
 
+  /** PGN attempted most recently, or null when no analytics exist yet. */
+  getLatestPgnId(): string | null {
+    let latest: WoodpeckerPgnAnalytics | null = null;
+    for (const entry of Object.values(this.analyticsByPgnId)) {
+      if (!latest || entry.lastAttemptAt > latest.lastAttemptAt) {
+        latest = entry;
+      }
+    }
+    return latest?.pgnId ?? null;
+  }
+
+  /** Most recently active PGN whose Woodpecker session can be resumed (for the global "Riprendi" CTA). */
+  getResumeTarget(): { pgnId: string; pgnName: string; resumePuzzleIndex: number } | null {
+    const entries = Object.values(this.analyticsByPgnId).sort((a, b) => b.lastAttemptAt - a.lastAttemptAt);
+    for (const entry of entries) {
+      const session = this.findSessionByPgnId(entry.pgnId);
+      const resumePuzzleIndex = this.computeResumePuzzleIndex(entry, session);
+      if (session && !session.completed && session.gameCount > 0 && resumePuzzleIndex !== null) {
+        return { pgnId: entry.pgnId, pgnName: entry.pgnName, resumePuzzleIndex };
+      }
+    }
+    return null;
+  }
+
   async exportBackupBundle(): Promise<string> {
     const bundle: PuzzleDroidBackupBundle = {
       version: 1,

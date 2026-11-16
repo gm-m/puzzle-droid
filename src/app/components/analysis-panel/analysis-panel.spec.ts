@@ -75,6 +75,24 @@ describe('AnalysisPanelComponent', () => {
     expect(compiled.querySelector('.quick-menu')).toBeNull();
   });
 
+  it('should open the engine settings in a bottom sheet and close it with Escape', async () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.engine-settings')).toBeNull();
+
+    compiled.querySelector<HTMLButtonElement>('.engine-cog')?.click();
+    await fixture.whenStable();
+    await nextTask();
+
+    const sheet = compiled.querySelector<HTMLElement>('app-bottom-sheet .sheet');
+    expect(sheet?.querySelector('.engine-settings')).not.toBeNull();
+    expect(document.activeElement).toBe(sheet!);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+
+    expect(compiled.querySelector('.engine-settings')).toBeNull();
+  });
+
   it('should keep keyboard focus inside the bookmark dialog', async () => {
     const compiled = fixture.nativeElement as HTMLElement;
 

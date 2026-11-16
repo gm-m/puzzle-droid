@@ -123,15 +123,13 @@ describe('LibraryPanelComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const primaryActions = compiled.querySelectorAll<HTMLButtonElement>('.card-primary-action');
-    const secondaryActions = Array.from(
-      compiled.querySelectorAll<HTMLButtonElement>('.card-secondary-action'),
-    ).map((button) => button.textContent?.trim());
+    const resumeAction = compiled.querySelector<HTMLButtonElement>('.hero-resume');
+    const openAction = compiled.querySelector<HTMLButtonElement>('.file-open');
+    const moreAction = compiled.querySelector<HTMLButtonElement>('.file-more');
 
-    expect(primaryActions.length).toBe(1);
-    expect(primaryActions[0].textContent?.trim()).toBe('Riprendi dal puzzle 5');
-    expect(secondaryActions).toEqual(['Apri PGN', 'Dashboard Woodpecker']);
-    expect(compiled.querySelector('.card-danger-action')).toBeNull();
+    expect(resumeAction?.textContent).toContain('Riprendi dal puzzle 5');
+    expect(openAction).not.toBeNull();
+    expect(moreAction).not.toBeNull();
   });
 
   it('should summarize collections with aggregated metadata', () => {
@@ -209,9 +207,10 @@ describe('LibraryPanelComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const primaryAction = compiled.querySelector<HTMLButtonElement>('.card-primary-action');
+    const primaryAction = compiled.querySelector<HTMLButtonElement>('.file-open');
 
-    expect(primaryAction?.textContent?.trim()).toBe('Apri PGN');
+    expect(primaryAction?.textContent).toContain('Allenamento.pgn');
+    expect(compiled.querySelector('.hero-resume')).toBeNull();
   });
 
   it('should expose and emit the per-game puzzle player color', () => {

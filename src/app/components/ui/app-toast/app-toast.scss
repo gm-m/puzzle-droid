@@ -1,9 +1,15 @@
 :host {
   position: fixed;
   right: var(--space-4);
-  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-3) + var(--tabbar-space, 0px));
   z-index: 80;
   max-width: min(90vw, 380px);
+}
+
+@media (min-width: 901px) {
+  :host {
+    bottom: var(--space-4);
+  }
 }
 
 .toast {

@@ -31,6 +31,10 @@
         <div class="pv-list-header">
           <div class="header-left">
             <h2>Varianti engine</h2>
+            <span class="engine-state" [class.analyzing]="isAnalyzing" aria-live="polite" aria-atomic="true">
+              <span *ngIf="isAnalyzing" class="engine-spinner" aria-hidden="true"></span>
+              {{ isAnalyzing ? 'Analisi in corso' : 'Pronto' }}
+            </span>
             <button 
               type="button" 
               class="expand-toggle"
@@ -45,19 +49,14 @@
           <button
             type="button"
             class="engine-cog"
-            [attr.aria-label]="isEngineSettingsOpen ? 'Chiudi impostazioni engine' : 'Apri impostazioni engine'"
-            [attr.aria-expanded]="isEngineSettingsOpen"
-            [attr.aria-controls]="instanceId + '-engine-settings'"
+            aria-label="Apri impostazioni engine"
+            aria-haspopup="dialog"
             (click)="toggleEngineSettings()"
           >
             <app-icon name="settings"></app-icon>
           </button>
         </div>
         <div class="engine-overview">
-          <span class="engine-state" [class.analyzing]="isAnalyzing" aria-live="polite" aria-atomic="true">
-            <span *ngIf="isAnalyzing" class="engine-spinner" aria-hidden="true"></span>
-            {{ isAnalyzing ? 'Analisi in corso' : 'Pronto' }}
-          </span>
           <span><strong>{{ evalLabel }}</strong> valutazione</span>
           <span><strong>{{ bestMove }}</strong> mossa migliore</span>
           <span>Profondità {{ depth }}</span>
@@ -80,7 +79,8 @@
         </ol>
       </section>
 
-      <section [id]="instanceId + '-engine-settings'" class="engine-settings" *ngIf="isEngineSettingsOpen">
+      <app-bottom-sheet [open]="isEngineSettingsOpen" title="Impostazioni engine" (closed)="closeEngineSettings()">
+      <section [id]="instanceId + '-engine-settings'" class="engine-settings">
         <div class="stats">
           <p><strong>Mossa migliore:</strong> {{ bestMove }}</p>
           <p><strong>Valutazione:</strong> {{ evalLabel }}</p>
@@ -132,6 +132,7 @@
           <button type="button" (click)="reset.emit()">Reimposta</button>
         </div>
       </section>
+      </app-bottom-sheet>
     </ng-container>
   </ng-container>
 
@@ -139,7 +140,7 @@
     <section class="puzzle-status">
       <div class="puzzle-status-toolbar">
         <!-- <p class="section-tag">Modalità Puzzle</p> -->
-        <p class="puzzle-status-message" role="status" aria-live="polite">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+        <p class="puzzle-status-message" role="status" aria-live="polite" [title]="puzzleMessage || ''">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
         <div class="puzzle-status-actions">
           <button
             type="button"

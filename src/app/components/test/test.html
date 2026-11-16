@@ -1,37 +1,17 @@
 <main id="main-content" class="layout-shell" tabindex="-1">
-  <header class="app-topbar" [attr.inert]="isMenuOpen() || isLibraryGamePickerOpen() ? '' : null"
-    [attr.aria-hidden]="isMenuOpen() || isLibraryGamePickerOpen() ? 'true' : null">
+  <header class="app-topbar" *ngIf="activeView() === 'analysis'"
+    [attr.inert]="isLibraryGamePickerOpen() ? '' : null"
+    [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null">
     <div class="topbar-main">
-      <button
-        type="button"
-        class="menu-trigger"
-        [attr.aria-label]="isMenuOpen() ? 'Chiudi navigazione' : 'Apri navigazione'"
-        aria-controls="primary-navigation"
-        [attr.aria-expanded]="isMenuOpen()"
-        (click)="toggleMenu()"
-      >
-        <app-icon name="menu"></app-icon>
-      </button>
-      <!-- <div class="topbar-title-wrap">
-        <p class="topbar-kicker">Vista</p>
-        <h1>{{ currentViewTitle() }}</h1>
-      </div> -->
       <div class="topbar-title-wrap">
         <p class="topbar-kicker">Vista</p>
         <h1>{{ currentViewTitle() }}</h1>
-        <p class="topbar-context" *ngIf="activeView() === 'analysis'">
+        <p class="topbar-context">
           {{ currentLibraryGameTitle() || (isPuzzleMode() ? 'Puzzle attivo' : 'Scacchiera libera') }}
-        </p>
-        <p class="topbar-context" *ngIf="activeView() === 'library'">
-          {{ libraryItems().length }} PGN caricati
-        </p>
-        <p class="topbar-context" *ngIf="activeView() === 'settings'">
-          Tema, scacchiera e backup
         </p>
       </div>
     </div>
-    <!-- <p class="topbar-engine" [class.off]="isEngineHidden()">{{ topBarEngineStatus() }}</p> -->
-    <div class="topbar-tools" *ngIf="activeView() === 'analysis'">
+    <div class="topbar-tools">
       <span class="topbar-turn" [class.black]="turnColor() === 'black'"
         [attr.aria-label]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')"
         [title]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')">
@@ -46,51 +26,8 @@
     </div>
   </header>
 
-  <nav #primaryNavigation id="primary-navigation" class="side-menu" [class.open]="isMenuOpen()"
-    [attr.inert]="isLibraryGamePickerOpen() ? '' : null" [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null"
-    aria-label="Navigazione principale" (keydown)="onDrawerKeydown($event, primaryNavigation)">
-    <div class="side-menu-brand" aria-label="Puzzle Droid">
-      <span class="brand-mark" aria-hidden="true">PD</span>
-      <span>
-        <strong>Puzzle Droid</strong>
-        <small>Chess training</small>
-      </span>
-    </div>
-    <h2>Workspace</h2>
-
-    <button
-      type="button"
-      class="menu-item"
-      [class.active]="activeView() === 'analysis'"
-      [attr.aria-current]="activeView() === 'analysis' ? 'page' : null"
-      (click)="setActiveView('analysis')"
-    >
-      Analisi
-    </button>
-
-    <button
-      type="button"
-      class="menu-item"
-      [class.active]="activeView() === 'library'"
-      [attr.aria-current]="activeView() === 'library' ? 'page' : null"
-      (click)="setActiveView('library')"
-    >
-      Libreria
-    </button>
-    
-    <button
-      type="button"
-      class="menu-item"
-      [class.active]="activeView() === 'settings'"
-      [attr.aria-current]="activeView() === 'settings' ? 'page' : null"
-      (click)="setActiveView('settings')"
-    >
-      Impostazioni
-    </button>
-  </nav>
-
-  <div class="content-area" [attr.inert]="isMenuOpen() || isLibraryGamePickerOpen() ? '' : null"
-    [attr.aria-hidden]="isMenuOpen() || isLibraryGamePickerOpen() ? 'true' : null"
+  <div class="content-area" [attr.inert]="isLibraryGamePickerOpen() ? '' : null"
+    [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null"
     (touchstart)="onContentTouchStart($event)" (touchend)="onContentTouchEnd($event)" (touchcancel)="onContentTouchCancel()">
     <ng-container *ngIf="activeView() === 'analysis'">
       <section class="poc-shell">
@@ -258,8 +195,8 @@
       </button>
     </header>
 
-    <label class="library-picker-filter" for="library-game-filter">
-      Filtra per titolo
+    <label class="library-picker-filter ui-search" for="library-game-filter">
+      <app-icon name="search"></app-icon>
       <input
         id="library-game-filter"
         type="text"
@@ -288,14 +225,6 @@
       <p class="library-picker-empty">Nessuna partita trovata con questo filtro.</p>
     </ng-template>
   </aside>
-
-  <button
-    *ngIf="isMenuOpen()"
-    type="button"
-    class="menu-backdrop"
-    aria-label="Chiudi navigazione"
-    (click)="toggleMenu()"
-  ></button>
 
   <app-toast *ngIf="toastMessage()" [message]="toastMessage()" [tone]="toastTone()" (closed)="clearToast()"></app-toast>
 </main>

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chess } from 'chess.js';
 import type { Move as ChessMove } from 'chess.js';
@@ -29,6 +29,8 @@ import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '..
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { StockfishService } from '../../services/stockfish.service';
 import { LibraryStorageService, type PersistedLibraryItem } from '../../services/library-storage.service';
+import { ShellLayoutService } from '../../services/shell-layout.service';
+import { HapticsService } from '../../services/haptics.service';
 
 interface LibraryGameListEntry {
   id: string;
@@ -57,7 +59,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly FAMOUS_TACTICS_ASSETS = ['tattiche-vol-1.pgn'];
 
   readonly activeView = signal<AppView>('analysis');
-  readonly isMenuOpen = signal(false);
 
   readonly currentFen = signal('');
   readonly turnColor = signal<'white' | 'black'>('white');
@@ -129,11 +130,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private currentWoodpeckerSessionKey: string | null = null;
   private woodpeckerSessionsByKey: Record<string, WoodpeckerSession> = {};
   private puzzleAttemptStartedAt: number | null = null;
-  private menuTriggerElement: HTMLElement | null = null;
   private libraryPickerTriggerElement: HTMLElement | null = null;
   private touchStartX: number | null = null;
   private touchStartY: number | null = null;
-  private touchStartFromLeftEdge = false;
   private touchStartedOnBoard = false;
   private routeParamsSubscription: Subscription | null = null;
   private routeQueryParamsSubscription: Subscription | null = null;
@@ -147,6 +146,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   } | null = null;
   private readonly pgnHashByItem = new WeakMap<PgnLibraryItem, string>();
   private readonly libraryStorage = inject(LibraryStorageService);
+  private readonly shell = inject(ShellLayoutService);
+  private readonly haptics = inject(HapticsService);
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -161,6 +162,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     private readonly route: ActivatedRoute,
   ) {
     this.settings = this.settingsService.settings;
+
+    // The PGN detail screen owns the bottom edge (sticky CTA): hide the tab bar there.
+    effect(() => {
+      this.shell.tabBarVisible.set(this.libraryOpenedItemId() === null);
+    });
   }
 
   ngOnInit(): void {
@@ -202,6 +208,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.boardResizeObserver = null;
     }
     this.clearToast();
+    this.shell.tabBarVisible.set(true);
     this.stockfish.destroy();
   }
 
@@ -212,27 +219,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     void this.router.navigate(['/', view]);
-  }
-
-  toggleMenu(): void {
-    if (this.isMenuOpen()) {
-      this.closeMenu();
-      return;
-    }
-
-    this.closeLibraryGamePicker(false);
-    this.menuTriggerElement = document.activeElement as HTMLElement | null;
-    this.isMenuOpen.set(true);
-    setTimeout(() => document.querySelector<HTMLElement>('#primary-navigation .menu-item')?.focus());
-  }
-
-  closeMenu(restoreFocus = true): void {
-    this.isMenuOpen.set(false);
-    if (restoreFocus) {
-      const trigger = this.menuTriggerElement;
-      this.menuTriggerElement = null;
-      setTimeout(() => trigger?.focus());
-    }
   }
 
   onDrawerKeydown(event: KeyboardEvent, drawer: HTMLElement): void {
@@ -365,7 +351,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     this.touchStartX = touch.clientX;
     this.touchStartY = touch.clientY;
-    this.touchStartFromLeftEdge = touch.clientX <= 36;
     this.touchStartedOnBoard = Boolean((event.target as HTMLElement | null)?.closest('.board'));
   }
 
@@ -402,10 +387,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    if (deltaX > 0 && this.touchStartFromLeftEdge) {
-      this.toggleMenu();
-    }
-
     this.resetTouchState();
   }
 
@@ -421,15 +402,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         this.closeLibraryGamePicker();
         return;
       }
-
-      if (this.isMenuOpen()) {
-        event.preventDefault();
-        this.closeMenu();
-        return;
-      }
     }
 
-    if (this.activeView() !== 'analysis' || !this.isDesktopViewport() || this.isPuzzleActive() || this.isMenuOpen()) {
+    if (this.activeView() !== 'analysis' || !this.isDesktopViewport() || this.isPuzzleActive()) {
       return;
     }
 
@@ -672,7 +647,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    this.isMenuOpen.set(false);
     this.libraryOpenedItemId.set(itemId);
 
     void this.router.navigate(['/library'], {
@@ -692,7 +666,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   onLibraryDashboardRequested(itemId: string): void {
-    this.isMenuOpen.set(false);
     void this.router.navigate(['/woodpecker-dashboard', itemId]);
   }
 
@@ -1961,6 +1934,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private handlePuzzleSolved(solvedUci?: string, theme: TacticalTheme = 'Manovra'): void {
+    this.haptics.success();
     this.clearBlindfoldTimer();
     this.arePuzzlePiecesHidden.set(false);
     const location = this.getCurrentLibraryGameLocation();
@@ -2084,6 +2058,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     theme: TacticalTheme,
     fallbackMessage: string,
   ): void {
+    this.haptics.error();
     this.batchHasMistake.set(true);
     const elapsedMs = this.consumePuzzleAttemptElapsedMs();
     if (this.isWoodpeckerEnabledForCurrentSelection() && location) {
@@ -3143,7 +3118,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private applyViewState(view: AppView): void {
     this.activeView.set(view);
-    this.closeMenu(false);
     this.closeLibraryGamePicker(false);
 
     if (view === 'analysis') {
@@ -3158,7 +3132,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.libraryPickerTriggerElement = document.activeElement as HTMLElement | null;
-    this.closeMenu(false);
     this.libraryGameFilter.set('');
     this.isLibraryGamePickerOpen.set(true);
     setTimeout(() => document.querySelector<HTMLElement>('#library-game-picker .library-picker-close')?.focus());
@@ -3167,7 +3140,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private resetTouchState(): void {
     this.touchStartX = null;
     this.touchStartY = null;
-    this.touchStartFromLeftEdge = false;
     this.touchStartedOnBoard = false;
   }
 

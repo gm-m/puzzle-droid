@@ -1,0 +1,10 @@
+@if (open()) {
+  <div class="sheet-backdrop" (click)="requestClose()">
+    <section #sheet class="sheet" role="dialog" aria-modal="true" [attr.aria-labelledby]="titleId"
+      tabindex="-1" (keydown)="onKeydown($event)" (click)="$event.stopPropagation()">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <h2 [id]="titleId" class="ui-display">{{ title() }}</h2>
+      <div class="sheet-content"><ng-content></ng-content></div>
+    </section>
+  </div>
+}

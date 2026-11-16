@@ -13,6 +13,10 @@ export const routes: Routes = [
     component: WoodpeckerDashboardComponent,
   },
   {
+    path: 'woodpecker-dashboard',
+    component: WoodpeckerDashboardComponent,
+  },
+  {
     path: ':view',
     component: ChessWorkspaceComponent,
   },

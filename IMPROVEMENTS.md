@@ -33,9 +33,19 @@ Legenda: `[ ]` da fare · `[x]` fatto
 - [x] **4.2 Metadati aggregati nella card** (modalità, eventi, mosse medie, progresso Woodpecker) invece di quelli della prima partita; per PGN a partita singola restano gli header.
 - [x] **4.3 Rimuovere "Anteprima partite" inline** (duplica la vista di dettaglio).
 - [x] **4.4 Stato per puzzle nella lista** (Risolto / Lento / Sbagliato / Da fare) dai dati Woodpecker; l'input delle sessioni è ora memoizzato (prima ricalcolato, con hash di ogni PGN, a ogni change detection).
-- [ ] **4.5 Ricerca/ordinamento collezioni, rilevamento duplicati in import, risultati import chiudibili.**
+- [x] **4.5 Ricerca/ordinamento collezioni, rilevamento duplicati in import, risultati import chiudibili.**
 
 ## Fase 5 – Architettura
 
 - [ ] **5.1 Estrarre `LibraryService`** da `test.ts` (parsing, persistenza, stato).
 - [ ] **5.2 Lazy loading** di libreria/dashboard/impostazioni (`@defer`) per rientrare nel budget del bundle iniziale.
+
+## Fase 6 – Redesign (prototipo "Libreria PGN.dc.html")
+
+- [x] **6.1 Design tokens globali** (`styles.scss`): palette calda chiara/scura, accento rosso unico, font Bricolage Grotesque / IBM Plex Sans / JetBrains Mono via `@fontsource`, alias legacy mantenuti per i componenti non migrati. Nota: gli alias sono ridichiarati dentro `body.theme-dark` perché `var()` in una custom property si risolve dove è dichiarata.
+- [x] **6.2 Primitive condivise** in `styles.scss` (`ui-card`, `ui-btn`, `ui-pill`, `ui-seg`, `ui-switch`, `ui-row`, `ui-search`, `ui-kicker`, `ui-display`, `ui-chip`) + componenti `AppBottomSheetComponent` e `AppTabBarComponent` in `components/ui/`.
+- [x] **6.3 Nuova navigazione**: side menu rimosso; tab bar flottante a 5 voci (Libreria, Analisi, Riprendi, Woodpecker, Impostazioni) in basso su mobile e rail verticale a sinistra su desktop (`--tabbar-space`, `--tabbar-rail-space` impostati da `App`). Il dettaglio PGN nasconde la tab bar per la CTA sticky.
+- [x] **6.4 Libreria ridisegnata**: hero "IN CORSO" con progresso, file rows con glyph e overflow sheet, dettaglio con segmented control, righe impostazioni, lista partite a card, bottom sheet per ordinamento/filtri/opzioni puzzle/azioni file.
+- [x] **6.5 Dashboard Woodpecker ridisegnata**: header con back pill, hero rossa con ring di progresso, KPI grid, barra di stato segmentata, trend a barre, code di ripasso e cicli a card. Aggiunta rotta `/woodpecker-dashboard` senza `:pgnId` (redirect all'ultimo PGN o selettore).
+- [x] **6.6 Impostazioni e Analisi**: impostazioni riscritte a righe con switch/select; analysis panel rimappata dai colori slate/blu hardcoded ai token (accento rosso).
+- [x] **6.7 Nativo**: plugin `@capacitor/app` (back button → Escape/back/minimize, `NativeShellService`) e `@capacitor/haptics` (`HapticsService`: tap su tab/azioni, success/error su puzzle). `SystemBars` (in `@capacitor/core`) sincronizzato col tema. Safe area via `--safe-top`/`--safe-bottom`.

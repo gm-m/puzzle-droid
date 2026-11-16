@@ -24,7 +24,19 @@ export type AppIconName =
   | 'surrender'
   | 'chart'
   | 'trash'
-  | 'eye';
+  | 'eye'
+  | 'books'
+  | 'board'
+  | 'search'
+  | 'filter'
+  | 'sort'
+  | 'plus'
+  | 'chevron-right'
+  | 'chevron-left'
+  | 'sun'
+  | 'moon'
+  | 'edit'
+  | 'check';
 
 @Component({
   selector: 'app-icon',

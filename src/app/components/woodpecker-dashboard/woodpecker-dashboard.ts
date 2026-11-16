@@ -10,12 +10,15 @@ import type {
   WoodpeckerPuzzleStatusSummary,
 } from '../../models/woodpecker.models';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
+import { AppIconComponent } from '../ui/app-icon/app-icon';
+import { StatusBadgeComponent, type StatusBadgeTone } from '../ui/status-badge/status-badge';
+import { EmptyStateComponent } from '../ui/empty-state/empty-state';
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-woodpecker-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, AppIconComponent, StatusBadgeComponent, EmptyStateComponent],
   templateUrl: './woodpecker-dashboard.html',
   styleUrl: './woodpecker-dashboard.scss',
 })
@@ -36,6 +39,12 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
     this.routeSub = this.route.paramMap.subscribe((params) => {
       const pgnId = params.get('pgnId');
       if (!pgnId) {
+        const latest = this.analytics.getLatestPgnId();
+        if (latest) {
+          void this.router.navigate(['/woodpecker-dashboard', latest], { replaceUrl: true });
+          return;
+        }
+
         this.data.set(null);
         return;
       }
@@ -60,14 +69,36 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
   statusLabel(status: WoodpeckerPuzzleCycleStatus): string {
     switch (status) {
       case 'solved':
-        return 'risolto';
+        return 'Risolto';
       case 'slow':
-        return 'risolto lentamente';
+        return 'Lento';
       case 'failed':
-        return 'sbagliato';
+        return 'Sbagliato';
       default:
-        return 'mai visto';
+        return 'Da fare';
     }
+  }
+
+  statusTone(status: WoodpeckerPuzzleCycleStatus): StatusBadgeTone {
+    switch (status) {
+      case 'solved':
+        return 'success';
+      case 'slow':
+        return 'warning';
+      case 'failed':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
+  }
+
+  cycleProgressPercent(vm: WoodpeckerDashboardData): number {
+    const total = vm.currentCyclePuzzles.length;
+    if (total === 0) {
+      return 0;
+    }
+
+    return Math.round(((vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow) / total) * 100);
   }
 
   deltaClass(value: number, reverse = false): string {
@@ -135,6 +166,16 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
       month: 'short',
       year: 'numeric',
     }).format(new Date(value));
+  }
+
+  /** Trend labels are ISO days (YYYY-MM-DD): show only the day under each bar. */
+  trendDay(label: string): string {
+    return label.slice(8, 10) || label;
+  }
+
+  trendTitle(point: ImprovementPoint): string {
+    const [year, month, day] = point.label.split('-');
+    return `${day}/${month}/${year}: ${point.accuracy}% (${point.attempts} tentativi)`;
   }
 
   trackByCycle(_: number, cycle: WoodpeckerCycleSnapshot): number {

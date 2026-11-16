@@ -1,104 +1,103 @@
 <div class="settings-container">
-  <div class="settings-header">
-    <h2>Impostazioni App</h2>
-    <p>Tema globale, scacchiera e set pezzi</p>
-  </div>
+  <header class="settings-head">
+    <p class="ui-kicker">PREFERENZE</p>
+    <h1 class="ui-display">Impostazioni</h1>
+  </header>
 
   <div class="settings-content">
-    <section class="settings-section" aria-labelledby="appearance-heading">
-      <div class="section-heading">
-        <h3 id="appearance-heading">Aspetto</h3>
-        <p>Preferenze visive dell’applicazione.</p>
-      </div>
-      <div class="setting-group checkbox-group">
-        <label class="setting-label" for="dark-mode">Tema scuro</label>
-        <label class="switch">
-          <input id="dark-mode" type="checkbox" role="switch" [checked]="settings().darkMode" (change)="onDarkModeChange($event)">
-          <span class="slider round"></span>
+    <section class="settings-group" aria-labelledby="appearance-heading">
+      <h2 id="appearance-heading" class="group-title">Aspetto</h2>
+      <div class="ui-card group-card">
+        <label class="ui-row" for="dark-mode">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Tema scuro</span>
+            <span class="ui-row-sub">Riduce l'affaticamento visivo al buio</span>
+          </span>
+          <input id="dark-mode" type="checkbox" class="ui-switch" [checked]="settings().darkMode" (change)="onDarkModeChange($event)" />
         </label>
       </div>
     </section>
 
-    <section class="settings-section" aria-labelledby="board-heading">
-      <div class="section-heading">
-        <h3 id="board-heading">Scacchiera</h3>
-        <p>Personalizza la resa della posizione e delle mosse.</p>
-      </div>
-      <div class="setting-group">
-      <label class="setting-label" for="board-theme">Tema Scacchiera</label>
-      <select id="board-theme" class="setting-select" [value]="settings().boardTheme" (change)="onThemeChange($event)">
-        <option value="brown">Marrone Classico</option>
-        <option value="blue">Blu Scuro</option>
-        <option value="green">Verde Scacchistico</option>
-        <option value="grey">Grigio Minimal</option>
-      </select>
-      </div>
+    <section class="settings-group" aria-labelledby="board-heading">
+      <h2 id="board-heading" class="group-title">Scacchiera</h2>
+      <div class="ui-card group-card">
+        <label class="ui-row" for="board-theme">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Tema scacchiera</span>
+          </span>
+          <select id="board-theme" class="row-select" [value]="settings().boardTheme" (change)="onThemeChange($event)">
+            <option value="brown">Marrone classico</option>
+            <option value="blue">Blu scuro</option>
+            <option value="green">Verde scacchistico</option>
+            <option value="grey">Grigio minimal</option>
+          </select>
+        </label>
 
-      <div class="setting-group">
-      <label class="setting-label" for="piece-set">Set Pezzi</label>
-      <select id="piece-set" class="setting-select" [value]="settings().pieceSet" (change)="onPieceSetChange($event)">
-        <option value="cburnett">Cburnett</option>
-        <option value="merida">Merida</option>
-        <option value="alpha">Alpha</option>
-        <option value="kosal">Kosal</option>
-      </select>
-      </div>
+        <label class="ui-row" for="piece-set">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Set pezzi</span>
+          </span>
+          <select id="piece-set" class="row-select" [value]="settings().pieceSet" (change)="onPieceSetChange($event)">
+            <option value="cburnett">Cburnett</option>
+            <option value="merida">Merida</option>
+            <option value="alpha">Alpha</option>
+            <option value="kosal">Kosal</option>
+          </select>
+        </label>
 
-      <div class="setting-group checkbox-group">
-      <label class="setting-label" for="board-3d">Stile 3D</label>
-      <label class="switch">
-        <input id="board-3d" type="checkbox" role="switch" [checked]="settings().is3d" (change)="on3dChange($event)">
-        <span class="slider round"></span>
-      </label>
-      </div>
+        <label class="ui-row" for="board-3d">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Stile 3D</span>
+            <span class="ui-row-sub">Pezzi con effetto tridimensionale</span>
+          </span>
+          <input id="board-3d" type="checkbox" class="ui-switch" [checked]="settings().is3d" (change)="on3dChange($event)" />
+        </label>
 
-      <div class="setting-group checkbox-group">
-      <label class="setting-label" for="show-coords">Mostra Coordinate</label>
-      <label class="switch">
-        <input id="show-coords" type="checkbox" role="switch" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)">
-        <span class="slider round"></span>
-      </label>
-      </div>
+        <label class="ui-row" for="show-coords">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Coordinate</span>
+            <span class="ui-row-sub">Mostra righe e colonne</span>
+          </span>
+          <input id="show-coords" type="checkbox" class="ui-switch" [checked]="settings().showCoordinates" (change)="onCoordinatesChange($event)" />
+        </label>
 
-      <div class="setting-group checkbox-group">
-      <label class="setting-label" for="highlight-move">Evidenzia Ultima Mossa</label>
-      <label class="switch">
-        <input id="highlight-move" type="checkbox" role="switch" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)">
-        <span class="slider round"></span>
-      </label>
-      </div>
-    </section>
-
-    <section class="settings-section data-section" aria-labelledby="data-heading">
-      <div class="section-heading">
-        <h3 id="data-heading">Dati e backup</h3>
-        <p>Salva i dati locali o ripristina una copia precedente.</p>
-      </div>
-      <div class="backup-card">
-      <h4>Backup e ripristino</h4>
-      <p>Esporta/importa libreria, sessioni Woodpecker, analytics e impostazioni.</p>
-
-      <div class="backup-actions">
-        <button type="button" class="btn-backup" (click)="exportBackup()">Esporta backup JSON</button>
-        <label class="btn-import" [class.is-loading]="isImportingBackup">
-          {{ isImportingBackup ? 'Importazione in corso…' : 'Importa backup JSON' }}
-          <input type="file" accept="application/json,.json" [disabled]="isImportingBackup" (change)="onBackupFileSelected($event)" />
+        <label class="ui-row" for="highlight-move">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Evidenzia ultima mossa</span>
+          </span>
+          <input id="highlight-move" type="checkbox" class="ui-switch" [checked]="settings().highlightLastMove" (change)="onHighlightChange($event)" />
         </label>
       </div>
+    </section>
 
-      <p class="backup-feedback" *ngIf="backupFeedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
-      </div>
-      <div class="settings-actions">
-        <button type="button" class="btn-reset" (click)="openResetConfirmation()">Ripristina impostazioni</button>
+    <section class="settings-group" aria-labelledby="data-heading">
+      <h2 id="data-heading" class="group-title">Dati e backup</h2>
+      <div class="ui-card group-card">
+        <div class="ui-row static">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Backup e ripristino</span>
+            <span class="ui-row-sub">Esporta/importa libreria, sessioni Woodpecker, analytics e impostazioni</span>
+          </span>
+        </div>
+        <div class="backup-actions">
+          <button type="button" class="ui-btn ink" (click)="exportBackup()">Esporta JSON</button>
+          <label class="ui-btn subtle btn-import" [class.is-loading]="isImportingBackup">
+            {{ isImportingBackup ? 'Importazione…' : 'Importa JSON' }}
+            <input type="file" accept="application/json,.json" [disabled]="isImportingBackup" (change)="onBackupFileSelected($event)" />
+          </label>
+        </div>
+        <p class="backup-feedback" *ngIf="backupFeedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
       </div>
     </section>
+
+    <button type="button" class="reset-link" (click)="openResetConfirmation()">Ripristina impostazioni ai valori predefiniti</button>
   </div>
 </div>
 
 <app-dialog [open]="isResetConfirmationOpen" title="Ripristinare le impostazioni?" (closed)="closeResetConfirmation()">
-  <p>Il tema e le preferenze della scacchiera torneranno ai valori iniziali. I dati della libreria e degli allenamenti non verranno modificati.</p>
-  <div class="reset-modal-actions">
-    <button type="button" class="btn-cancel" autofocus (click)="closeResetConfirmation()">Annulla</button>
-    <button type="button" class="btn-reset" (click)="confirmResetSettings()">Ripristina</button>
+  <p class="dialog-description">Il tema e le preferenze della scacchiera torneranno ai valori iniziali. I dati della libreria e degli allenamenti non verranno modificati.</p>
+  <div class="dialog-actions">
+    <button type="button" class="ui-btn subtle" autofocus (click)="closeResetConfirmation()">Annulla</button>
+    <button type="button" class="ui-btn danger-soft" (click)="confirmResetSettings()">Ripristina</button>
   </div>
 </app-dialog>

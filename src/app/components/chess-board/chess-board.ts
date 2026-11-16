@@ -71,6 +71,14 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
         },
       },
     });
+
+    // Chessground caches the board rect and only refreshes it on scroll/resize. Content above the
+    // board (puzzle messages, Woodpecker status) can shift it without either, so taps would hit the
+    // wrong square: drop the cache right before chessground handles each press (capture phase).
+    const clearBounds = () => this.boardApi?.state.dom.bounds.clear();
+    for (const type of ['touchstart', 'mousedown']) {
+      this.boardHost.nativeElement.addEventListener(type, clearBounds, { capture: true, passive: true });
+    }
   }
 
   boardAriaLabel(): string {

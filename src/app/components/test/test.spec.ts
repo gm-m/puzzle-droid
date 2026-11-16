@@ -10,6 +10,7 @@ import { SettingsService } from '../../services/settings.service';
 import { StockfishService } from '../../services/stockfish.service';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
 import { LibraryStorageService } from '../../services/library-storage.service';
+import { ShellLayoutService } from '../../services/shell-layout.service';
 
 describe('ChessWorkspaceComponent', () => {
   let component: ChessWorkspaceComponent;
@@ -321,19 +322,25 @@ describe('ChessWorkspaceComponent', () => {
     });
   });
 
-  it('should close the navigation menu with Escape', () => {
-    component.isMenuOpen.set(true);
+  it('should close the library game picker with Escape', () => {
+    component.isLibraryGamePickerOpen.set(true);
 
     component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }));
 
-    expect(component.isMenuOpen()).toBeFalse();
+    expect(component.isLibraryGamePickerOpen()).toBeFalse();
   });
 
-  it('should expose the active view in the primary navigation', () => {
+  it('should hide the tab bar while a library item detail is open', () => {
+    const shell = TestBed.inject(ShellLayoutService);
+
+    expect(shell.tabBarVisible()).toBeTrue();
+
+    component.libraryOpenedItemId.set('pgn-1');
     fixture.detectChanges();
+    expect(shell.tabBarVisible()).toBeFalse();
 
-    const activeItem = fixture.nativeElement.querySelector('.menu-item[aria-current="page"]') as HTMLButtonElement | null;
-
-    expect(activeItem?.textContent?.trim()).toBe('Analisi');
+    component.libraryOpenedItemId.set(null);
+    fixture.detectChanges();
+    expect(shell.tabBarVisible()).toBeTrue();
   });
 });

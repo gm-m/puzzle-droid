@@ -1,281 +1,153 @@
 .settings-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: 18px;
   max-width: 720px;
-  margin: 0 auto;
-  padding: clamp(var(--space-4), 2vw, var(--space-6));
-  background: var(--surface-1);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+  margin-inline: auto;
+  padding-bottom: 8px;
 }
 
-.settings-header {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: var(--space-4);
+.settings-head {
+  padding-top: 8px;
 
-  h2 {
+  .ui-kicker {
     margin: 0;
-    font-size: var(--font-xl);
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
   }
 
-  p {
-    margin: var(--space-2) 0 0;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
+  h1 {
+    margin: 6px 0 0;
+    font-size: clamp(30px, 8vw, 38px);
   }
 }
 
 .settings-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: 22px;
 }
 
-.settings-section {
+.settings-group {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--surface-2);
+  gap: 8px;
 }
 
-.section-heading {
-  display: grid;
-  gap: var(--space-1);
-
-  h3, p { margin: 0; }
-  h3 { color: var(--text-primary); font-size: var(--font-md); }
-  p { color: var(--text-muted); font-size: var(--font-sm); }
+.group-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
 }
 
-.setting-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-
-  &.checkbox-group {
-    min-height: var(--touch-target);
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-  }
+.group-card {
+  border-radius: 20px;
+  overflow: hidden;
 }
 
-.setting-label {
-  font-weight: 650;
-  color: var(--text-primary);
-  font-size: var(--font-sm);
+.ui-row.static {
+  cursor: default;
 }
 
-.setting-select {
-  min-height: var(--control-height);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  background-color: var(--surface-2);
-  color: var(--text-primary);
-  font-size: var(--font-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--motion-fast) var(--ease-standard),
-    box-shadow var(--motion-fast) var(--ease-standard),
-    background-color var(--motion-fast) var(--ease-standard);
-
-  &:hover {
-    border-color: var(--border-strong);
-  }
-}
-
-.settings-actions {
-  margin-top: var(--space-1);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.btn-reset {
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-4);
-  background-color: transparent;
-  color: var(--danger);
-  border: 1px solid var(--danger-border);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard),
-    color var(--motion-fast) var(--ease-standard);
-
-  &:hover {
-    border-color: var(--danger);
-    background-color: var(--danger-soft);
-  }
-}
-
-.backup-card {
-  margin-top: 0;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--surface-2);
-  padding: var(--space-4);
-  display: grid;
-  gap: var(--space-2);
-
-  h4 {
-    margin: 0;
-    font-size: var(--font-md);
-    color: var(--text-primary);
-  }
-
-  p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--font-sm);
-  }
+.row-select {
+  flex: 0 0 auto;
+  max-width: 55%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 30px 0 12px;
+  background: var(--surface-2n);
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  appearance: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .backup-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
+  gap: 8px;
+  padding: 0 16px 14px;
 
-.btn-backup,
-.btn-import {
-  min-height: var(--control-height);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-1);
-  color: var(--text-primary);
-  font-weight: 700;
-  font-size: var(--font-sm);
-  cursor: pointer;
-  transition:
-    border-color var(--motion-fast) var(--ease-standard),
-    box-shadow var(--motion-fast) var(--ease-standard),
-    background-color var(--motion-fast) var(--ease-standard);
-
-  &:hover {
-    border-color: var(--primary-border);
-    background: var(--primary-soft);
-    box-shadow: var(--shadow-xs);
+  .ui-btn {
+    min-height: 44px;
+    border-radius: 14px;
+    padding-inline: 16px;
   }
 }
 
 .btn-import {
   position: relative;
-  display: inline-flex;
-  align-items: center;
+  overflow: hidden;
+  cursor: pointer;
 
-  &:focus-within {
-    outline: 3px solid color-mix(in srgb, var(--focus-ring) 72%, transparent);
-    outline-offset: 2px;
-  }
-
-  input {
+  input[type='file'] {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
   }
 
-  &.is-loading { cursor: wait; opacity: 0.72; }
+  &.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
 }
 
 .backup-feedback {
-  font-weight: 650;
-
-  &.success { color: var(--success); }
-  &.error { color: var(--danger); }
-  &.info { color: var(--info); }
-}
-
-.reset-modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
-
-.btn-cancel {
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface-1);
-  color: var(--text-primary);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* Custom Switch Toggle */
-.switch {
-  position: relative;
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 48px;
-  height: 28px;
-}
-
-.switch input {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
   margin: 0;
-  opacity: 0;
+  padding: 10px 16px 14px;
+  font-size: 13px;
+
+  &.success {
+    color: var(--good);
+  }
+
+  &.error {
+    color: var(--bad);
+  }
+
+  &.info {
+    color: var(--ink-2);
+  }
+}
+
+.reset-link {
+  align-self: center;
+  min-height: 44px;
+  border: 0;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--bad);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
 
-.slider {
-  position: absolute;
-  inset: 0;
-  cursor: pointer;
-  border: 1px solid var(--border-strong);
-  background-color: var(--surface-3);
-  transition:
-    background-color var(--motion-normal) var(--ease-standard),
-    border-color var(--motion-normal) var(--ease-standard),
-    box-shadow var(--motion-fast) var(--ease-standard);
+.dialog-description {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
 }
 
-.slider::before {
-  position: absolute;
-  content: "";
-  width: 20px;
-  height: 20px;
-  left: 3px;
-  bottom: 3px;
-  border-radius: 50%;
-  background-color: var(--surface-1);
-  box-shadow: var(--shadow-xs);
-  transition: transform var(--motion-normal) var(--ease-standard);
-}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 
-input:checked + .slider {
-  border-color: var(--primary);
-  background-color: var(--primary);
-}
-
-input:focus-visible + .slider {
-  outline: 3px solid color-mix(in srgb, var(--focus-ring) 72%, transparent);
-  outline-offset: 2px;
-}
-
-input:checked + .slider::before {
-  transform: translateX(20px);
-}
-
-.slider.round {
-  border-radius: var(--radius-full);
+  .ui-btn {
+    min-height: 42px;
+  }
 }

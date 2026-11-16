@@ -3,6 +3,7 @@ import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewC
 import type { EngineLine, EngineScore } from '../../models/engine.models';
 import type { PuzzlePlayerColor } from '../../models/library.models';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
+import { AppBottomSheetComponent } from '../ui/app-bottom-sheet/app-bottom-sheet';
 
 export interface LineMoveSelection {
   line: EngineLine;
@@ -30,7 +31,7 @@ interface MoveRow {
 
 @Component({
   selector: 'app-analysis-panel',
-  imports: [CommonModule, AppIconComponent],
+  imports: [CommonModule, AppIconComponent, AppBottomSheetComponent],
   templateUrl: './analysis-panel.html',
   styleUrl: './analysis-panel.scss',
 })
@@ -144,6 +145,10 @@ export class AnalysisPanelComponent {
     this.isEngineSettingsOpen = !this.isEngineSettingsOpen;
   }
 
+  closeEngineSettings(): void {
+    this.isEngineSettingsOpen = false;
+  }
+
   toggleEngineLines(): void {
     this.isEngineLinesExpanded = !this.isEngineLinesExpanded;
   }
@@ -186,6 +191,12 @@ export class AnalysisPanelComponent {
     if (this.isWoodpeckerInfoModalOpen) {
       event.preventDefault();
       this.closeWoodpeckerInfoModal();
+      return;
+    }
+
+    if (this.isEngineSettingsOpen) {
+      event.preventDefault();
+      this.closeEngineSettings();
       return;
     }
 

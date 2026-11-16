@@ -5,9 +5,12 @@ import type { WoodpeckerPuzzleCycleStatus } from '../../models/woodpecker.models
 import type { PositionBookmark } from '../analysis-panel/analysis-panel';
 import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
+import { AppBottomSheetComponent } from '../ui/app-bottom-sheet/app-bottom-sheet';
 import { EmptyStateComponent } from '../ui/empty-state/empty-state';
 import { LoadingIndicatorComponent } from '../ui/loading-indicator/loading-indicator';
 import { StatusBadgeComponent, type StatusBadgeTone } from '../ui/status-badge/status-badge';
+import { SettingsService } from '../../services/settings.service';
+import { HapticsService } from '../../services/haptics.service';
 
 export interface LibraryModeChange {
   id: string;
@@ -38,6 +41,8 @@ export interface LibraryWoodpeckerSessionInfo {
   resumePuzzleIndex: number | null;
   /** Current-cycle status per puzzle index. */
   puzzleStatuses?: WoodpeckerPuzzleCycleStatus[];
+  /** Current cycle number, for the "IN CORSO · CICLO N" hero label. */
+  cycle?: number;
 }
 
 const PUZZLE_STATUS_BADGES: Record<WoodpeckerPuzzleCycleStatus, { label: string; tone: StatusBadgeTone }> = {
@@ -94,6 +99,7 @@ interface LibraryHeaderFilters {
 
 type BookmarkSortOption = 'newest' | 'oldest' | 'title';
 type CollectionSortOption = 'recent' | 'name' | 'size';
+type LibrarySheet = 'sort' | 'filters' | 'options' | 'file';
 
 interface PuzzleItemOptions {
   autoFirstMove: boolean;
@@ -139,7 +145,7 @@ const DEFAULT_WOODPECKER_TARGET_DAYS = 28;
 
 @Component({
   selector: 'app-library-panel',
-  imports: [CommonModule, AppIconComponent, AppDialogComponent, EmptyStateComponent, LoadingIndicatorComponent, StatusBadgeComponent],
+  imports: [CommonModule, AppIconComponent, AppDialogComponent, AppBottomSheetComponent, EmptyStateComponent, LoadingIndicatorComponent, StatusBadgeComponent],
   templateUrl: './library-panel.html',
   styleUrl: './library-panel.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -171,7 +177,13 @@ export class LibraryPanelComponent {
   @Output() readonly woodpeckerTargetDaysChanged = new EventEmitter<LibraryWoodpeckerTargetDaysChange>();
   @Output() readonly puzzlePlayerColorChanged = new EventEmitter<LibraryPuzzlePlayerColorChange>();
 
+  private readonly settingsService = inject(SettingsService);
+  private readonly haptics = inject(HapticsService);
+  protected readonly settings = this.settingsService.settings;
+
   activeTab: LibraryViewTab = 'pgn';
+  readonly activeSheet = signal<LibrarySheet | null>(null);
+  readonly sheetItem = signal<PgnLibraryItem | null>(null);
   woodpeckerSessionPendingDelete: PgnLibraryItem | null = null;
   editingBookmarkId: string | null = null;
   bookmarkPendingDeleteId: string | null = null;
@@ -220,6 +232,259 @@ export class LibraryPanelComponent {
 
   setActiveTab(tab: LibraryViewTab): void {
     this.activeTab = tab;
+    this.haptics.tap();
+  }
+
+  toggleTheme(): void {
+    this.settingsService.updateSettings({ darkMode: !this.settings().darkMode });
+    this.haptics.tap();
+  }
+
+  /* ---------- Bottom sheets ---------- */
+
+  openSheet(sheet: LibrarySheet, item: PgnLibraryItem | null = null): void {
+    this.sheetItem.set(item);
+    this.activeSheet.set(sheet);
+  }
+
+  closeSheet(): void {
+    this.activeSheet.set(null);
+    this.sheetItem.set(null);
+  }
+
+  sheetTitle(): string {
+    switch (this.activeSheet()) {
+      case 'sort':
+        return 'Ordina per';
+      case 'filters':
+        return 'Filtri avanzati';
+      case 'options':
+        return 'Opzioni puzzle';
+      case 'file':
+        return this.sheetItem()?.name ?? 'File';
+      default:
+        return '';
+    }
+  }
+
+  setCollectionSort(option: CollectionSortOption): void {
+    this.collectionSort = option;
+    this.haptics.tap();
+    this.closeSheet();
+  }
+
+  collectionSortLabel(): string {
+    switch (this.collectionSort) {
+      case 'name':
+        return 'Nome';
+      case 'size':
+        return 'Partite';
+      default:
+        return 'Recenti';
+    }
+  }
+
+  collectionSortOptions(): { value: CollectionSortOption; label: string }[] {
+    return [
+      { value: 'recent', label: 'Più recenti' },
+      { value: 'name', label: 'Nome A–Z' },
+      { value: 'size', label: 'Più partite' },
+    ];
+  }
+
+  openSheetItem(): void {
+    const item = this.sheetItem();
+    if (!item) return;
+    this.closeSheet();
+    this.onOpenItem(item.id);
+  }
+
+  openSheetItemDashboard(): void {
+    const item = this.sheetItem();
+    if (!item) return;
+    this.closeSheet();
+    this.onOpenDashboard(item.id);
+  }
+
+  removeSheetItem(): void {
+    const item = this.sheetItem();
+    if (!item) return;
+    this.closeSheet();
+    this.onRemoveItem(item);
+  }
+
+  /* ---------- Library summary / hero ---------- */
+
+  libSummary(): string {
+    const items = this.items;
+    const games = items.reduce((sum, item) => sum + item.games.length, 0);
+    return `${items.length} PGN · ${games} ${games === 1 ? 'PARTITA' : 'PARTITE'}`;
+  }
+
+  /** First collection with a resumable Woodpecker session (items are recent-first). */
+  heroItem(): PgnLibraryItem | null {
+    return this.displayedItems().find((item) => this.resumePuzzleIndex(item.id) !== null) ?? null;
+  }
+
+  resumePuzzleIndexForItem(item: PgnLibraryItem): number | null {
+    return this.resumePuzzleIndex(item.id);
+  }
+
+  heroCycle(item: PgnLibraryItem): number {
+    return this.woodpeckerSessionInfoByItemId[item.id]?.cycle ?? 1;
+  }
+
+  /** Completion percent (one decimal) for an in-progress session, based on the resume index. */
+  sessionProgressPercent(item: PgnLibraryItem): number {
+    const resumeIndex = this.resumePuzzleIndex(item.id);
+    if (resumeIndex === null || item.games.length === 0) {
+      return 0;
+    }
+    return Math.round(((resumeIndex + 1) / item.games.length) * 1000) / 10;
+  }
+
+  /* ---------- Collection rows ---------- */
+
+  itemGlyph(item: PgnLibraryItem): string {
+    return item.mode === 'puzzle' ? '♞' : '♜';
+  }
+
+  rowMeta(item: PgnLibraryItem): string {
+    const stats = this.collectionStats(item);
+    const mode = item.mode === 'puzzle' ? 'Puzzle' : 'Visualizzazione';
+    return `${item.games.length} ${item.games.length === 1 ? 'partita' : 'partite'} · ${mode} · ${stats.averageMoves} mosse medie`;
+  }
+
+  /* ---------- Detail screen ---------- */
+
+  setItemMode(item: PgnLibraryItem, mode: LibraryMode): void {
+    if (item.mode === mode) return;
+    this.haptics.tap();
+    this.modeChanged.emit({ id: item.id, mode });
+  }
+
+  detailSessionLabel(itemId: string): string {
+    const resumeIndex = this.resumePuzzleIndex(itemId);
+    if (resumeIndex !== null) {
+      return `Woodpecker · puzzle ${resumeIndex + 1}`;
+    }
+    if (this.hasWoodpeckerSession(itemId)) {
+      return 'Sessione Woodpecker attiva';
+    }
+    return 'Nessuna sessione Woodpecker';
+  }
+
+  /** Active puzzle automation options, e.g. "Prima mossa auto · Rotazione auto". */
+  puzzleOptionsSummary(itemId: string): string {
+    const active: string[] = [];
+    if (this.isPuzzleAutoFirstMove(itemId)) active.push('Prima mossa auto');
+    if (this.isPuzzleAutoAdvance(itemId)) active.push('Successivo auto');
+    if (this.isPuzzleAutoRotate(itemId)) active.push('Rotazione auto');
+    if (this.isPuzzleBlindfold(itemId)) active.push('Memoria visiva');
+    return active.length > 0 ? active.join(' · ') : 'Nessuna automazione attiva';
+  }
+
+  puzzleOptionsActiveCount(itemId: string): number {
+    return (
+      Number(this.isPuzzleAutoFirstMove(itemId)) +
+      Number(this.isPuzzleAutoAdvance(itemId)) +
+      Number(this.isPuzzleAutoRotate(itemId)) +
+      Number(this.isPuzzleBlindfold(itemId))
+    );
+  }
+
+  gameRowTitle(entry: LibraryFilteredGameEntry): string {
+    const white = entry.game.white?.trim();
+    const black = entry.game.black?.trim();
+    return white || black ? `${white || '?'} – ${black || '?'}` : `Partita ${entry.index + 1}`;
+  }
+
+  gameRowSub(entry: LibraryFilteredGameEntry): string {
+    const event = entry.game.event?.trim();
+    const parts = [event && event !== '?' ? event : 'Giocatori sconosciuti', `${entry.moveCount} mosse`];
+    const result = entry.game.result?.trim();
+    if (result && result !== '*') {
+      parts.push(result);
+    }
+    return parts.join(' · ');
+  }
+
+  playAsLabel(gameId: string): string {
+    const color = this.puzzlePlayerColor(gameId);
+    return color === 'white' ? 'Bianco' : color === 'black' ? 'Nero' : 'Auto';
+  }
+
+  /** Cycles Auto → Bianco → Nero → Auto, as in the prototype's "GIOCA CON" button. */
+  cyclePuzzlePlayerColor(gameId: string): void {
+    const order: PuzzlePlayerColor[] = ['auto', 'white', 'black'];
+    const next = order[(order.indexOf(this.puzzlePlayerColor(gameId)) + 1) % order.length];
+    this.haptics.tap();
+    this.puzzlePlayerColorChanged.emit({ gameId, color: next });
+  }
+
+  ctaLabel(item: PgnLibraryItem): string {
+    return item.mode === 'puzzle' ? 'Avvia puzzle' : 'Apri visualizzazione';
+  }
+
+  ctaSub(item: PgnLibraryItem): string {
+    const resumeIndex = this.resumePuzzleIndex(item.id);
+    if (resumeIndex !== null) {
+      return `· dal puzzle ${resumeIndex + 1}`;
+    }
+    if (item.mode === 'puzzle' && this.isPuzzleBatchEnabled(item.id)) {
+      return '· Micro-Set';
+    }
+    if (item.mode === 'puzzle' && this.isPuzzleWoodpecker(item.id)) {
+      return '· Woodpecker';
+    }
+    return '';
+  }
+
+  /** Primary CTA of the detail screen. */
+  onStartItem(item: PgnLibraryItem): void {
+    if (item.games.length === 0) {
+      return;
+    }
+
+    if (item.mode === 'puzzle') {
+      const resumeIndex = this.resumePuzzleIndex(item.id);
+      if (resumeIndex !== null) {
+        this.onResumeItem(item);
+        return;
+      }
+
+      if (this.isPuzzleBatchEnabled(item.id)) {
+        this.startBatchDrill(item);
+        return;
+      }
+    }
+
+    const first = this.visibleGameEntries(item)[0] ?? this.filteredGameEntries(item)[0];
+    const game = first?.game ?? item.games[0];
+    const index = first?.index ?? 0;
+    this.onGameClick(item, game, index);
+  }
+
+  /* ---------- Filters sheet ---------- */
+
+  isResultSelected(itemId: string, result: string): boolean {
+    return this.itemHeaderFilters(itemId).result.split('\u0001').includes(result);
+  }
+
+  toggleResultFilter(itemId: string, result: string): void {
+    const selected = new Set(this.itemHeaderFilters(itemId).result.split('\u0001').filter(Boolean));
+    if (selected.has(result)) {
+      selected.delete(result);
+    } else {
+      selected.add(result);
+    }
+    this.headerFiltersByItem.set(itemId, { ...this.itemHeaderFilters(itemId), result: [...selected].join('\u0001') });
+    this.onFiltersChanged(itemId);
+    this.haptics.tap();
+  }
+
+  hasActiveResultFilter(itemId: string): boolean {
+    return this.itemHeaderFilters(itemId).result.length > 0;
   }
 
   onOpenBookmark(bookmarkId: string): void {
@@ -349,12 +614,12 @@ export class LibraryPanelComponent {
   }
 
   activePgnTabLabel(): string {
-    return this.activeTab === 'famous-tactics' ? 'tattiche famose' : 'PGN';
+    return this.activeTab === 'famous-tactics' ? 'tattiche celebri' : 'PGN';
   }
 
   activeEmptyStateLabel(): string {
     return this.activeTab === 'famous-tactics'
-      ? 'Nessuna tattica da partite famose disponibile.'
+      ? 'Nessuna tattica celebre disponibile.'
       : 'Nessun PGN caricato.';
   }
 
@@ -473,7 +738,7 @@ export class LibraryPanelComponent {
         (!whiteFilter || fields.white.includes(whiteFilter)) &&
         (!blackFilter || fields.black.includes(blackFilter)) &&
         (!eventFilter || fields.event.includes(eventFilter)) &&
-        (!resultFilter || (entry.game.result ?? '*') === resultFilter)
+        (!resultFilter || resultFilter.split('\u0001').includes(entry.game.result ?? '*'))
       );
     });
 
