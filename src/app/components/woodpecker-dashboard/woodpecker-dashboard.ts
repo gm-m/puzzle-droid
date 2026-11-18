@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
   HardSetPuzzleSummary,
@@ -25,6 +25,38 @@ import { Subscription } from 'rxjs';
 export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
   readonly data = signal<WoodpeckerDashboardData | null>(null);
   readonly availablePgns = signal<Array<{ pgnId: string; pgnName: string }>>([]);
+  readonly tabs = [
+    { id: 'overview', label: 'Panoramica' },
+    { id: 'review', label: 'Ripasso' },
+    { id: 'cycles', label: 'Cicli' },
+  ] as const;
+  readonly activeTab = signal<(typeof this.tabs)[number]['id']>('overview');
+  readonly trendScope = signal<'pgn' | 'global'>('pgn');
+  readonly statuses = [
+    { id: 'unseen', label: 'Mai visto' },
+    { id: 'solved', label: 'Risolto' },
+    { id: 'slow', label: 'Lento' },
+    { id: 'failed', label: 'Errato' },
+  ] as const;
+  readonly trend = computed(() => {
+    const vm = this.data();
+    const points = this.trendScope() === 'pgn' ? vm?.pgnImprovement : vm?.globalImprovement;
+    const byDay = new Map(points?.map((point) => [point.label, point]));
+    const today = new Date();
+
+    return Array.from({ length: 14 }, (_, index): ImprovementPoint => {
+      const day = new Date(today);
+      day.setUTCDate(today.getUTCDate() - (13 - index));
+      const label = day.toISOString().slice(0, 10);
+      return byDay.get(label) ?? { label, attempts: 0, accuracy: 0 };
+    });
+  });
+
+  private readonly trendDateFormatter = new Intl.DateTimeFormat('it-IT', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 
   private routeSub: Subscription | null = null;
 
@@ -37,6 +69,8 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.availablePgns.set(this.analytics.getAvailablePgns());
     this.routeSub = this.route.paramMap.subscribe((params) => {
+      this.activeTab.set('overview');
+      this.trendScope.set('pgn');
       const pgnId = params.get('pgnId');
       if (!pgnId) {
         const latest = this.analytics.getLatestPgnId();
@@ -62,8 +96,29 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
     return `risk-${risk}`;
   }
 
-  statusClass(status: WoodpeckerPuzzleCycleStatus): string {
-    return `status-${status}`;
+  onTabKeydown(event: KeyboardEvent, index: number, tabList: HTMLElement): void {
+    const last = this.tabs.length - 1;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowLeft':
+        next = index === 0 ? last : index - 1;
+        break;
+      case 'ArrowRight':
+        next = index === last ? 0 : index + 1;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = last;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    this.activeTab.set(this.tabs[next].id);
+    tabList.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
   }
 
   statusLabel(status: WoodpeckerPuzzleCycleStatus): string {
@@ -90,15 +145,6 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
       default:
         return 'neutral';
     }
-  }
-
-  cycleProgressPercent(vm: WoodpeckerDashboardData): number {
-    const total = vm.currentCyclePuzzles.length;
-    if (total === 0) {
-      return 0;
-    }
-
-    return Math.round(((vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow) / total) * 100);
   }
 
   deltaClass(value: number, reverse = false): string {
@@ -168,14 +214,13 @@ export class WoodpeckerDashboardComponent implements OnInit, OnDestroy {
     }).format(new Date(value));
   }
 
-  /** Trend labels are ISO days (YYYY-MM-DD): show only the day under each bar. */
   trendDay(label: string): string {
-    return label.slice(8, 10) || label;
+    return this.trendDateFormatter.format(new Date(label));
   }
 
   trendTitle(point: ImprovementPoint): string {
-    const [year, month, day] = point.label.split('-');
-    return `${day}/${month}/${year}: ${point.accuracy}% (${point.attempts} tentativi)`;
+    const day = this.trendDay(point.label);
+    return point.attempts ? `${day} · ${point.accuracy}% · Tentativi ${point.attempts}` : `${day} · Nessun tentativo`;
   }
 
   trackByCycle(_: number, cycle: WoodpeckerCycleSnapshot): number {
