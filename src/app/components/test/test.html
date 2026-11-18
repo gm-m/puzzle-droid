@@ -129,6 +129,7 @@
             [highlightLastMove]="settings().highlightLastMove"
             [hidePieces]="arePuzzlePiecesHidden()"
             [lastMove]="boardLastMove()"
+            [autoPromoteToQueen]="settings().autoQueen && !isPuzzleMode()"
             (moved)="onBoardMove($event)"
           ></app-chess-board>
         </section>

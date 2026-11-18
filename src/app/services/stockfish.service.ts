@@ -14,6 +14,9 @@ interface PendingAnalyze {
   depth: number;
   multiPv: number;
   skillLevel: number;
+  searchMoves?: string[];
+  /** Set for one-shot probes: their result goes here instead of the listener. */
+  resolve?: (lines: EngineLine[] | null) => void;
 }
 
 @Injectable({
@@ -26,6 +29,7 @@ export class StockfishService {
   private whitePerspectiveFactor = 1;
   private pendingAnalyze: PendingAnalyze | null = null;
   private isSearchRunning = false;
+  private activeProbe: ((lines: EngineLine[] | null) => void) | null = null;
 
   setListener(listener: (event: StockfishEvent) => void): void {
     this.listener = listener;
@@ -61,6 +65,7 @@ export class StockfishService {
     const depth = this.clamp(options.depth, 1, 30);
     const multiPv = this.clamp(options.multiPv, 1, 5);
     const skillLevel = this.clamp(options.skillLevel, 0, 20);
+    this.cancelProbes();
     this.pendingAnalyze = { fen, depth, multiPv, skillLevel };
     this.isSearchRunning = false;
 
@@ -73,7 +78,34 @@ export class StockfishService {
     return true;
   }
 
+  /**
+   * Scores the given UCI moves from `fen` (white's perspective, like the listener lines) without
+   * notifying the listener. Resolves `null` if the engine is missing or the search is superseded.
+   */
+  evaluateMoves(fen: string, moves: string[], depth: number): Promise<EngineLine[] | null> {
+    if (!this.engine || moves.length === 0) {
+      return Promise.resolve(null);
+    }
+
+    this.cancelProbes();
+    return new Promise((resolve) => {
+      this.pendingAnalyze = {
+        fen,
+        depth: this.clamp(depth, 1, 30),
+        multiPv: this.clamp(moves.length, 1, 5),
+        skillLevel: 20,
+        searchMoves: moves,
+        resolve,
+      };
+      this.isSearchRunning = false;
+      this.lines.clear();
+      this.engine!.postMessage('stop');
+      this.engine!.postMessage('isready');
+    });
+  }
+
   stop(): void {
+    this.cancelProbes();
     this.pendingAnalyze = null;
     this.isSearchRunning = false;
     this.engine?.postMessage('stop');
@@ -82,6 +114,8 @@ export class StockfishService {
   }
 
   destroy(): void {
+    this.cancelProbes();
+    this.pendingAnalyze = null;
     this.isSearchRunning = false;
     this.engine?.postMessage('stop');
     this.engine?.terminate();
@@ -101,6 +135,13 @@ export class StockfishService {
       }
 
       this.isSearchRunning = false;
+      if (this.activeProbe) {
+        const resolve = this.activeProbe;
+        this.activeProbe = null;
+        resolve(this.sortedLines());
+        return;
+      }
+
       const bestMove = message.split(' ')[1] ?? '-';
       this.listener?.({ type: 'bestmove', bestMove });
       return;
@@ -120,8 +161,19 @@ export class StockfishService {
     }
 
     this.lines.set(line.multipv, line);
-    const sortedLines = [...this.lines.values()].sort((a, b) => a.multipv - b.multipv);
-    this.listener?.({ type: 'line', lines: sortedLines });
+    if (!this.activeProbe) {
+      this.listener?.({ type: 'line', lines: this.sortedLines() });
+    }
+  }
+
+  private sortedLines(): EngineLine[] {
+    return [...this.lines.values()].sort((a, b) => a.multipv - b.multipv);
+  }
+
+  private cancelProbes(): void {
+    this.pendingAnalyze?.resolve?.(null);
+    this.activeProbe?.(null);
+    this.activeProbe = null;
   }
 
   private startPendingAnalyze(): void {
@@ -129,15 +181,16 @@ export class StockfishService {
       return;
     }
 
-    const { fen, depth, multiPv, skillLevel } = this.pendingAnalyze;
+    const { fen, depth, multiPv, skillLevel, searchMoves, resolve } = this.pendingAnalyze;
     this.pendingAnalyze = null;
     this.whitePerspectiveFactor = this.getWhitePerspectiveFactor(fen);
+    this.activeProbe = resolve ?? null;
     this.isSearchRunning = true;
 
     this.engine.postMessage(`setoption name MultiPV value ${multiPv}`);
     this.engine.postMessage(`setoption name Skill Level value ${skillLevel}`);
     this.engine.postMessage(`position fen ${fen}`);
-    this.engine.postMessage(`go depth ${depth}`);
+    this.engine.postMessage(`go depth ${depth}${searchMoves?.length ? ` searchmoves ${searchMoves.join(' ')}` : ''}`);
   }
 
   private parseLine(message: string): EngineLine | null {

@@ -70,6 +70,27 @@
       </div>
     </section>
 
+    <section class="settings-group" aria-labelledby="training-heading">
+      <h2 id="training-heading" class="group-title">Mosse e puzzle</h2>
+      <div class="ui-card group-card">
+        <label class="ui-row" for="auto-queen">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Promozione automatica a donna</span>
+            <span class="ui-row-sub">In analisi. Nei puzzle il pezzo viene sempre chiesto</span>
+          </span>
+          <input id="auto-queen" type="checkbox" class="ui-switch" [checked]="settings().autoQueen" (change)="onToggleChange('autoQueen', $event)" />
+        </label>
+
+        <label class="ui-row" for="puzzle-engine-check">
+          <span class="ui-row-copy">
+            <span class="ui-row-title">Verifica alternative con l'engine</span>
+            <span class="ui-row-sub">Nei puzzle, una mossa diversa ma equivalente non conta come errore</span>
+          </span>
+          <input id="puzzle-engine-check" type="checkbox" class="ui-switch" [checked]="settings().puzzleEngineCheck" (change)="onToggleChange('puzzleEngineCheck', $event)" />
+        </label>
+      </div>
+    </section>
+
     <section class="settings-group" aria-labelledby="data-heading">
       <h2 id="data-heading" class="group-title">Dati e backup</h2>
       <div class="ui-card group-card">

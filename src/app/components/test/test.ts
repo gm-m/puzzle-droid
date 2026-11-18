@@ -50,6 +50,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly STARTING_FEN = new Chess().fen();
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
+  private static readonly PUZZLE_ENGINE_CHECK_DEPTH = 12;
+  private static readonly PUZZLE_ALTERNATIVE_TOLERANCE_CP = 50;
   private static readonly DAY_MS = 24 * 60 * 60 * 1000;
   private static readonly POSITION_BOOKMARKS_STORAGE_KEY = 'puzzle-droid-position-bookmarks-v1';
   private static readonly WOODPECKER_MAX_CYCLES = 7;
@@ -915,7 +917,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const playedMove = this.chess.move({ from: move.from, to: move.to, promotion: 'q' });
+    const playedMove = this.chess.move({ from: move.from, to: move.to, promotion: move.promotion ?? 'q' });
 
     if (!playedMove) {
       this.syncGameState();
@@ -1766,17 +1768,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
     const tacticalTheme = this.detectTacticalTheme(expectedUci);
 
-    if (move.from !== expectedMove.from || move.to !== expectedMove.to) {
-      this.handlePuzzleIncorrectAttempt(location, expectedUci, tacticalTheme, 'Mossa sbagliata, riprova.');
-      this.syncGameState();
+    if (move.from !== expectedMove.from || move.to !== expectedMove.to || move.promotion !== expectedMove.promotion) {
+      this.handleAlternativePuzzleMove(move, expectedUci, location, tacticalTheme);
       return;
     }
 
-    const result = this.chess.move({
-      from: move.from,
-      to: move.to,
-      promotion: expectedMove.promotion ?? 'q',
-    });
+    const result = this.chess.move(expectedMove);
     if (!result) {
       this.handlePuzzleIncorrectAttempt(location, expectedUci, tacticalTheme, 'Mossa non valida in questa posizione.');
       this.syncGameState();
@@ -1795,6 +1792,111 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.schedulePuzzleAutoMove(newCursor, 'Corretto. Mossa avversaria in arrivo...');
+  }
+
+  /**
+   * A move different from the PGN line: a checkmate always solves the puzzle; otherwise, if enabled,
+   * Stockfish decides whether it is as good as the solution (not counted as a mistake) or wrong.
+   */
+  private handleAlternativePuzzleMove(
+    move: BoardMove,
+    expectedUci: string,
+    location: { item: PgnLibraryItem; gameIndex: number } | null,
+    theme: TacticalTheme,
+  ): void {
+    const probe = new Chess(this.chess.fen());
+    let played: ChessMove | null = null;
+    try {
+      played = probe.move({ from: move.from, to: move.to, promotion: move.promotion });
+    } catch {
+      played = null;
+    }
+
+    if (!played) {
+      this.handlePuzzleIncorrectAttempt(location, expectedUci, theme, 'Mossa non valida in questa posizione.');
+      this.syncGameState();
+      return;
+    }
+
+    const playedUci = this.toUci(played.from as Key, played.to as Key, played.promotion);
+    if (probe.isCheckmate()) {
+      this.chess.move(played.san);
+      this.boardLastMove.set([played.from as Key, played.to as Key]);
+      const cursor = this.moveCursor();
+      this.moveHistory.set([...this.moveHistory().slice(0, cursor), playedUci]);
+      this.moveCursor.set(cursor + 1);
+      this.puzzleReplayLimit.set(cursor + 1);
+      this.syncGameState();
+      this.showToast('Scacco matto con una mossa alternativa: accettata!', 'success');
+      this.handlePuzzleSolved(playedUci, 'Scacco');
+      return;
+    }
+
+    if (!this.settings().puzzleEngineCheck) {
+      this.handlePuzzleIncorrectAttempt(location, expectedUci, theme, 'Mossa sbagliata, riprova.');
+      this.syncGameState();
+      return;
+    }
+
+    void this.verifyAlternativePuzzleMove(playedUci, expectedUci, location, theme);
+  }
+
+  private async verifyAlternativePuzzleMove(
+    playedUci: string,
+    expectedUci: string,
+    location: { item: PgnLibraryItem; gameIndex: number } | null,
+    theme: TacticalTheme,
+  ): Promise<void> {
+    const fen = this.chess.fen();
+    const cursor = this.moveCursor();
+    const selection = this.currentLibrarySelection;
+    this.isPuzzleAutoPlaying.set(true);
+    this.puzzleMessage.set('Mossa diversa dalla soluzione: la verifico con l’engine…');
+
+    const lines = await this.stockfish.evaluateMoves(
+      fen,
+      [expectedUci, playedUci],
+      ChessWorkspaceComponent.PUZZLE_ENGINE_CHECK_DEPTH,
+    );
+    const isStale =
+      this.chess.fen() !== fen ||
+      this.moveCursor() !== cursor ||
+      this.currentLibrarySelection !== selection ||
+      !this.isPuzzleActive();
+    if (isStale) {
+      return;
+    }
+
+    this.isPuzzleAutoPlaying.set(false);
+    const sideFactor = this.chess.turn() === 'w' ? 1 : -1;
+    const scoreOf = (uci: string): number | null => {
+      const line = lines?.find((entry) => entry.pv[0] === uci);
+      return line ? this.scoreToCentipawns(line.score) * sideFactor : null;
+    };
+    const expectedScore = scoreOf(expectedUci);
+    const playedScore = scoreOf(playedUci);
+
+    if (
+      expectedScore !== null &&
+      playedScore !== null &&
+      playedScore >= expectedScore - ChessWorkspaceComponent.PUZZLE_ALTERNATIVE_TOLERANCE_CP
+    ) {
+      this.syncGameState();
+      this.puzzleMessage.set('Buona mossa: per l’engine vale quanto la soluzione, ma il puzzle segue un’altra linea. Riprova.');
+      return;
+    }
+
+    this.handlePuzzleIncorrectAttempt(location, expectedUci, theme, 'Mossa sbagliata, riprova.');
+    this.syncGameState();
+  }
+
+  /** Mates map beyond any centipawn score, shorter mates scoring higher. */
+  private scoreToCentipawns(score: EngineScore): number {
+    if (score.type === 'cp') {
+      return score.value;
+    }
+
+    return score.value > 0 ? 100000 - score.value : -100000 - score.value;
   }
 
   revealBlindfoldPieces(): void {

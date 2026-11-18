@@ -2,6 +2,7 @@ import { ActivatedRoute, convertToParamMap, type ParamMap, Router } from '@angul
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
+import { Chess } from 'chess.js';
 
 import { ChessWorkspaceComponent } from './test';
 import type { LibraryGameSelection } from '../library-panel/library-panel';
@@ -16,28 +17,35 @@ describe('ChessWorkspaceComponent', () => {
   let component: ChessWorkspaceComponent;
   let fixture: ComponentFixture<ChessWorkspaceComponent>;
   let routerNavigateSpy: jasmine.Spy;
+  let evaluateMovesSpy: jasmine.Spy;
+  let settingsValue: Record<string, unknown>;
 
   beforeEach(async () => {
     const routeParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({ view: 'analysis' }));
     const routeQueryParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({}));
 
-    const stockfishMock: Pick<StockfishService, 'setListener' | 'init' | 'analyze' | 'stop' | 'destroy'> = {
+    evaluateMovesSpy = jasmine.createSpy('evaluateMoves').and.resolveTo(null);
+    const stockfishMock: Pick<StockfishService, 'setListener' | 'init' | 'analyze' | 'stop' | 'destroy' | 'evaluateMoves'> = {
       setListener: jasmine.createSpy('setListener'),
       init: jasmine.createSpy('init'),
       analyze: jasmine.createSpy('analyze').and.returnValue(true),
       stop: jasmine.createSpy('stop'),
       destroy: jasmine.createSpy('destroy'),
+      evaluateMoves: evaluateMovesSpy,
     };
 
+    settingsValue = {
+      boardTheme: 'brown',
+      pieceSet: 'cburnett',
+      is3d: false,
+      showCoordinates: true,
+      highlightLastMove: true,
+      darkMode: false,
+      autoQueen: false,
+      puzzleEngineCheck: false,
+    };
     const settingsMock = {
-      settings: () => ({
-        boardTheme: 'brown',
-        pieceSet: 'cburnett',
-        is3d: false,
-        showCoordinates: true,
-        highlightLastMove: true,
-        darkMode: false,
-      }),
+      settings: () => settingsValue,
     };
 
     const analyticsMock = {
@@ -245,6 +253,94 @@ describe('ChessWorkspaceComponent', () => {
 
       expect(component.moveCursor()).toBe(0);
       expect(component.boardOrientation()).toBe('white');
+    });
+  });
+
+  describe('puzzle move validation', () => {
+    const buildSelection = (initialFen: string, fullUciHistory: string[]): LibraryGameSelection => ({
+      itemId: 'pgn-1',
+      gameId: 'pgn-1-g1',
+      gameTitle: 'Partita 1',
+      mode: 'puzzle',
+      initialFen,
+      fullUciHistory,
+      positions: [],
+      autoPlayFirstMove: false,
+      autoAdvanceOnSuccess: false,
+      autoRotateBoardOnTurn: false,
+      woodpeckerEnabled: false,
+      blindfoldEnabled: false,
+      blindfoldObservationSeconds: 2,
+      blindfoldShowAfterAutoMove: false,
+    });
+
+    it('should require the promotion piece of the solution', () => {
+      component.onLibraryGameSelected(buildSelection('8/4P3/8/8/8/8/k7/4K3 w - - 0 1', ['e7e8n']));
+
+      component.onBoardMove({ from: 'e7', to: 'e8', promotion: 'q' });
+      expect(component.moveCursor()).toBe(0);
+      expect(component.puzzleMessage()).toBe('Mossa sbagliata, riprova.');
+
+      component.onBoardMove({ from: 'e7', to: 'e8', promotion: 'n' });
+      expect(component.moveCursor()).toBe(1);
+      expect(component.currentFen()).toContain('4N3');
+      expect(component.puzzleMessage()).toBe('Puzzle risolto!');
+    });
+
+    it('should accept an alternative checkmate as the solution', () => {
+      component.onLibraryGameSelected(buildSelection('6k1/5ppp/8/8/8/8/5PPP/R1R3K1 w - - 0 1', ['a1a8']));
+
+      component.onBoardMove({ from: 'c1', to: 'c8' });
+
+      expect(component.moveHistory()).toEqual(['c1c8']);
+      expect(component.moveCursor()).toBe(1);
+      expect(component.puzzleMessage()).toBe('Puzzle risolto!');
+      expect(component.toastMessage()).toContain('mossa alternativa');
+      expect(evaluateMovesSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not ask the engine when the check is disabled', () => {
+      component.onLibraryGameSelected(buildSelection(new Chess().fen(), ['e2e4', 'e7e5']));
+
+      component.onBoardMove({ from: 'd2', to: 'd4' });
+
+      expect(evaluateMovesSpy).not.toHaveBeenCalled();
+      expect(component.puzzleMessage()).toBe('Mossa sbagliata, riprova.');
+    });
+
+    it('should not count an engine-equivalent alternative as a mistake', async () => {
+      settingsValue['puzzleEngineCheck'] = true;
+      evaluateMovesSpy.and.resolveTo([
+        { multipv: 1, depth: 12, score: { type: 'cp', value: 35 }, pv: ['e2e4', 'e7e5'] },
+        { multipv: 2, depth: 12, score: { type: 'cp', value: 30 }, pv: ['d2d4', 'd7d5'] },
+      ]);
+      component.onLibraryGameSelected(buildSelection(new Chess().fen(), ['e2e4', 'e7e5']));
+
+      component.onBoardMove({ from: 'd2', to: 'd4' });
+      expect(component.isPuzzleAutoPlaying()).toBeTrue();
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(evaluateMovesSpy).toHaveBeenCalledWith(new Chess().fen(), ['e2e4', 'd2d4'], 12);
+      expect(component.isPuzzleAutoPlaying()).toBeFalse();
+      expect(component.moveCursor()).toBe(0);
+      expect(component.batchHasMistake()).toBeFalse();
+      expect(component.puzzleMessage()).toContain('Buona mossa');
+    });
+
+    it('should reject an alternative the engine considers clearly worse', async () => {
+      settingsValue['puzzleEngineCheck'] = true;
+      evaluateMovesSpy.and.resolveTo([
+        { multipv: 1, depth: 12, score: { type: 'cp', value: 35 }, pv: ['e2e4'] },
+        { multipv: 2, depth: 12, score: { type: 'cp', value: -150 }, pv: ['f2f3'] },
+      ]);
+      component.onLibraryGameSelected(buildSelection(new Chess().fen(), ['e2e4', 'e7e5']));
+
+      component.onBoardMove({ from: 'f2', to: 'f3' });
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(component.moveCursor()).toBe(0);
+      expect(component.batchHasMistake()).toBeTrue();
+      expect(component.puzzleMessage()).toBe('Mossa sbagliata, riprova.');
     });
   });
 

@@ -9,3 +9,26 @@
 <p id="board-position-description" class="sr-only" aria-live="polite" aria-atomic="true">
   {{ boardPositionDescription() }}
 </p>
+
+@if (pendingPromotion(); as pending) {
+  <div class="promotion-overlay" (keydown.escape)="cancelPromotion()">
+    <button type="button" class="promotion-backdrop" aria-label="Annulla promozione" (click)="cancelPromotion()"></button>
+    <div class="promotion-dialog" role="dialog" aria-modal="true" aria-label="Scegli il pezzo di promozione">
+      <p class="promotion-title">Promuovi a</p>
+      <div class="promotion-choices cg-wrap" [ngClass]="'pieces-' + pieceSet">
+        @for (choice of promotionChoices; track choice.piece; let first = $first) {
+          <button
+            type="button"
+            class="promotion-choice"
+            [attr.aria-label]="choice.label"
+            [title]="choice.label"
+            [attr.autofocus]="first ? '' : null"
+            (click)="choosePromotion(choice.piece)"
+          >
+            <piece [ngClass]="[choice.role, pending.color]"></piece>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

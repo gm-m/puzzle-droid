@@ -56,6 +56,10 @@ export class SettingsPanelComponent {
     this.updateSetting('highlightLastMove', checked);
   }
 
+  onToggleChange(key: 'autoQueen' | 'puzzleEngineCheck', event: Event): void {
+    this.updateSetting(key, (event.target as HTMLInputElement).checked);
+  }
+
   openResetConfirmation(): void {
     this.isResetConfirmationOpen = true;
   }

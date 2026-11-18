@@ -5,7 +5,10 @@ export interface AppSettings {
   darkMode: boolean;
   showCoordinates: boolean;
   highlightLastMove: boolean;
-  autoQueen: boolean; // Just as a placeholder for professional feel
+  /** Promote straight to a queen in analysis; puzzles always ask, so underpromotions stay solvable. */
+  autoQueen: boolean;
+  /** In puzzles, ask Stockfish whether a move different from the solution is just as good. */
+  puzzleEngineCheck: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -16,4 +19,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showCoordinates: true,
   highlightLastMove: true,
   autoQueen: false,
+  puzzleEngineCheck: false,
 };
