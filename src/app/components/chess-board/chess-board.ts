@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
   Output,
@@ -125,6 +126,15 @@ export class ChessBoardComponent implements AfterViewInit, OnChanges {
 
     this.pendingPromotion.set(null);
     this.moved.emit({ from: pending.from, to: pending.to, promotion: piece });
+  }
+
+  /** Escape (and the Android back button, which dispatches it) closes the promotion picker. */
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.pendingPromotion()) {
+      event.preventDefault();
+      this.cancelPromotion();
+    }
   }
 
   cancelPromotion(): void {

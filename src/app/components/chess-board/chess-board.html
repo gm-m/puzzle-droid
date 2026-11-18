@@ -11,7 +11,7 @@
 </p>
 
 @if (pendingPromotion(); as pending) {
-  <div class="promotion-overlay" (keydown.escape)="cancelPromotion()">
+  <div class="promotion-overlay">
     <button type="button" class="promotion-backdrop" aria-label="Annulla promozione" (click)="cancelPromotion()"></button>
     <div class="promotion-dialog" role="dialog" aria-modal="true" aria-label="Scegli il pezzo di promozione">
       <p class="promotion-title">Promuovi a</p>

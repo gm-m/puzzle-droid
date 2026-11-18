@@ -8,7 +8,7 @@ import { AppIconComponent } from '../app-icon/app-icon';
 
 /**
  * Bottom navigation bar shared by every screen.
- * Order: Libreria · Analisi · Woodpecker · Impostazioni.
+ * Order: Libreria · Analisi · Rush · Woodpecker · Impostazioni.
  * On wide screens it docks to the left as a vertical rail.
  */
 @Component({

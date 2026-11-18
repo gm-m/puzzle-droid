@@ -1,0 +1,223 @@
+<main id="main-content" class="rush" [class.is-playing]="phase() === 'playing'" tabindex="-1">
+  @switch (phase()) {
+    @case ('setup') {
+      <header class="rush-head">
+        <p class="ui-kicker">ALLENAMENTO A TEMPO</p>
+        <h1 class="ui-display">Puzzle Rush</h1>
+        <p class="rush-sub">Risolvi più puzzle possibile. Ogni errore costa una vita: al terzo la partita finisce.</p>
+      </header>
+
+      @if (isLoading()) {
+        <app-loading-indicator label="Caricamento delle raccolte" [visibleLabel]="true"></app-loading-indicator>
+      } @else if (playableCollections().length === 0) {
+        <app-empty-state
+          title="Nessuna raccolta di puzzle"
+          description="Puzzle Rush usa le partite che partono da una posizione FEN. Importa un PGN di puzzle (ad esempio un export di Lichess) dalla libreria."
+        >
+          <a class="ui-btn ink" routerLink="/library">Vai alla libreria</a>
+        </app-empty-state>
+      } @else {
+        <section class="rush-group" aria-labelledby="rush-mode-heading">
+          <h2 id="rush-mode-heading" class="group-title">Modalità</h2>
+          <div class="ui-seg" role="radiogroup" aria-labelledby="rush-mode-heading">
+            @for (option of modes; track option.id) {
+              <button
+                type="button"
+                role="radio"
+                [class.active]="mode() === option.id"
+                [attr.aria-checked]="mode() === option.id"
+                [title]="option.description"
+                (click)="selectMode(option.id)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </section>
+
+        <section class="rush-group" aria-labelledby="rush-collection-heading">
+          <h2 id="rush-collection-heading" class="group-title">Raccolta</h2>
+          <div class="ui-card group-card" role="radiogroup" aria-labelledby="rush-collection-heading">
+            @for (collection of playableCollections(); track collection.id) {
+              <button
+                type="button"
+                class="ui-row"
+                role="radio"
+                [class.selected]="selectedCollection()?.id === collection.id"
+                [attr.aria-checked]="selectedCollection()?.id === collection.id"
+                (click)="selectCollection(collection.id)"
+              >
+                <span class="ui-row-copy">
+                  <span class="ui-row-title">{{ collection.name }}</span>
+                  <span class="ui-row-sub">
+                    {{ collection.puzzles.length }} puzzle
+                    @if (bestFor(collection.id); as best) {
+                      · record {{ best.score }}
+                    }
+                  </span>
+                </span>
+                <span class="ui-row-trail">
+                  @if (selectedCollection()?.id === collection.id) {
+                    <app-icon name="check"></app-icon>
+                  }
+                </span>
+              </button>
+            }
+          </div>
+        </section>
+
+        <section class="rush-group">
+          <div class="ui-card group-card">
+            <label class="ui-row" for="rush-opponent-first">
+              <span class="ui-row-copy">
+                <span class="ui-row-title">La prima mossa è dell'avversario</span>
+                <span class="ui-row-sub">Per i puzzle in formato Lichess</span>
+              </span>
+              <input
+                id="rush-opponent-first"
+                type="checkbox"
+                class="ui-switch"
+                [checked]="opponentMovesFirst()"
+                (change)="onOpponentMovesFirstChange($event)"
+              />
+            </label>
+          </div>
+        </section>
+
+        <div class="rush-cta">
+          <p class="rush-best">
+            @if (selectedBest(); as best) {
+              Record in questa modalità: <strong>{{ best.score }}</strong>
+            } @else {
+              Nessun record ancora in questa modalità
+            }
+          </p>
+          <button type="button" class="ui-btn accent rush-start" (click)="start()">
+            <app-icon name="play"></app-icon>
+            Inizia
+          </button>
+        </div>
+      }
+    }
+
+    @case ('playing') {
+      <header class="rush-hud" aria-label="Stato della partita">
+        <div class="hud-stat">
+          <span class="ui-kicker">PUNTI</span>
+          <strong class="hud-score" aria-live="polite">{{ score() }}</strong>
+        </div>
+        <div class="hud-stat hud-clock" [class.low]="isLowTime()">
+          <span class="ui-kicker">{{ remainingMs() === null ? 'TEMPO' : 'RIMASTO' }}</span>
+          <strong>{{ formatClock(remainingMs() ?? elapsedMs()) }}</strong>
+        </div>
+        <div class="hud-stat">
+          <span class="ui-kicker">VITE</span>
+          <span class="hud-lives" [attr.aria-label]="'Errori: ' + strikes()">
+            @for (slot of maxStrikesSlots(); track slot) {
+              <i [class.lost]="slot < strikes()"></i>
+            }
+          </span>
+        </div>
+        <button type="button" class="ui-icon-btn" aria-label="Termina la partita" title="Termina" (click)="stop()">
+          <app-icon name="close"></app-icon>
+        </button>
+      </header>
+
+      @if (remainingMs() !== null) {
+        <div class="hud-timebar" [class.low]="isLowTime()" aria-hidden="true">
+          <span [style.width.%]="timeProgressPercent()"></span>
+        </div>
+      }
+
+      <section class="rush-board" [class.flash-good]="feedback()?.tone === 'good'" [class.flash-bad]="feedback()?.tone === 'bad'">
+        <app-chess-board
+          [fen]="fen()"
+          [turnColor]="turnColor()"
+          [legalDests]="legalDests()"
+          [orientation]="orientation()"
+          [lastMove]="lastMove()"
+          [showCoordinates]="settings().showCoordinates"
+          [boardTheme]="settings().boardTheme"
+          [pieceSet]="settings().pieceSet"
+          [is3d]="settings().is3d"
+          [highlightLastMove]="settings().highlightLastMove"
+          (moved)="onBoardMove($event)"
+        ></app-chess-board>
+      </section>
+
+      <p class="rush-status" role="status" aria-live="polite" [class.good]="feedback()?.tone === 'good'" [class.bad]="feedback()?.tone === 'bad'">
+        @if (feedback(); as message) {
+          {{ message.text }}
+        } @else {
+          Puzzle {{ puzzleNumber() }} · Muove il {{ orientation() === 'white' ? 'Bianco' : 'Nero' }}
+        }
+      </p>
+    }
+
+    @case ('finished') {
+      @if (summary(); as result) {
+        <header class="rush-head">
+          <p class="ui-kicker">{{ endReasonLabel(result.endReason).toUpperCase() }}</p>
+          <h1 class="ui-display">Partita finita</h1>
+        </header>
+
+        <article class="rush-result-hero" [class.record]="result.isNewBest">
+          <p class="ui-kicker">PUNTEGGIO</p>
+          <strong class="result-score">{{ result.score }}</strong>
+          @if (result.isNewBest) {
+            <span class="ui-chip good">Nuovo record!</span>
+          } @else if (result.previousBest) {
+            <span class="ui-chip">Record: {{ result.previousBest.score }}</span>
+          }
+        </article>
+
+        <section class="rush-kpis">
+          <div class="ui-card kpi">
+            <span class="ui-kicker">RISOLTI</span>
+            <strong>{{ result.score }}</strong>
+          </div>
+          <div class="ui-card kpi">
+            <span class="ui-kicker">ERRORI</span>
+            <strong>{{ result.mistakes }}</strong>
+          </div>
+          <div class="ui-card kpi">
+            <span class="ui-kicker">MEDIA</span>
+            <strong>{{ result.averageSolveMs > 0 ? formatSeconds(result.averageSolveMs) : '–' }}</strong>
+          </div>
+        </section>
+
+        @if (result.results.length > 0) {
+          <section class="rush-group" aria-labelledby="rush-results-heading">
+            <h2 id="rush-results-heading" class="group-title">Puzzle giocati</h2>
+            <ol class="ui-card group-card rush-results">
+              @for (entry of result.results; track $index) {
+                <li class="ui-row static" [class.failed]="!entry.solved">
+                  <span class="result-mark" [attr.aria-label]="entry.solved ? 'Risolto' : 'Sbagliato'">
+                    <app-icon [name]="entry.solved ? 'check' : 'close'"></app-icon>
+                  </span>
+                  <span class="ui-row-copy">
+                    <span class="ui-row-title">{{ entry.title }}</span>
+                    <span class="ui-row-sub">
+                      #{{ entry.gameIndex + 1 }} · {{ formatSeconds(entry.elapsedMs) }}
+                      @if (entry.expectedSan) {
+                        · soluzione {{ entry.expectedSan }}
+                      }
+                    </span>
+                  </span>
+                </li>
+              }
+            </ol>
+          </section>
+        }
+
+        <div class="rush-cta">
+          <button type="button" class="ui-btn accent rush-start" (click)="start()">
+            <app-icon name="play"></app-icon>
+            Gioca ancora
+          </button>
+          <button type="button" class="ui-btn subtle" (click)="backToSetup()">Cambia impostazioni</button>
+        </div>
+      }
+    }
+  }
+</main>

@@ -36,7 +36,8 @@ export type AppIconName =
   | 'sun'
   | 'moon'
   | 'edit'
-  | 'check';
+  | 'check'
+  | 'bolt';
 
 @Component({
   selector: 'app-icon',

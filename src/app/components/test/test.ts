@@ -23,7 +23,8 @@ import { AppIconComponent } from '../ui/app-icon/app-icon';
 import { AppToastComponent } from '../ui/app-toast/app-toast';
 import { SettingsService } from '../../services/settings.service';
 import type { EngineLine, EngineScore, StockfishEvent } from '../../models/engine.models';
-import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PgnLibraryPosition, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
+import type { LibraryMode, PgnLibraryGame, PgnLibraryItem, PuzzleBatchConfig, PuzzlePlayerColor } from '../../models/library.models';
+import { FAMOUS_TACTICS_ASSETS, STARTING_FEN, famousTacticsItemId, formatAssetPgnName, pgnParser } from '../../utils/pgn-parser';
 import type { TacticalTheme, WoodpeckerPuzzleStats, WoodpeckerSession } from '../../models/woodpecker.models';
 
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
@@ -47,7 +48,7 @@ type AppView = 'analysis' | 'library' | 'settings';
   styleUrl: './test.scss',
 })
 export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy {
-  private static readonly STARTING_FEN = new Chess().fen();
+  private static readonly STARTING_FEN = STARTING_FEN;
   private static readonly PUZZLE_AUTO_MOVE_DELAY_MS = 700;
   private static readonly PUZZLE_AUTO_NEXT_GAME_DELAY_MS = 700;
   private static readonly PUZZLE_ENGINE_CHECK_DEPTH = 12;
@@ -58,7 +59,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly WOODPECKER_INITIAL_TARGET_DAYS = 28;
   private static readonly WOODPECKER_STORAGE_KEY = 'puzzle-droid-woodpecker-sessions-v1';
   private static readonly PUZZLE_PLAYER_COLORS_STORAGE_KEY = 'puzzle-droid-puzzle-player-colors-v1';
-  private static readonly FAMOUS_TACTICS_ASSETS = ['tattiche-vol-1.pgn'];
 
   readonly activeView = signal<AppView>('analysis');
 
@@ -530,7 +530,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
             existingByContent.set(pgn.trim(), file.name);
 
             const itemId = `${uploadId}-${index}-${file.name}`;
-            const games = this.parsePgnGames(pgn, itemId).filter((game) => game.positions.length > 1);
+            const games = pgnParser.parsePgnGames(pgn, itemId).filter((game) => game.positions.length > 1);
             const firstGame = games[0];
             if (!firstGame) {
               return {
@@ -1121,7 +1121,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       return;
     }
 
-    const game = this.parsePgnGames(pgn, 'analysis-import')[0];
+    const game = pgnParser.parsePgnGames(pgn, 'analysis-import')[0];
     if (!game) {
       this.pgnFeedback.set('PGN non valido o senza mosse.');
       return;
@@ -2818,7 +2818,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         .map((entry, index) => this.normalizePersistedLibraryItem(entry, index))
         .filter((item): item is PersistedLibraryItem => item !== null)
         .map((item) => {
-          const games = this.parsePgnGames(item.pgn, item.id);
+          const games = pgnParser.parsePgnGames(item.pgn, item.id);
           const firstGame = games[0];
 
           return {
@@ -2848,20 +2848,20 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private async loadFamousTacticsItems(): Promise<void> {
     const items = await Promise.all(
-      ChessWorkspaceComponent.FAMOUS_TACTICS_ASSETS.map(async (assetName) => {
+      FAMOUS_TACTICS_ASSETS.map(async (assetName) => {
         const response = await fetch(`assets/pgn/${assetName}`).catch(() => null);
         if (!response?.ok) {
           return null;
         }
 
         const pgn = await response.text();
-        const itemId = `famous-tactics-${assetName}`;
-        const games = this.parsePgnGames(pgn, itemId);
+        const itemId = famousTacticsItemId(assetName);
+        const games = pgnParser.parsePgnGames(pgn, itemId);
         const firstGame = games[0];
 
         return {
           id: itemId,
-          name: this.formatAssetPgnName(assetName),
+          name: formatAssetPgnName(assetName),
           pgn,
           mode: 'puzzle',
           woodpeckerInitialTargetDays: ChessWorkspaceComponent.WOODPECKER_INITIAL_TARGET_DAYS,
@@ -2883,15 +2883,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private findLibraryItemById(itemId: string): PgnLibraryItem | null {
     return this.allLibraryItems().find((item) => item.id === itemId) ?? null;
-  }
-
-  private formatAssetPgnName(assetName: string): string {
-    const withoutExtension = assetName.replace(/\.pgn$/i, '');
-    return withoutExtension
-      .split(/[-_\s]+/)
-      .filter((part) => part.length > 0)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
   }
 
   private loadPositionBookmarks(): void {
@@ -3417,228 +3408,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     return sanMoves;
   }
 
-  private parsePgnGames(pgn: string, itemId: string): PgnLibraryGame[] {
-    const gameBlocks = this.splitPgnIntoGames(pgn);
-
-    return gameBlocks
-      .map((block, index) => this.parseSinglePgnGame(block, itemId, index))
-      .filter((game): game is PgnLibraryGame => game !== null);
-  }
-
-  private splitPgnIntoGames(pgn: string): string[] {
-    const normalized = pgn.replace(/\r\n?/g, '\n').trim();
-    if (!normalized) {
-      return [];
-    }
-
-    const lines = normalized.split('\n');
-    const games: string[] = [];
-
-    let currentGame: string[] = [];
-    let hasMovetext = false;
-    let hasHeader = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const isHeaderLine = /^\[[^\]]+\]$/.test(trimmed);
-
-      if (isHeaderLine && hasHeader && hasMovetext && currentGame.length > 0) {
-        const gameText = currentGame.join('\n').trim();
-        if (gameText) {
-          games.push(gameText);
-        }
-
-        currentGame = [line];
-        hasMovetext = false;
-        hasHeader = true;
-        continue;
-      }
-
-      if (isHeaderLine) {
-        hasHeader = true;
-      } else if (trimmed.length > 0 && hasHeader) {
-        hasMovetext = true;
-      }
-
-      currentGame.push(line);
-    }
-
-    const trailingGame = currentGame.join('\n').trim();
-    if (trailingGame) {
-      games.push(trailingGame);
-    }
-
-    return games.length > 0 ? games : [normalized];
-  }
-
-  private parseSinglePgnGame(pgn: string, itemId: string, gameIndex: number): PgnLibraryGame | null {
-    const headers = this.parsePgnHeaders(pgn);
-    const initialFen = this.resolveInitialFen(headers['FEN']);
-
-    // Move parsing is by far the most expensive step (chess.js loadPgn): defer it until the game's
-    // positions are actually needed, so loading a large library only costs a header scan.
-    let resolved: { positions: PgnLibraryPosition[]; uciMoves: string[] } | null = null;
-    const resolve = () => {
-      if (!resolved) {
-        const { moves, commentByFen } = this.loadPgnWithFallback(pgn);
-        const leadingComment = this.extractLeadingPgnComment(pgn);
-        if (!commentByFen.has(initialFen) && leadingComment) {
-          commentByFen.set(initialFen, leadingComment);
-        }
-        resolved = this.buildPositionsFromMoves(moves, initialFen, itemId, gameIndex, commentByFen);
-      }
-      return resolved;
-    };
-
-    return {
-      id: `${itemId}-g${gameIndex + 1}`,
-      event: headers['Event'],
-      white: headers['White'],
-      black: headers['Black'],
-      result: headers['Result'],
-      initialFen,
-      plyCount: this.countMainlinePlies(pgn),
-      get uciMoves() {
-        return resolve().uciMoves;
-      },
-      get positions() {
-        return resolve().positions;
-      },
-    };
-  }
-
-  /** Cheap mainline ply count from the movetext, without validating moves. */
-  private countMainlinePlies(pgn: string): number {
-    let movetext = pgn
-      .replace(/\r\n?/g, '\n')
-      .split('\n')
-      .filter((line) => !/^\s*\[[^\]]*\]\s*$/.test(line) && !line.trimStart().startsWith('%'))
-      .join(' ')
-      .replace(/\{[^}]*\}/g, ' ')
-      .replace(/;[^\n]*/g, ' ');
-
-    while (/\([^()]*\)/.test(movetext)) {
-      movetext = movetext.replace(/\([^()]*\)/g, ' ');
-    }
-
-    return movetext
-      .replace(/\$\d+/g, ' ')
-      .replace(/\d+\.(\.\.)?/g, ' ')
-      .replace(/(1-0|0-1|1\/2-1\/2|\*)\s*$/, ' ')
-      .split(/\s+/)
-      .filter((token) => /^[a-hKQRBNO0]/.test(token)).length;
-  }
-
-  /**
-   * Parses the PGN once with chess.js and extracts both the mainline and the comments from the same
-   * instance. Falls back to a sanitized copy (comments/variations stripped) only if the original fails.
-   */
-  private loadPgnWithFallback(pgn: string): { moves: ChessMove[]; commentByFen: Map<string, string> } {
-    const chess = new Chess();
-
-    try {
-      chess.loadPgn(pgn, { strict: false });
-      const commentByFen = new Map<string, string>();
-      for (const entry of chess.getComments()) {
-        const comment = entry.comment.trim();
-        if (comment.length > 0) {
-          commentByFen.set(entry.fen, comment);
-        }
-      }
-      return { moves: chess.history({ verbose: true }), commentByFen };
-    } catch {
-      // Try the sanitized fallback below.
-    }
-
-    const sanitized = this.sanitizePgnForParser(pgn);
-    if (sanitized && sanitized !== pgn) {
-      try {
-        chess.loadPgn(sanitized, { strict: false });
-        return { moves: chess.history({ verbose: true }), commentByFen: new Map() };
-      } catch {
-        // Unparseable PGN: keep only the initial position.
-      }
-    }
-
-    return { moves: [], commentByFen: new Map() };
-  }
-
-  private sanitizePgnForParser(pgn: string): string {
-    const normalized = pgn.replace(/\r\n?/g, '\n');
-    const lines = normalized.split('\n');
-
-    const headerLines = lines.filter((line) => /^\[[^\]]+\]$/.test(line.trim()));
-    const movetextLines = lines.filter((line) => !/^\[[^\]]+\]$/.test(line.trim()));
-
-    let movetext = movetextLines.join(' ');
-    movetext = movetext.replace(/\{[^}]*\}/g, ' ');
-
-    while (/\([^()]*\)/.test(movetext)) {
-      movetext = movetext.replace(/\([^()]*\)/g, ' ');
-    }
-
-    movetext = movetext.replace(/\$\d+/g, ' ');
-    movetext = movetext.replace(/[\u2000-\u206F\u2E00-\u2E7F]/g, ' ');
-    movetext = movetext.replace(/[^\x20-\x7E]/g, ' ');
-    movetext = movetext.replace(/\s+/g, ' ').trim();
-
-    const headerBlock = headerLines.join('\n').trim();
-    if (!movetext) {
-      return headerBlock;
-    }
-
-    return `${headerBlock}\n\n${movetext}`.trim();
-  }
-
-  private buildPositionsFromMoves(
-    moves: ChessMove[],
-    initialFen: string,
-    itemId: string,
-    gameIndex: number,
-    commentByFen: Map<string, string>,
-  ): { positions: PgnLibraryPosition[]; uciMoves: string[] } {
-    // chess.js loads the PGN from its own FEN header; if that differs from the resolved initial
-    // position (e.g. invalid FEN header), the moves don't belong to this start and are discarded.
-    const startsFromInitialFen = moves.length === 0 || moves[0].before === initialFen;
-    const mainline = startsFromInitialFen ? moves : [];
-
-    const positions: PgnLibraryPosition[] = [
-      {
-        id: `${itemId}-g${gameIndex + 1}-p0`,
-        ply: 0,
-        moveNumber: 1,
-        turn: initialFen.split(' ')[1] === 'b' ? 'black' : 'white',
-        san: '',
-        label: 'Inizio partita',
-        fen: initialFen,
-        comment: commentByFen.get(initialFen),
-      },
-    ];
-    const uciMoves: string[] = [];
-
-    for (let index = 0; index < mainline.length; index += 1) {
-      const move = mainline[index];
-      uciMoves.push(this.toUci(move.from as Key, move.to as Key, move.promotion));
-
-      const turn = move.color === 'w' ? 'white' : 'black';
-      const moveNumber = Math.floor(index / 2) + 1;
-      const label = `${moveNumber}${turn === 'white' ? '.' : '...'} ${move.san}`;
-
-      positions.push({
-        id: `${itemId}-g${gameIndex + 1}-p${index + 1}`,
-        ply: index + 1,
-        moveNumber,
-        turn,
-        san: move.san,
-        label,
-        fen: move.after,
-        comment: commentByFen.get(move.after),
-      });
-    }
-
-    return { positions, uciMoves };
-  }
-
   private syncCurrentPgnComment(): void {
     const selection = this.currentLibrarySelection;
     if (!selection) {
@@ -3651,41 +3420,6 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       selection.positions[cursor]?.ply === cursor ? selection.positions[cursor] : selection.positions.find((position) => position.ply === cursor);
     const nextComment = currentPosition?.comment?.trim() ?? '';
     this.currentPgnComment.set(nextComment);
-  }
-
-  private extractLeadingPgnComment(pgn: string): string {
-    const normalized = pgn.replace(/\r\n?/g, '\n');
-    const withoutHeaders = normalized.replace(/^(\s*\[[^\]]+\]\s*)+/m, '').trimStart();
-    const match = withoutHeaders.match(/^\{([\s\S]*?)\}/);
-    return match?.[1]?.trim() ?? '';
-  }
-
-  private resolveInitialFen(fenHeader?: string): string {
-    if (!fenHeader || fenHeader.trim().length === 0) {
-      return ChessWorkspaceComponent.STARTING_FEN;
-    }
-
-    const candidate = fenHeader.trim();
-    const chess = new Chess();
-    try {
-      chess.load(candidate);
-      return chess.fen();
-    } catch {
-      return ChessWorkspaceComponent.STARTING_FEN;
-    }
-  }
-
-  private parsePgnHeaders(pgn: string): Record<string, string> {
-    const headers: Record<string, string> = {};
-    const headerRegex = /^\[(\w+)\s+"([^"]*)"\]$/gm;
-
-    let match = headerRegex.exec(pgn);
-    while (match) {
-      headers[match[1]] = match[2];
-      match = headerRegex.exec(pgn);
-    }
-
-    return headers;
   }
 
   private formatScore(score: EngineScore): string {

@@ -8,6 +8,10 @@
       <app-icon name="board"></app-icon>
       <span>Analisi</span>
     </a>
+    <a class="tab" [class.active]="isActive('/rush')" routerLink="/rush" (click)="onTabTap()">
+      <app-icon name="bolt"></app-icon>
+      <span>Rush</span>
+    </a>
     <a class="tab" [class.active]="isActive('/woodpecker-dashboard')" [routerLink]="woodpeckerLink()" (click)="onTabTap()">
       <app-icon name="chart"></app-icon>
       <span>Woodpecker</span>
