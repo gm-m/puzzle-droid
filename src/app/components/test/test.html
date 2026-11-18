@@ -23,9 +23,13 @@
     </div>
 
     @if (showWoodpeckerInfo()) {
-      <div class="puzzle-progress" role="progressbar" aria-label="Progresso del ciclo Woodpecker"
-        [attr.aria-valuenow]="woodpeckerProgressPercent()" [attr.aria-valuetext]="woodpeckerProgressLabel()">
-        <span [style.width.%]="woodpeckerProgressPercent()" [class.started]="woodpeckerSession()?.solvedIndexes?.length"></span>
+      @let progress = woodpeckerProgressPercent();
+      <div class="puzzle-progress">
+        <div class="puzzle-progress-track" role="progressbar" aria-label="Progresso del ciclo Woodpecker"
+          [attr.aria-valuenow]="progress" [attr.aria-valuetext]="woodpeckerProgressLabel()">
+          <span [style.width.%]="progress" [class.started]="woodpeckerSession()?.solvedIndexes?.length"></span>
+        </div>
+        <span class="puzzle-progress-value" aria-hidden="true">{{ progress }}%</span>
       </div>
     }
 
@@ -111,7 +115,6 @@
           [woodpeckerTargetLabel]="woodpeckerTargetLabel()"
           [woodpeckerDayLabel]="woodpeckerDayLabel()"
           [woodpeckerCalendarLabel]="woodpeckerCalendarLabel()"
-          [woodpeckerProgressPercent]="woodpeckerProgressPercent()"
           [showBatchDrillInfo]="isBatchDrillActive()"
           [batchDrillProgressLabel]="batchDrillProgressLabel()"
           [showPuzzlePlayerColor]="showPuzzlePlayerColorControl()"
@@ -154,7 +157,7 @@
           (puzzlePlayerColorChanged)="onPuzzlePlayerColorChanged($event)"
         ></app-analysis-panel>
 
-        <section class="board-section">
+        <section class="board-section" [class.reserve-eval-space]="isPuzzleMode() && showEvalBar() && isEngineHidden()">
           <app-eval-bar [score]="primaryScore()" [hidden]="!showEvalBar() || isEngineHidden()"></app-eval-bar>
 
           <app-chess-board

@@ -285,15 +285,13 @@
 }
 
 .puzzle-status-toolbar,
-.puzzle-status-actions,
-.woodpecker-status-head {
+.puzzle-status-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.puzzle-status-toolbar,
-.woodpecker-status-head {
+.puzzle-status-toolbar {
   justify-content: space-between;
 }
 
@@ -757,16 +755,6 @@ button {
   }
 }
 
-.woodpecker-progress-value {
-  font-size: 0.82rem;
-  letter-spacing: 0.03em;
-}
-
-.woodpecker-progress-value.inline {
-  flex-shrink: 0;
-  font-weight: 700;
-}
-
 .surrender {
   justify-self: start;
   background: var(--danger);
@@ -1181,7 +1169,7 @@ button {
   /* The puzzle status sits above the board here: give it a fixed height so a longer or shorter
      message never pushes the board up or down. Compact grid:
        message (2 lines, full width)
-       actions ........ micro-set / woodpecker %
+       actions ........ micro-set
      Full Woodpecker details stay in the (i) dialog. */
   .puzzle-status {
     grid-template-columns: auto minmax(0, 1fr);
@@ -1190,8 +1178,7 @@ button {
     padding: 8px 10px;
   }
 
-  .puzzle-status-toolbar,
-  .woodpecker-status {
+  .puzzle-status-toolbar {
     display: contents;
   }
 
@@ -1220,14 +1207,13 @@ button {
     }
   }
 
-  .batch-drill-status,
-  .woodpecker-status-head {
+  .batch-drill-status {
     grid-column: 2;
     justify-self: end;
     min-width: 0;
   }
 
-  .woodpecker-summary {
+  .woodpecker-status {
     display: none;
   }
 
@@ -1298,10 +1284,6 @@ button {
   .section-tag {
     padding: 0.22rem 0.5rem;
     font-size: 0.68rem;
-  }
-
-  .woodpecker-progress-value.inline {
-    font-size: 0.76rem;
   }
 
   .history-nav {

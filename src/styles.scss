@@ -40,6 +40,7 @@
   --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   /* Vertical space the floating tab bar needs below page content (updated by JS). */
   --tabbar-space: 110px;
+  --desktop-tabbar-rail-width: 102px;
 
   /* ---------- Legacy tokens mapped to the new theme ---------- */
   --app-bg: var(--bg);

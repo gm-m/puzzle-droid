@@ -31,6 +31,6 @@ export class App {
   }
 
   @HostBinding('style.--tabbar-rail-space') get tabbarRailSpace(): string {
-    return this.shell.tabBarVisible() ? '102px' : '0px';
+    return this.shell.tabBarVisible() ? 'var(--desktop-tabbar-rail-width)' : '0px';
   }
 }

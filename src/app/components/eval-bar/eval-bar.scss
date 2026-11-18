@@ -1,5 +1,5 @@
 .eval-bar {
-  width: 2rem;
+  width: var(--eval-bar-width, 2rem);
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -7,7 +7,7 @@
   transition: width 200ms ease, opacity 200ms ease;
 
   &.is-hidden {
-    width: 0;
+    width: var(--hidden-eval-bar-width, 0px);
     opacity: 0;
     overflow: hidden;
   }

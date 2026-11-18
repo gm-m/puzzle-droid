@@ -158,6 +158,7 @@
 }
 
 .board-section {
+  --eval-bar-width: 2rem;
   grid-area: board;
   display: flex;
   gap: 0.75rem;
@@ -287,6 +288,16 @@ app-library-panel {
     padding-left: calc(clamp(var(--space-3), 2.2vw, 1.8rem) + var(--tabbar-rail-space, 0px));
     padding-bottom: clamp(var(--space-3), 2.2vw, 1.8rem);
   }
+
+  .puzzle-session .poc-shell {
+    // Match the width available in Analysis while keeping the Puzzle workspace centered.
+    width: calc(100% - var(--desktop-tabbar-rail-width));
+    margin-inline: auto;
+  }
+
+  .board-section.reserve-eval-space {
+    --hidden-eval-bar-width: var(--eval-bar-width);
+  }
 }
 
 @media (min-width: 1200px) {
@@ -370,6 +381,13 @@ app-library-panel {
   margin-inline: auto;
 }
 
+.puzzle-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .puzzle-heading {
   display: grid;
   grid-template-columns: minmax(66px, auto) minmax(0, 1fr) minmax(66px, auto);
@@ -418,7 +436,7 @@ app-library-panel {
   }
 }
 
-.puzzle-progress {
+.puzzle-progress-track {
   height: 4px;
   overflow: hidden;
   border-radius: 4px;
@@ -434,6 +452,13 @@ app-library-panel {
   .started {
     min-width: 5px;
   }
+}
+
+.puzzle-progress-value {
+  min-width: 4ch;
+  color: var(--ink-2);
+  font: 700 11px var(--font-mono);
+  text-align: end;
 }
 
 .puzzle-tools,
