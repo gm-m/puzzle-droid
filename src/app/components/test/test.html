@@ -54,11 +54,14 @@
         <p class="topbar-kicker">Vista</p>
         <h1>{{ currentViewTitle() }}</h1>
         <p class="topbar-context">
-          {{ currentLibraryGameTitle() || 'Scacchiera libera' }}
+          {{ isRushReview() ? 'Revisione Puzzle Rush' : currentLibraryGameTitle() || 'Scacchiera libera' }}
         </p>
       </div>
     </div>
     <div class="topbar-tools">
+      @if (isRushReview()) {
+        <button type="button" class="ui-btn subtle" (click)="returnToRush()">Torna al Rush</button>
+      }
       <span class="topbar-turn" [class.black]="turnColor() === 'black'"
         [attr.aria-label]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')"
         [title]="'Al tratto: ' + (turnColor() === 'white' ? 'Bianco' : 'Nero')">

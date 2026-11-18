@@ -1,0 +1,50 @@
+<div class="review-board">
+  <app-chess-board
+    [fen]="position().fen"
+    [turnColor]="position().turn"
+    [legalDests]="legalDests()"
+    [orientation]="orientation"
+    [lastMove]="position().lastMove"
+    [showCoordinates]="settings().showCoordinates"
+    [boardTheme]="settings().boardTheme"
+    [pieceSet]="settings().pieceSet"
+    [is3d]="settings().is3d"
+    [highlightLastMove]="settings().highlightLastMove"
+    (moved)="onMove($event)"
+  ></app-chess-board>
+</div>
+
+<section class="review-actions ui-card" aria-label="Revisione del puzzle">
+  @if (solutionVisible()) {
+    @if (result.review.playedSan) {
+      <dl class="move-comparison">
+        <div><dt>La tua mossa nel Rush</dt><dd class="played">{{ result.review.playedSan }}</dd></div>
+        <div><dt>Mossa corretta</dt><dd>{{ result.expectedSan }}</dd></div>
+      </dl>
+    }
+    <div class="solution-controls" role="group" aria-label="Mosse della soluzione">
+      <button class="ui-icon-btn" type="button" aria-label="Mossa precedente" [disabled]="cursor() === 0"
+        (click)="goToPly(cursor() - 1)"><app-icon name="previous"></app-icon></button>
+      <span aria-live="polite">
+        {{ cursor() === 0 ? 'Posizione iniziale' : cursor() + '/' + lastPly + ' · ' + position().san }}
+      </span>
+      <button class="ui-icon-btn" type="button" aria-label="Mossa successiva" [disabled]="cursor() === lastPly"
+        (click)="goToPly(cursor() + 1)"><app-icon name="next"></app-icon></button>
+    </div>
+  } @else {
+    <p class="review-message" role="status">{{ message() }}</p>
+  }
+
+  <div class="review-buttons">
+    @if (solutionVisible()) {
+      <button class="ui-btn subtle" type="button" (click)="restart()">Riprova</button>
+    } @else {
+      <button class="ui-btn subtle" type="button" (click)="restart()">Ricomincia</button>
+      <button class="ui-btn subtle" type="button" [disabled]="lastPly < 1" (click)="showSolution()">Mostra soluzione</button>
+    }
+    <button class="ui-btn ink" type="button" (click)="openAnalysis()">
+      <app-icon name="chart"></app-icon>
+      Analizza
+    </button>
+  </div>
+</section>

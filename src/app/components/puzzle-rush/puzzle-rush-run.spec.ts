@@ -86,6 +86,19 @@ describe('PuzzleRushRun', () => {
     expect(run.nextPuzzle()).toBeTrue();
     expect(run.current?.gameIndex).toBe(1);
   });
+
+  it('should save the position and remaining solution from the exact mistake', () => {
+    const run = new PuzzleRushRun([twoMoves], { opponentMovesFirst: false, maxStrikes: 3 }, now);
+    run.nextPuzzle();
+    run.playMove({ from: 'd2', to: 'd5' });
+    run.playOpponentMove();
+    const mistakeFen = run.chess.fen();
+
+    run.playMove({ from: 'd5', to: 'd6' });
+
+    expect(run.results[0].expectedSan).toBe('Rd7+');
+    expect(run.results[0].review).toEqual({ fen: mistakeFen, moves: ['d5d7'], playedSan: 'Rd6' });
+  });
 });
 
 describe('Rush puzzle selection', () => {

@@ -32,6 +32,7 @@ import { StockfishService } from '../../services/stockfish.service';
 import { LibraryStorageService, type PersistedLibraryItem } from '../../services/library-storage.service';
 import { ShellLayoutService } from '../../services/shell-layout.service';
 import { HapticsService } from '../../services/haptics.service';
+import { PuzzleRushReviewService } from '../../services/puzzle-rush-review.service';
 
 interface LibraryGameListEntry {
   id: string;
@@ -61,6 +62,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private static readonly PUZZLE_PLAYER_COLORS_STORAGE_KEY = 'puzzle-droid-puzzle-player-colors-v1';
 
   readonly activeView = signal<AppView>('analysis');
+  readonly isRushReview = signal(false);
 
   readonly currentFen = signal('');
   readonly turnColor = signal<'white' | 'black'>('white');
@@ -153,6 +155,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly libraryStorage = inject(LibraryStorageService);
   private readonly shell = inject(ShellLayoutService);
   private readonly haptics = inject(HapticsService);
+  private readonly rushReview = inject(PuzzleRushReviewService);
 
   @ViewChild('boardHostRef', { read: ElementRef })
   private boardHostRef?: ElementRef<HTMLElement>;
@@ -192,7 +195,19 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.routeParamsSubscription = this.route.paramMap.subscribe((params) => {
       this.syncViewFromRoute(params.get('view'));
     });
+    this.syncGameState();
+    this.stockfish.setListener((event) => this.handleEngineEvent(event));
+    this.stockfish.init();
     this.routeQueryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
+      const review = params.get('rushReview') === '1' ? this.rushReview.analysis : null;
+      this.isRushReview.set(review !== null);
+      if (review) {
+        if (review.pgn) {
+          this.applyPgn(review.pgn, true);
+        } else {
+          this.applyFen(review.fen);
+        }
+      }
       this.syncOpenedLibraryItemFromQuery(params.get('libraryItem'));
       this.tryResumeWoodpeckerFromQuery(
         params.get('resumeWoodpecker'),
@@ -200,10 +215,9 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
         params.get('puzzleIndex'),
       );
     });
-    this.syncGameState();
-    this.stockfish.setListener((event) => this.handleEngineEvent(event));
-    this.stockfish.init();
-    this.analyzePosition();
+    if (!this.isRushReview()) {
+      this.analyzePosition();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -234,6 +248,10 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     void this.router.navigate(['/', view]);
+  }
+
+  returnToRush(): void {
+    void this.router.navigate(['/rush']);
   }
 
   onDrawerKeydown(event: KeyboardEvent, drawer: HTMLElement): void {
@@ -1166,7 +1184,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.analyzePosition();
   }
 
-  applyPgn(rawPgn: string): void {
+  applyPgn(rawPgn: string, startAtInitialPosition = false): void {
     const pgn = rawPgn.trim();
     if (!pgn) {
       this.pgnFeedback.set('Incolla un PGN valido.');
@@ -1225,7 +1243,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.puzzleReplayLimit.set(fullHistory.length);
     this.fenFeedback.set('');
     this.pgnFeedback.set('Posizione del PGN caricata.');
-    this.syncGameState();
+    if (startAtInitialPosition) {
+      this.rebuildPositionFromHistory(0);
+    } else {
+      this.syncGameState();
+    }
     this.analyzePosition();
   }
 

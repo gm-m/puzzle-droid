@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, Injector, OnDestroy, OnInit, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Chess } from 'chess.js';
 import type { Key } from 'chessground/types';
@@ -11,31 +11,22 @@ import {
   RUSH_MODE_ORDER,
   type RushBest,
   type RushMode,
-  type RushPuzzleResult,
+  type RushSummary,
 } from '../../models/puzzle-rush.models';
 import { HapticsService } from '../../services/haptics.service';
 import { LibraryStorageService } from '../../services/library-storage.service';
 import { PuzzleRushRecordsService } from '../../services/puzzle-rush-records.service';
+import { PuzzleRushReviewService } from '../../services/puzzle-rush-review.service';
 import { SettingsService } from '../../services/settings.service';
 import { ShellLayoutService } from '../../services/shell-layout.service';
 import { FAMOUS_TACTICS_ASSETS, famousTacticsItemId, formatAssetPgnName, pgnParser } from '../../utils/pgn-parser';
 import { PuzzleRushRun, buildRushPuzzles, orderRushPuzzles, type RushMoveOutcome, type RushPuzzle } from './puzzle-rush-run';
+import { PuzzleRushReviewComponent } from './puzzle-rush-review';
 
 interface RushCollection {
   id: string;
   name: string;
   puzzles: RushPuzzle[];
-}
-
-interface RushSummary {
-  score: number;
-  mistakes: number;
-  durationMs: number;
-  averageSolveMs: number;
-  isNewBest: boolean;
-  previousBest: RushBest | null;
-  results: RushPuzzleResult[];
-  endReason: 'time' | 'strikes' | 'exhausted' | 'stopped';
 }
 
 type RushPhase = 'setup' | 'playing' | 'finished';
@@ -48,7 +39,7 @@ const LOW_TIME_MS = 15_000;
 
 @Component({
   selector: 'app-puzzle-rush',
-  imports: [RouterLink, ChessBoardComponent, AppIconComponent, EmptyStateComponent, LoadingIndicatorComponent],
+  imports: [RouterLink, ChessBoardComponent, AppIconComponent, EmptyStateComponent, LoadingIndicatorComponent, PuzzleRushReviewComponent],
   templateUrl: './puzzle-rush.html',
   styleUrl: './puzzle-rush.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +47,8 @@ const LOW_TIME_MS = 15_000;
 export class PuzzleRushComponent implements OnInit, OnDestroy {
   private readonly storage = inject(LibraryStorageService);
   private readonly records = inject(PuzzleRushRecordsService);
+  private readonly review = inject(PuzzleRushReviewService);
+  private readonly injector = inject(Injector);
   private readonly shell = inject(ShellLayoutService);
   private readonly haptics = inject(HapticsService);
   readonly settings = inject(SettingsService).settings;
@@ -65,7 +58,7 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
 
   readonly isLoading = signal(true);
   readonly collections = signal<RushCollection[]>([]);
-  readonly phase = signal<RushPhase>('setup');
+  readonly phase = signal<RushPhase>(this.review.summary() ? 'finished' : 'setup');
   readonly mode = signal<RushMode>(this.records.prefs().mode);
   readonly opponentMovesFirst = signal(this.records.prefs().opponentMovesFirst);
   private readonly preferredCollectionId = signal<string | null>(this.records.prefs().collectionId);
@@ -92,7 +85,14 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
   readonly remainingMs = signal<number | null>(null);
   readonly elapsedMs = signal(0);
   readonly feedback = signal<{ tone: 'good' | 'bad'; text: string } | null>(null);
-  readonly summary = signal<RushSummary | null>(null);
+  readonly summary = this.review.summary;
+  readonly reviewedPuzzle = computed(() => this.summary()?.results[this.review.selection()?.index ?? -1] ?? null);
+  readonly reviewOrder = computed(() => {
+    const results = this.summary()?.results ?? [];
+    const onlyMistakes = this.review.selection()?.onlyMistakes;
+    return results.flatMap((entry, index) => onlyMistakes && entry.solved ? [] : [index]);
+  });
+  readonly reviewPosition = computed(() => this.reviewOrder().indexOf(this.review.selection()?.index ?? -1));
 
   readonly isLowTime = computed(() => {
     const remaining = this.remainingMs();
@@ -105,6 +105,9 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
   });
 
   private readonly board = viewChild(ChessBoardComponent);
+  private readonly reviewPanel = viewChild(PuzzleRushReviewComponent);
+  private readonly reviewHeading = viewChild<ElementRef<HTMLElement>>('reviewHeading');
+  private readonly summaryHeading = viewChild<ElementRef<HTMLElement>>('summaryHeading');
   private readonly recordsVersion = signal(0);
   private run: PuzzleRushRun | null = null;
   private runCollection: RushCollection | null = null;
@@ -152,6 +155,7 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
 
     this.clearTimers();
     const config = RUSH_MODES[this.mode()];
+    this.review.clear();
     this.runCollection = collection;
     this.run = new PuzzleRushRun(orderRushPuzzles(collection.puzzles), {
       opponentMovesFirst: this.opponentMovesFirst(),
@@ -159,7 +163,6 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
     });
     this.score.set(0);
     this.strikes.set(0);
-    this.summary.set(null);
     this.feedback.set(null);
     this.startedAt = Date.now();
     this.endsAt = config.durationMs === null ? null : this.startedAt + config.durationMs;
@@ -180,15 +183,45 @@ export class PuzzleRushComponent implements OnInit, OnDestroy {
   /** Escape / Android back during a run ends it and shows the summary instead of leaving the page. */
   @HostListener('document:keydown', ['$event'])
   onDocumentKeydown(event: KeyboardEvent): void {
-    // An open promotion picker handles Escape itself (it just closes).
-    if (event.key === 'Escape' && !event.defaultPrevented && this.phase() === 'playing' && !this.board()?.pendingPromotion()) {
+    if (event.key !== 'Escape' || event.defaultPrevented) {
+      return;
+    }
+    if (this.reviewedPuzzle() && !this.reviewPanel()?.board()?.pendingPromotion()) {
+      event.preventDefault();
+      this.closeReview();
+    } else if (this.phase() === 'playing' && !this.board()?.pendingPromotion()) {
       event.preventDefault();
       this.stop();
     }
   }
 
   backToSetup(): void {
+    this.review.clear();
     this.phase.set('setup');
+  }
+
+  reviewPuzzle(index: number, onlyMistakes = false): void {
+    if (this.summary()?.results[index]) {
+      this.review.selection.set({ index, onlyMistakes });
+      afterNextRender(() => this.reviewHeading()?.nativeElement.focus(), { injector: this.injector });
+    }
+  }
+
+  reviewMistakes(): void {
+    const index = this.summary()?.results.findIndex((entry) => !entry.solved) ?? -1;
+    this.reviewPuzzle(index, true);
+  }
+
+  stepReview(delta: number): void {
+    const index = this.reviewOrder()[this.reviewPosition() + delta];
+    if (index !== undefined) {
+      this.review.selection.set({ index, onlyMistakes: this.review.selection()?.onlyMistakes ?? false });
+    }
+  }
+
+  closeReview(): void {
+    this.review.selection.set(null);
+    afterNextRender(() => this.summaryHeading()?.nativeElement.focus(), { injector: this.injector });
   }
 
   onBoardMove(move: BoardMove): void {

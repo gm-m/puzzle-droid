@@ -77,6 +77,7 @@ export class PuzzleRushRun {
   private cursor = 0;
   private solution: string[] = [];
   private puzzleStartedAt = 0;
+  private firstPlayerFen = '';
 
   constructor(
     private readonly puzzles: RushPuzzle[],
@@ -123,6 +124,7 @@ export class PuzzleRushRun {
 
       this.solution = solution;
       this.cursor = 0;
+      this.firstPlayerFen = this.chess.fen();
       const startingSide = this.sideToMove();
       this.playerColor = this.options.opponentMovesFirst ? (startingSide === 'white' ? 'black' : 'white') : startingSide;
       this.puzzleStartedAt = this.now();
@@ -145,6 +147,9 @@ export class PuzzleRushRun {
     }
 
     this.cursor += 1;
+    if (this.cursor === 1 && this.options.opponentMovesFirst) {
+      this.firstPlayerFen = this.chess.fen();
+    }
     return this.cursor >= this.solution.length ? this.solve(move) : { kind: 'correct', move };
   }
 
@@ -164,7 +169,7 @@ export class PuzzleRushRun {
     const expectedUci = this.solution[this.cursor];
     const playedUci = `${played.from}${played.to}${played.promotion ?? ''}`;
     if (playedUci !== expectedUci && !probe.isCheckmate()) {
-      return this.fail(expectedUci);
+      return this.fail(expectedUci, played.san);
     }
 
     this.chess.move(played.san);
@@ -178,19 +183,28 @@ export class PuzzleRushRun {
 
   private solve(move: ChessMove): RushMoveOutcome {
     this.score += 1;
-    this.results.push({ ...this.resultBase(), solved: true });
+    this.results.push({
+      ...this.resultBase(),
+      solved: true,
+      review: { fen: this.firstPlayerFen, moves: this.solution.slice(this.options.opponentMovesFirst ? 1 : 0) },
+    });
     return { kind: 'solved', move };
   }
 
-  private fail(expectedUci: string): RushMoveOutcome {
+  private fail(expectedUci: string, playedSan: string): RushMoveOutcome {
     const expectedSan = this.sanOf(expectedUci);
     this.strikes += 1;
-    this.results.push({ ...this.resultBase(), solved: false, expectedSan });
+    this.results.push({
+      ...this.resultBase(),
+      solved: false,
+      expectedSan,
+      review: { fen: this.chess.fen(), moves: this.solution.slice(this.cursor), playedSan },
+    });
     this.cursor = this.solution.length;
     return { kind: 'failed', expectedSan };
   }
 
-  private resultBase(): Omit<RushPuzzleResult, 'solved'> {
+  private resultBase(): Pick<RushPuzzleResult, 'gameIndex' | 'title' | 'elapsedMs'> {
     const puzzle = this.current!;
     return {
       gameIndex: puzzle.gameIndex,

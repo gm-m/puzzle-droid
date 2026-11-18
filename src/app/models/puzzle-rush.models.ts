@@ -45,4 +45,20 @@ export interface RushPuzzleResult {
   elapsedMs: number;
   /** SAN of the move the user should have played (failed puzzles only). */
   expectedSan?: string;
+  review: {
+    fen: string;
+    moves: string[];
+    playedSan?: string;
+  };
+}
+
+export interface RushSummary {
+  score: number;
+  mistakes: number;
+  durationMs: number;
+  averageSolveMs: number;
+  isNewBest: boolean;
+  previousBest: RushBest | null;
+  results: RushPuzzleResult[];
+  endReason: 'time' | 'strikes' | 'exhausted' | 'stopped';
 }

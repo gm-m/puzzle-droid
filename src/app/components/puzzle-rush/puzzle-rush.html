@@ -1,5 +1,24 @@
-<main id="main-content" class="rush" [class.is-playing]="phase() === 'playing'" tabindex="-1">
-  @switch (phase()) {
+<main id="main-content" class="rush" [class.is-playing]="phase() === 'playing'" [class.is-reviewing]="reviewedPuzzle()" tabindex="-1">
+  @if (reviewedPuzzle(); as entry) {
+    <header class="rush-review-head">
+      <button class="ui-btn subtle" type="button" (click)="closeReview()">
+        <app-icon name="arrow-left"></app-icon>
+        Riepilogo
+      </button>
+      <div class="review-title" aria-live="polite">
+        <h1 #reviewHeading tabindex="-1">{{ entry.title }}</h1>
+        <p>{{ entry.solved ? 'Risolto' : 'Sbagliato' }} nel Rush · {{ reviewPosition() + 1 }} di {{ reviewOrder().length }}</p>
+      </div>
+      <div class="review-navigation" role="group" aria-label="Navigazione tra i puzzle">
+        <button class="ui-icon-btn" type="button" aria-label="Puzzle precedente" [disabled]="reviewPosition() === 0"
+          (click)="stepReview(-1)"><app-icon name="chevron-left"></app-icon></button>
+        <button class="ui-icon-btn" type="button" aria-label="Puzzle successivo" [disabled]="reviewPosition() === reviewOrder().length - 1"
+          (click)="stepReview(1)"><app-icon name="chevron-right"></app-icon></button>
+      </div>
+    </header>
+    <app-puzzle-rush-review [result]="entry"></app-puzzle-rush-review>
+  } @else {
+    @switch (phase()) {
     @case ('setup') {
       <header class="rush-head">
         <p class="ui-kicker">ALLENAMENTO A TEMPO</p>
@@ -158,7 +177,7 @@
       @if (summary(); as result) {
         <header class="rush-head">
           <p class="ui-kicker">{{ endReasonLabel(result.endReason).toUpperCase() }}</p>
-          <h1 class="ui-display">Partita finita</h1>
+          <h1 #summaryHeading class="ui-display" tabindex="-1">Partita finita</h1>
         </header>
 
         <article class="rush-result-hero" [class.record]="result.isNewBest">
@@ -188,22 +207,25 @@
 
         @if (result.results.length > 0) {
           <section class="rush-group" aria-labelledby="rush-results-heading">
-            <h2 id="rush-results-heading" class="group-title">Puzzle giocati</h2>
+            <div class="rush-results-heading">
+              <h2 id="rush-results-heading" class="group-title">Puzzle giocati</h2>
+              @if (result.mistakes > 0) {
+                <button class="ui-btn subtle" type="button" (click)="reviewMistakes()">Rivedi gli errori</button>
+              }
+            </div>
             <ol class="ui-card group-card rush-results">
               @for (entry of result.results; track $index) {
-                <li class="ui-row static" [class.failed]="!entry.solved">
-                  <span class="result-mark" [attr.aria-label]="entry.solved ? 'Risolto' : 'Sbagliato'">
-                    <app-icon [name]="entry.solved ? 'check' : 'close'"></app-icon>
-                  </span>
-                  <span class="ui-row-copy">
-                    <span class="ui-row-title">{{ entry.title }}</span>
-                    <span class="ui-row-sub">
-                      #{{ entry.gameIndex + 1 }} · {{ formatSeconds(entry.elapsedMs) }}
-                      @if (entry.expectedSan) {
-                        · soluzione {{ entry.expectedSan }}
-                      }
+                <li [class.failed]="!entry.solved">
+                  <button type="button" class="ui-row" (click)="reviewPuzzle($index)">
+                    <span class="result-mark" aria-hidden="true">
+                      <app-icon [name]="entry.solved ? 'check' : 'close'"></app-icon>
                     </span>
-                  </span>
+                    <span class="ui-row-copy">
+                      <span class="ui-row-title">{{ entry.title }}</span>
+                      <span class="ui-row-sub">{{ entry.solved ? 'Risolto' : 'Sbagliato' }} · {{ formatSeconds(entry.elapsedMs) }}</span>
+                    </span>
+                    <app-icon class="ui-row-trail" name="chevron-right"></app-icon>
+                  </button>
                 </li>
               }
             </ol>
@@ -218,6 +240,7 @@
           <button type="button" class="ui-btn subtle" (click)="backToSetup()">Cambia impostazioni</button>
         </div>
       }
+    }
     }
   }
 </main>

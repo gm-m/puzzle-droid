@@ -1,12 +1,15 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 
 import { PuzzleRushComponent } from './puzzle-rush';
 import { LibraryStorageService } from '../../services/library-storage.service';
 import { PuzzleRushRecordsService } from '../../services/puzzle-rush-records.service';
+import { PuzzleRushReviewService } from '../../services/puzzle-rush-review.service';
 import { SettingsService } from '../../services/settings.service';
 import { ShellLayoutService } from '../../services/shell-layout.service';
+import { PuzzleRushReviewComponent } from './puzzle-rush-review';
+import { By } from '@angular/platform-browser';
 
 const PUZZLES_PGN = Array.from({ length: 4 }, (_, index) =>
   [`[Event "Matto ${index + 1}"]`, '[FEN "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"]', '', '1. Ra8# 1-0'].join('\n'),
@@ -104,6 +107,33 @@ describe('PuzzleRushComponent', () => {
     expect(component.phase()).toBe('finished');
     expect(component.summary()?.endReason).toBe('strikes');
     expect(component.summary()?.results.map((result) => result.expectedSan)).toEqual(['Ra8#', 'Ra8#', 'Ra8#']);
+  });
+
+  it('should retry and reveal a missed puzzle without changing the results, then hand it off to Analysis', () => {
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    startRun();
+    component.onBoardMove({ from: 'g1', to: 'f1' });
+    component.stop();
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const reviewButton = [...root.querySelectorAll('button')].find((button) => button.textContent?.includes('Rivedi gli errori'));
+    reviewButton?.click();
+    fixture.detectChanges();
+    const reviewPanel = fixture.debugElement.query(By.directive(PuzzleRushReviewComponent)).componentInstance as PuzzleRushReviewComponent;
+    const startFen = reviewPanel.position().fen;
+    expect(reviewPanel.legalDests().get('a1')).toContain('a8');
+    reviewPanel.onMove({ from: 'a1', to: 'a8' });
+    expect(reviewPanel.message()).toBe('Puzzle risolto!');
+    expect(component.summary()).toEqual(jasmine.objectContaining({ score: 0, mistakes: 1 }));
+
+    reviewPanel.showSolution();
+    expect(reviewPanel.position().fen).not.toBe(startFen);
+    reviewPanel.goToPly(0);
+    expect(reviewPanel.position().fen).toBe(startFen);
+    reviewPanel.openAnalysis();
+    expect(navigate).toHaveBeenCalledWith(['/analysis'], { queryParams: { rushReview: 1 } });
+    expect(TestBed.inject(PuzzleRushReviewService).analysis).toEqual({ fen: startFen, pgn: jasmine.stringMatching(/Ra8#/) });
   });
 
   it('should end the run when every puzzle has been played', () => {
