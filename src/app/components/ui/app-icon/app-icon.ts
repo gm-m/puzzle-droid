@@ -37,6 +37,7 @@ export type AppIconName =
   | 'moon'
   | 'edit'
   | 'check'
+  | 'stopwatch'
   | 'bolt';
 
 @Component({

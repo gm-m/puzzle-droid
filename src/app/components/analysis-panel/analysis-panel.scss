@@ -377,14 +377,6 @@
   background: color-mix(in srgb, var(--warning-soft) 74%, var(--surface-1));
 }
 
-.woodpecker-progress {
-  width: 100%;
-  height: 0.45rem;
-  overflow: hidden;
-  border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--warning) 18%, var(--surface-3));
-}
-
 .woodpecker-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -763,14 +755,6 @@ button {
     background: color-mix(in srgb, var(--surface-2n) 80%, var(--ink));
     box-shadow: var(--shadow-sm);
   }
-}
-
-.woodpecker-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 220ms ease;
 }
 
 .woodpecker-progress-value {
@@ -1198,7 +1182,6 @@ button {
      message never pushes the board up or down. Compact grid:
        message (2 lines, full width)
        actions ........ micro-set / woodpecker %
-       thin woodpecker progress bar
      Full Woodpecker details stay in the (i) dialog. */
   .puzzle-status {
     grid-template-columns: auto minmax(0, 1fr);
@@ -1246,11 +1229,6 @@ button {
 
   .woodpecker-summary {
     display: none;
-  }
-
-  .woodpecker-progress {
-    grid-column: 1 / -1;
-    height: 4px;
   }
 
   /* Keep the sticky move navigation above the floating tab bar. */

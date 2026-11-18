@@ -1,6 +1,6 @@
 <aside class="analysis-panel" [class.puzzle-mode]="hideEngine">
   <section class="analysis-engine-region" *ngIf="showEngineArea">
-  <div class="library-game-context" *ngIf="libraryGameTitle">
+  <div class="library-game-context" *ngIf="showGameContext && libraryGameTitle">
     <p class="library-game-title">{{ libraryGameTitle }}</p>
     <div class="turn-indicator compact" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'"
       [attr.aria-label]="'Al tratto: ' + (turnColor === 'white' ? 'Bianco' : 'Nero')">
@@ -20,7 +20,7 @@
     </button>
   </div>
 
-  <div *ngIf="showEngineArea && !libraryGameTitle" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
+  <div *ngIf="showGameContext && !libraryGameTitle" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
     <span class="turn-dot" aria-hidden="true"></span>
     <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
   </div>
@@ -211,9 +211,6 @@
         <div class="woodpecker-status-head">
           <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
           <p class="woodpecker-progress-value inline">{{ woodpeckerProgressPercent }}%</p>
-        </div>
-        <div class="woodpecker-progress compact" role="progressbar" [attr.aria-valuenow]="woodpeckerProgressPercent" [attr.aria-valuetext]="'Progresso Woodpecker: ' + woodpeckerProgressPercent + '%'" aria-valuemin="0" aria-valuemax="100">
-          <span class="woodpecker-progress-fill" [style.width.%]="woodpeckerProgressPercent"></span>
         </div>
       </div>
     </section>

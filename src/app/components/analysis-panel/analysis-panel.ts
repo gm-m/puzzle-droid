@@ -64,6 +64,7 @@ export class AnalysisPanelComponent {
   }
   private _lines: EngineLine[] = [];
   @Input() libraryGameTitle = '';
+  @Input() showGameContext = true;
   @Input() canGoBack = false;
   @Input() canGoForward = false;
   @Input() canGoPreviousGame = false;

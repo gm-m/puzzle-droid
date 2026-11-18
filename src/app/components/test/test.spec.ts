@@ -16,6 +16,7 @@ describe('ChessWorkspaceComponent', () => {
   let component: ChessWorkspaceComponent;
   let fixture: ComponentFixture<ChessWorkspaceComponent>;
   let routerNavigateSpy: jasmine.Spy;
+  let routerNavigateByUrlSpy: jasmine.Spy;
   let evaluateMovesSpy: jasmine.Spy;
   let settingsValue: Record<string, unknown>;
 
@@ -57,6 +58,7 @@ describe('ChessWorkspaceComponent', () => {
     };
 
     routerNavigateSpy = jasmine.createSpy('navigate').and.resolveTo(true);
+    routerNavigateByUrlSpy = jasmine.createSpy('navigateByUrl').and.resolveTo(true);
 
     await TestBed.configureTestingModule({
       imports: [ChessWorkspaceComponent],
@@ -65,7 +67,14 @@ describe('ChessWorkspaceComponent', () => {
         { provide: StockfishService, useValue: stockfishMock },
         { provide: SettingsService, useValue: settingsMock },
         { provide: WoodpeckerAnalyticsService, useValue: analyticsMock },
-        { provide: Router, useValue: { navigate: routerNavigateSpy } as Partial<Router> },
+        {
+          provide: Router,
+          useValue: {
+            navigate: routerNavigateSpy,
+            navigateByUrl: routerNavigateByUrlSpy,
+            url: '/library?libraryItem=pgn-1',
+          } as Partial<Router>,
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -206,6 +215,27 @@ describe('ChessWorkspaceComponent', () => {
       expect(component.turnColor()).toBe('white');
       expect(component.boardOrientation()).toBe('white');
       expect(component.puzzleMessage()).toBe('Puzzle avviato. Fai la prima mossa corretta.');
+    });
+
+    it('should hide navigation in a puzzle and cancel the pending move when closing it', () => {
+      const shell = TestBed.inject(ShellLayoutService);
+      component.activeView.set('library');
+      component.onLibraryGameSelected(buildSelection({ autoPlayFirstMove: true }));
+      component.activeView.set('analysis');
+      fixture.detectChanges();
+
+      expect(shell.tabBarVisible()).toBeFalse();
+      expect(component.isPuzzleAutoPlaying()).toBeTrue();
+      const closeButton: HTMLButtonElement = fixture.nativeElement.querySelector('[aria-label="Chiudi sessione puzzle"]');
+      closeButton.click();
+      jasmine.clock().tick(1000);
+      fixture.detectChanges();
+
+      expect(component.isPuzzleMode()).toBeFalse();
+      expect(component.isPuzzleAutoPlaying()).toBeFalse();
+      expect(component.moveCursor()).toBe(0);
+      expect(shell.tabBarVisible()).toBeTrue();
+      expect(routerNavigateByUrlSpy).toHaveBeenCalledWith('/library?libraryItem=pgn-1', { replaceUrl: true });
     });
 
     it('should auto-play white moves when the user chooses black', () => {

@@ -94,6 +94,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   readonly puzzleHintSquare = signal<Key | null>(null);
 
   readonly isPuzzleMode = signal(false);
+  readonly puzzleElapsedSeconds = signal(0);
   readonly isPuzzleSurrendered = signal(false);
   readonly isPuzzleAssisted = signal(false);
   readonly isPuzzleAutoPlaying = signal(false);
@@ -132,6 +133,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   private currentWoodpeckerSessionKey: string | null = null;
   private woodpeckerSessionsByKey: Record<string, WoodpeckerSession> = {};
   private puzzleAttemptStartedAt: number | null = null;
+  private readonly puzzleClockStartedAt = signal<number | null>(null);
+  private puzzleReturnUrl = '/library';
   private libraryPickerTriggerElement: HTMLElement | null = null;
   private touchStartX: number | null = null;
   private touchStartY: number | null = null;
@@ -165,9 +168,19 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   ) {
     this.settings = this.settingsService.settings;
 
-    // The PGN detail screen owns the bottom edge (sticky CTA): hide the tab bar there.
     effect(() => {
-      this.shell.tabBarVisible.set(this.libraryOpenedItemId() === null);
+      const hidden = this.libraryOpenedItemId() !== null || (this.activeView() === 'analysis' && this.isPuzzleMode());
+      this.shell.tabBarVisible.set(!hidden);
+    });
+
+    effect((onCleanup) => {
+      const startedAt = this.puzzleClockStartedAt();
+      if (startedAt === null || !this.isPuzzleMode()) {
+        return;
+      }
+
+      const timer = setInterval(() => this.updatePuzzleClock(startedAt), 1000);
+      onCleanup(() => clearInterval(timer));
     });
   }
 
@@ -313,6 +326,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       woodpeckerEnabled: true,
       autoAdvanceOnSuccess: true,
     });
+    this.puzzleReturnUrl = this.router.serializeUrl(this.router.createUrlTree(['/woodpecker-dashboard', pgnId]));
 
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -339,6 +353,26 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     return `Engine d${this.depth()}`;
+  }
+
+  puzzleHeaderTitle(): string {
+    const location = this.getCurrentLibraryGameLocation();
+    return location ? `Puzzle ${location.gameIndex + 1} di ${location.item.games.length}` : 'Puzzle';
+  }
+
+  puzzleClockLabel(): string {
+    const seconds = this.puzzleElapsedSeconds();
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  }
+
+  closePuzzleSession(): void {
+    if (!this.isPuzzleMode()) {
+      return;
+    }
+
+    const returnUrl = this.puzzleReturnUrl;
+    this.resetBoard();
+    void this.router.navigateByUrl(returnUrl, { replaceUrl: true });
   }
 
   onContentTouchStart(event: TouchEvent): void {
@@ -398,10 +432,15 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !event.defaultPrevented) {
       if (this.isLibraryGamePickerOpen()) {
         event.preventDefault();
         this.closeLibraryGamePicker();
+        return;
+      }
+      if (this.activeView() === 'analysis' && this.isPuzzleMode()) {
+        event.preventDefault();
+        this.closePuzzleSession();
         return;
       }
     }
@@ -851,7 +890,13 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     if (selection.mode === 'puzzle') {
-
+      if (this.activeView() === 'library') {
+        this.puzzleReturnUrl = this.router.url;
+      } else if (!this.isPuzzleMode()) {
+        this.puzzleReturnUrl = '/library';
+      }
+      this.puzzleElapsedSeconds.set(0);
+      this.puzzleClockStartedAt.set(Date.now());
       this.isPuzzleMode.set(true);
       this.isPuzzleSurrendered.set(false);
       this.isPuzzleAssisted.set(false);
@@ -870,6 +915,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
       this.puzzleMessage.set('Puzzle avviato.');
       this.puzzleAttemptStartedAt = null;
     } else {
+      this.puzzleClockStartedAt.set(null);
       this.isPuzzleMode.set(false);
       this.isPuzzleSurrendered.set(false);
       this.isPuzzleAssisted.set(false);
@@ -1048,6 +1094,12 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     this.currentWoodpeckerSessionKey = null;
     this.woodpeckerSession.set(null);
     this.puzzleAttemptStartedAt = null;
+    this.puzzleClockStartedAt.set(null);
+    this.activeBatchConfig.set(null);
+    this.batchQueue.set([]);
+    this.batchCursor.set(0);
+    this.batchCycle.set(1);
+    this.batchHasMistake.set(false);
     this.closeLibraryGamePicker();
     this.chess.reset();
     this.boardLastMove.set(null);
@@ -1283,6 +1335,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.clearPuzzleAutoMoveTimer();
+    this.stopPuzzleClock();
     this.clearPuzzleAutoNextGameTimer();
     this.clearBlindfoldTimer();
     this.arePuzzlePiecesHidden.set(false);
@@ -2036,6 +2089,7 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private handlePuzzleSolved(solvedUci?: string, theme: TacticalTheme = 'Manovra'): void {
+    this.stopPuzzleClock();
     this.haptics.success();
     this.clearBlindfoldTimer();
     this.arePuzzlePiecesHidden.set(false);
@@ -2598,6 +2652,18 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
 
   private markPuzzleAttemptStart(): void {
     this.puzzleAttemptStartedAt = Date.now();
+  }
+
+  private updatePuzzleClock(startedAt: number): void {
+    this.puzzleElapsedSeconds.set(Math.floor(Math.max(0, Date.now() - startedAt) / 1000));
+  }
+
+  private stopPuzzleClock(): void {
+    const startedAt = this.puzzleClockStartedAt();
+    if (startedAt !== null) {
+      this.updatePuzzleClock(startedAt);
+      this.puzzleClockStartedAt.set(null);
+    }
   }
 
   private consumePuzzleAttemptElapsedMs(): number {
@@ -3210,7 +3276,11 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private applyViewState(view: AppView): void {
+    const leavingPuzzle = this.activeView() === 'analysis' && view !== 'analysis' && this.isPuzzleMode();
     this.activeView.set(view);
+    if (leavingPuzzle) {
+      this.resetBoard();
+    }
     this.closeLibraryGamePicker(false);
 
     if (view === 'analysis') {

@@ -1,5 +1,48 @@
-<main id="main-content" class="layout-shell" tabindex="-1">
-  <header class="app-topbar" *ngIf="activeView() === 'analysis'"
+<main id="main-content" class="layout-shell" tabindex="-1" [class.puzzle-session]="activeView() === 'analysis' && isPuzzleMode()">
+  <header class="app-topbar puzzle-topbar" *ngIf="activeView() === 'analysis' && isPuzzleMode()"
+    [attr.inert]="isLibraryGamePickerOpen() ? '' : null"
+    [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null">
+    <div class="puzzle-heading">
+      <button type="button" class="ui-icon-btn" aria-label="Chiudi sessione puzzle" title="Chiudi sessione"
+        (click)="closePuzzleSession()">
+        <app-icon name="close"></app-icon>
+      </button>
+      <div class="puzzle-title">
+        <h1>{{ puzzleHeaderTitle() }}</h1>
+        <p>
+          <span class="puzzle-pgn" [title]="currentLibraryItemName()">{{ currentLibraryItemName() || currentLibraryGameTitle() }}</span>
+          @if (woodpeckerSession(); as session) {
+            <span>· Ciclo {{ session.cycle }}</span>
+          }
+        </p>
+      </div>
+      <div class="puzzle-clock" role="timer" aria-label="Tempo trascorso">
+        <app-icon name="stopwatch"></app-icon>
+        <span>{{ puzzleClockLabel() }}</span>
+      </div>
+    </div>
+
+    @if (showWoodpeckerInfo()) {
+      <div class="puzzle-progress" role="progressbar" aria-label="Progresso del ciclo Woodpecker"
+        [attr.aria-valuenow]="woodpeckerProgressPercent()" [attr.aria-valuetext]="woodpeckerProgressLabel()">
+        <span [style.width.%]="woodpeckerProgressPercent()" [class.started]="woodpeckerSession()?.solvedIndexes?.length"></span>
+      </div>
+    }
+
+    <div class="puzzle-tools">
+      <span class="puzzle-turn" [class.black]="turnColor() === 'black'">
+        <span class="topbar-turn-dot" aria-hidden="true"></span>
+        Al tratto: {{ turnColor() === 'white' ? 'Bianco' : 'Nero' }}
+      </span>
+      <button *ngIf="showLibraryGameNavigation()" type="button" class="puzzle-game-picker"
+        aria-label="Apri elenco partite" aria-controls="library-game-picker" (click)="openLibraryGamePicker()">
+        <app-icon name="list"></app-icon>
+        Elenco partite
+      </button>
+    </div>
+  </header>
+
+  <header class="app-topbar" *ngIf="activeView() === 'analysis' && !isPuzzleMode()"
     [attr.inert]="isLibraryGamePickerOpen() ? '' : null"
     [attr.aria-hidden]="isLibraryGamePickerOpen() ? 'true' : null">
     <div class="topbar-main">
@@ -7,7 +50,7 @@
         <p class="topbar-kicker">Vista</p>
         <h1>{{ currentViewTitle() }}</h1>
         <p class="topbar-context">
-          {{ currentLibraryGameTitle() || (isPuzzleMode() ? 'Puzzle attivo' : 'Scacchiera libera') }}
+          {{ currentLibraryGameTitle() || 'Scacchiera libera' }}
         </p>
       </div>
     </div>
@@ -45,6 +88,7 @@
           [showEvalBar]="showEvalBar()"
           [lines]="lines()"
           [libraryGameTitle]="currentLibraryGameTitle()"
+          [showGameContext]="!isPuzzleMode()"
           [canGoBack]="canGoBack()"
           [canGoForward]="canGoForward()"
           [canGoPreviousGame]="canGoToPreviousLibraryGame()"
