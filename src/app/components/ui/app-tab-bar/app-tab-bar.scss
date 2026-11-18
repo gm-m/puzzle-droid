@@ -42,7 +42,7 @@
     font-size: 21px;
   }
 
-  &.active {
+  &[aria-current='page'] {
     color: var(--ink);
     font-weight: 600;
   }

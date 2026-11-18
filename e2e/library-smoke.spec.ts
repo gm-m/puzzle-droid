@@ -8,13 +8,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('can switch from analysis to library and see both library tabs', async ({ page }) => {
-  await expect(page.getByRole('link', { name: 'Analisi' })).toBeVisible();
+  const navigation = page.getByRole('navigation', { name: 'Navigazione principale' });
+  const currentPage = navigation.locator('[aria-current="page"]');
+  await expect(currentPage).toHaveText('Analisi');
   await expect(page.locator('app-analysis-panel')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Varianti engine' })).toBeVisible();
   await expect(page.locator('.engine-state')).toContainText(/Pronto|Analisi in corso/);
 
-  await page.getByRole('link', { name: 'Libreria' }).click();
+  await navigation.getByRole('link', { name: 'Libreria' }).click();
 
+  await expect(currentPage).toHaveText('Libreria');
   await expect(page.getByRole('heading', { name: 'Libreria', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'PGN', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Bookmark', exact: true })).toBeVisible();

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { NavigationEnd, PRIMARY_OUTLET, Router, RouterLink } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { WoodpeckerAnalyticsService } from '../../../services/woodpecker-analytics.service';
 import { HapticsService } from '../../../services/haptics.service';
@@ -26,25 +26,28 @@ export class AppTabBarComponent implements OnDestroy {
   private readonly haptics = inject(HapticsService);
 
   protected readonly woodpeckerPgnId = signal<string | null>(null);
+  private readonly activeSection = signal<string | undefined>(undefined);
   private readonly routerSub: Subscription;
 
   constructor() {
-    this.refresh();
+    this.refresh(this.router.url);
     this.routerSub = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => this.refresh());
+      .subscribe((event) => this.refresh(event.urlAfterRedirects));
   }
 
   ngOnDestroy(): void {
     this.routerSub.unsubscribe();
   }
 
-  protected refresh(): void {
+  private refresh(url: string): void {
+    const primaryRoute = this.router.parseUrl(url).root.children[PRIMARY_OUTLET];
+    this.activeSection.set(primaryRoute?.segments[0]?.path);
     this.woodpeckerPgnId.set(this.analytics.getLatestPgnId());
   }
 
-  protected isActive(path: string): boolean {
-    return this.router.url === path || this.router.url.startsWith(`${path}?`) || this.router.url.startsWith(`${path}/`);
+  protected currentPage(section: string): 'page' | null {
+    return this.activeSection() === section ? 'page' : null;
   }
 
   protected woodpeckerLink(): string[] {
