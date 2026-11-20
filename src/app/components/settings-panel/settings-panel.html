@@ -107,7 +107,9 @@
             <input type="file" accept="application/json,.json" [disabled]="isImportingBackup" (change)="onBackupFileSelected($event)" />
           </label>
         </div>
-        <p class="backup-feedback" *ngIf="backupFeedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
+        @if (backupFeedback) {
+          <p class="backup-feedback" [class]="'backup-feedback ' + backupFeedbackKind" role="status" aria-live="polite">{{ backupFeedback }}</p>
+        }
       </div>
     </section>
 

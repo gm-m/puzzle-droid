@@ -77,7 +77,7 @@ npx playwright install chromium
 ```
 
 - `npm test` runs the unit tests through Angular CLI.
-- `npm run test:ci` runs the unit tests once. Add `-- --code-coverage` for an HTML report and a terminal summary.
+- `npm run test:ci` runs the unit tests once. Add `-- --coverage` for an HTML report and a terminal summary.
 - `npm run e2e` builds the app and runs the end-to-end suite in headless Chromium. Vitest starts and stops the preview server.
 - `npm run e2e:headed` shows the browser, and `npm run e2e:debug` opens the Playwright Inspector.
 

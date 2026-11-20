@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 import type { EngineLine, EngineScore } from '../../models/engine.models';
 import type { PuzzlePlayerColor } from '../../models/library.models';
@@ -31,7 +30,7 @@ interface MoveRow {
 
 @Component({
   selector: 'app-analysis-panel',
-  imports: [CommonModule, AppIconComponent, AppBottomSheetComponent],
+  imports: [AppIconComponent, AppBottomSheetComponent],
   templateUrl: './analysis-panel.html',
   styleUrl: './analysis-panel.scss',
 })

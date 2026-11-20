@@ -1,420 +1,444 @@
 <aside class="analysis-panel" [class.puzzle-mode]="hideEngine">
-  <section class="analysis-engine-region" *ngIf="showEngineArea">
-  <div class="library-game-context" *ngIf="showGameContext && libraryGameTitle">
-    <p class="library-game-title">{{ libraryGameTitle }}</p>
-    <div class="turn-indicator compact" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'"
-      [attr.aria-label]="'Al tratto: ' + (turnColor === 'white' ? 'Bianco' : 'Nero')">
-      <span class="turn-dot" aria-hidden="true"></span>
-      <span aria-hidden="true">{{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
-    </div>
-    <button
-      *ngIf="showLibraryGamePicker"
-      type="button"
-      class="library-game-picker-trigger"
-      aria-label="Apri elenco partite"
-      aria-controls="library-game-picker"
-      (click)="openLibraryGamePickerRequested.emit()"
-    >
-      <app-icon name="list"></app-icon>
-      <span class="library-game-picker-label">Elenco partite</span>
-    </button>
-  </div>
-
-  <div *ngIf="showGameContext && !libraryGameTitle" class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
-    <span class="turn-dot" aria-hidden="true"></span>
-    <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
-  </div>
-
-  <ng-container *ngIf="showEngineArea">
-    <ng-container *ngIf="!hideEngine; else puzzleModeInfo">
-      <section class="pv-list">
-        <div class="pv-list-header">
-          <div class="header-left">
-            <h2>Varianti engine</h2>
-            <span class="engine-state" [class.analyzing]="isAnalyzing" aria-live="polite" aria-atomic="true">
-              <span *ngIf="isAnalyzing" class="engine-spinner" aria-hidden="true"></span>
-              {{ isAnalyzing ? 'Analisi in corso' : 'Pronto' }}
-            </span>
-            <button 
-              type="button" 
-              class="expand-toggle"
-              [attr.aria-label]="isEngineLinesExpanded ? 'Comprimi varianti' : 'Espandi varianti'"
-              [attr.aria-expanded]="isEngineLinesExpanded"
-              [attr.aria-controls]="instanceId + '-engine-variations'"
-              (click)="toggleEngineLines()"
-              *ngIf="lines.length > 0">
-              <app-icon [name]="isEngineLinesExpanded ? 'chevron-up' : 'chevron-down'"></app-icon>
-            </button>
+  @if (showEngineArea) {
+    <section class="analysis-engine-region">
+      @if (showGameContext && libraryGameTitle) {
+        <div class="library-game-context">
+          <p class="library-game-title">{{ libraryGameTitle }}</p>
+          <div class="turn-indicator compact" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'"
+            [attr.aria-label]="'Al tratto: ' + (turnColor === 'white' ? 'Bianco' : 'Nero')">
+            <span class="turn-dot" aria-hidden="true"></span>
+            <span aria-hidden="true">{{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
           </div>
-          <button
-            type="button"
-            class="engine-cog"
-            aria-label="Apri impostazioni engine"
-            aria-haspopup="dialog"
-            (click)="toggleEngineSettings()"
-          >
-            <app-icon name="settings"></app-icon>
-          </button>
-        </div>
-        <div class="engine-overview">
-          <span><strong>{{ evalLabel }}</strong> valutazione</span>
-          <span><strong>{{ bestMove }}</strong> mossa migliore</span>
-          <span>Profondità {{ depth }}</span>
-        </div>
-        <p *ngIf="lines.length === 0" class="engine-empty">{{ isAnalyzing ? 'Calcolo delle varianti…' : 'Nessuna variante disponibile.' }}</p>
-        <ol [id]="instanceId + '-engine-variations'" *ngIf="lines.length > 0" [class.expanded]="isEngineLinesExpanded">
-          <li *ngFor="let line of lines">
-            <p class="line-header">{{ lineHeader(line) }}</p>
-            <div class="line-moves">
-              <button
-                *ngFor="let move of line.pv; let moveIndex = index"
-                type="button"
-                class="line-button"
-                (click)="selectLineMove(line, moveIndex)"
+          @if (showLibraryGamePicker) {
+            <button
+              type="button"
+              class="library-game-picker-trigger"
+              aria-label="Apri elenco partite"
+              aria-controls="library-game-picker"
+              (click)="openLibraryGamePickerRequested.emit()"
               >
-                {{ move }}
+              <app-icon name="list"></app-icon>
+              <span class="library-game-picker-label">Elenco partite</span>
+            </button>
+          }
+        </div>
+      }
+      @if (showGameContext && !libraryGameTitle) {
+        <div class="turn-indicator" [class.black]="turnColor === 'black'" [class.white]="turnColor === 'white'">
+          <span class="turn-dot" aria-hidden="true"></span>
+          <span>Al tratto: {{ turnColor === 'white' ? 'Bianco' : 'Nero' }}</span>
+        </div>
+      }
+      @if (showEngineArea) {
+        @if (!hideEngine) {
+          <section class="pv-list">
+            <div class="pv-list-header">
+              <div class="header-left">
+                <h2>Varianti engine</h2>
+                <span class="engine-state" [class.analyzing]="isAnalyzing" aria-live="polite" aria-atomic="true">
+                  @if (isAnalyzing) {
+                    <span class="engine-spinner" aria-hidden="true"></span>
+                  }
+                  {{ isAnalyzing ? 'Analisi in corso' : 'Pronto' }}
+                </span>
+                @if (lines.length > 0) {
+                  <button
+                    type="button"
+                    class="expand-toggle"
+                    [attr.aria-label]="isEngineLinesExpanded ? 'Comprimi varianti' : 'Espandi varianti'"
+                    [attr.aria-expanded]="isEngineLinesExpanded"
+                    [attr.aria-controls]="instanceId + '-engine-variations'"
+                    (click)="toggleEngineLines()"
+                    >
+                    <app-icon [name]="isEngineLinesExpanded ? 'chevron-up' : 'chevron-down'"></app-icon>
+                  </button>
+                }
+              </div>
+              <button
+                type="button"
+                class="engine-cog"
+                aria-label="Apri impostazioni engine"
+                aria-haspopup="dialog"
+                (click)="toggleEngineSettings()"
+                >
+                <app-icon name="settings"></app-icon>
               </button>
             </div>
-          </li>
-        </ol>
+            <div class="engine-overview">
+              <span><strong>{{ evalLabel }}</strong> valutazione</span>
+              <span><strong>{{ bestMove }}</strong> mossa migliore</span>
+              <span>Profondità {{ depth }}</span>
+            </div>
+            @if (lines.length === 0) {
+              <p class="engine-empty">{{ isAnalyzing ? 'Calcolo delle varianti…' : 'Nessuna variante disponibile.' }}</p>
+            }
+            @if (lines.length > 0) {
+              <ol [id]="instanceId + '-engine-variations'" [class.expanded]="isEngineLinesExpanded">
+                @for (line of lines; track line.multipv) {
+                  <li>
+                    <p class="line-header">{{ lineHeader(line) }}</p>
+                    <div class="line-moves">
+                      @for (move of line.pv; track $index; let moveIndex = $index) {
+                        <button
+                          type="button"
+                          class="line-button"
+                          (click)="selectLineMove(line, moveIndex)"
+                          >
+                          {{ move }}
+                        </button>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            }
+          </section>
+          <app-bottom-sheet [open]="isEngineSettingsOpen" title="Impostazioni engine" (closed)="closeEngineSettings()">
+            <section [id]="instanceId + '-engine-settings'" class="engine-settings">
+              <div class="stats">
+                <p><strong>Mossa migliore:</strong> {{ bestMove }}</p>
+                <p><strong>Valutazione:</strong> {{ evalLabel }}</p>
+                <p aria-live="polite"><strong>Stato:</strong> {{ isAnalyzing ? 'Analisi in corso…' : 'Pronto' }}</p>
+                <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
+              </div>
+              <div class="engine-config">
+                <label>
+                  Profondità
+                  <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
+                </label>
+                <label>
+                  Varianti multiple
+                  <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
+                </label>
+                <label>
+                  Livello di gioco
+                  <input type="number" min="0" max="20" [value]="skillLevel" (input)="onSkillLevelInput($event)" />
+                </label>
+              </div>
+              <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
+                <label>
+                  Posizione iniziale (FEN)
+                  <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
+                </label>
+                <button type="submit">Applica FEN</button>
+                @if (fenFeedback) {
+                  <p class="fen-feedback" role="status" aria-live="polite">{{ fenFeedback }}</p>
+                }
+              </form>
+              <form class="fen-controls" (submit)="onPgnSubmit($event, pgnInput.value)">
+                <label>
+                  Carica posizione da PGN
+                  <textarea
+                    #pgnInput
+                    rows="4"
+                    placeholder="Incolla una partita PGN: verrà caricata la posizione finale"
+                  ></textarea>
+                </label>
+                <button type="submit">Applica PGN</button>
+                @if (pgnFeedback) {
+                  <p class="fen-feedback" role="status" aria-live="polite">{{ pgnFeedback }}</p>
+                }
+              </form>
+              <div class="actions">
+                <button type="button" (click)="analyze.emit()">Analizza</button>
+                <button type="button" (click)="reset.emit()">Reimposta</button>
+              </div>
+            </section>
+          </app-bottom-sheet>
+        } @else {
+          <section class="puzzle-status">
+            <div class="puzzle-status-toolbar">
+              <!-- <p class="section-tag">Modalità Puzzle</p> -->
+              <p class="puzzle-status-message" role="status" aria-live="polite" [title]="puzzleMessage || ''">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
+              <div class="puzzle-status-actions">
+                <button
+                  type="button"
+                  class="puzzle-assist compact-action icon-action"
+                  aria-label="Salta mossa"
+                  title="Salta mossa"
+                  [disabled]="!showPuzzleSkipMove"
+                  (click)="skipPuzzleMove.emit()"
+                  >
+                  <app-icon name="skip-move"></app-icon>
+                </button>
+                <button
+                  type="button"
+                  class="puzzle-assist compact-action icon-action"
+                  aria-label="Mostra suggerimento"
+                  title="Suggerimento"
+                  [disabled]="!showPuzzleHint"
+                  (click)="hintPuzzleMove.emit()"
+                  >
+                  <app-icon name="hint"></app-icon>
+                </button>
+                @if (showBlindfoldControl) {
+                  <button
+                    type="button"
+                    class="blindfold-reveal compact-action icon-action"
+                    aria-label="Mostra i pezzi e marca il tentativo come assistito"
+                    [disabled]="!canRevealBlindfold"
+                    title="Mostra pezzi (tentativo assistito)"
+                    (click)="revealBlindfoldPieces.emit()"
+                    >
+                    <app-icon name="eye"></app-icon>
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="surrender compact-action icon-action"
+                  aria-label="Arrenditi"
+                  title="Arrenditi"
+                  [disabled]="!showSurrender"
+                  (click)="surrenderPuzzle.emit()"
+                  >
+                  <app-icon name="surrender"></app-icon>
+                </button>
+                @if (showBatchDrillInfo) {
+                  <button
+                    type="button"
+                    class="toggle batch-shuffle-button icon-action"
+                    title="Rimescola set corrente (Shuffle)"
+                    aria-label="Rimescola set corrente"
+                    (click)="shuffleBatch.emit()"
+                    >
+                    <app-icon name="shuffle"></app-icon>
+                  </button>
+                }
+                @if (showWoodpeckerInfo) {
+                  <button
+                    type="button"
+                    class="toggle woodpecker-detail-button icon-action"
+                    aria-label="Mostra dettagli ciclo Woodpecker"
+                    (click)="openWoodpeckerInfoModal($event)"
+                    >
+                    <app-icon name="info"></app-icon>
+                  </button>
+                }
+              </div>
+            </div>
+            @if (showBatchDrillInfo) {
+              <div class="batch-drill-status">
+                <span class="batch-drill-badge">{{ batchDrillProgressLabel }}</span>
+              </div>
+            }
+            @if (showWoodpeckerInfo) {
+              <div class="woodpecker-status">
+                <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
+              </div>
+            }
+          </section>
+        }
+      }
+    </section>
+  }
+
+  @if (isWoodpeckerInfoModalOpen) {
+    <div class="woodpecker-modal-backdrop" (click)="closeWoodpeckerInfoModal()">
+      <section
+        #woodpeckerDialog
+        class="woodpecker-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-labelledby]="instanceId + '-woodpecker-dialog-title'"
+        tabindex="-1"
+        (keydown)="onDialogKeydown($event, woodpeckerDialog)"
+        (click)="$event.stopPropagation()"
+        >
+        <header>
+          <h3 [id]="instanceId + '-woodpecker-dialog-title'">Dettagli ciclo Woodpecker</h3>
+          <button autofocus type="button" class="woodpecker-modal-close" aria-label="Chiudi dettagli" (click)="closeWoodpeckerInfoModal()">
+            <app-icon name="close"></app-icon>
+          </button>
+        </header>
+        <div class="woodpecker-modal-content">
+          <p>{{ woodpeckerCycleLabel }}</p>
+          <p>{{ woodpeckerProgressLabel }}</p>
+          <p>{{ woodpeckerDayLabel }}</p>
+          <p>{{ woodpeckerCalendarLabel }}</p>
+          <p>{{ woodpeckerTargetLabel }}</p>
+        </div>
       </section>
-
-      <app-bottom-sheet [open]="isEngineSettingsOpen" title="Impostazioni engine" (closed)="closeEngineSettings()">
-      <section [id]="instanceId + '-engine-settings'" class="engine-settings">
-        <div class="stats">
-          <p><strong>Mossa migliore:</strong> {{ bestMove }}</p>
-          <p><strong>Valutazione:</strong> {{ evalLabel }}</p>
-          <p aria-live="polite"><strong>Stato:</strong> {{ isAnalyzing ? 'Analisi in corso…' : 'Pronto' }}</p>
-          <p class="fen"><strong>FEN:</strong> {{ fen }}</p>
-        </div>
-
-        <div class="engine-config">
-          <label>
-            Profondità
-            <input type="number" min="1" max="30" [value]="depth" (input)="onDepthInput($event)" />
-          </label>
-
-          <label>
-            Varianti multiple
-            <input type="number" min="1" max="5" [value]="multiPv" (input)="onMultiPvInput($event)" />
-          </label>
-
-          <label>
-            Livello di gioco
-            <input type="number" min="0" max="20" [value]="skillLevel" (input)="onSkillLevelInput($event)" />
-          </label>
-        </div>
-
-        <form class="fen-controls" (submit)="onFenSubmit($event, fenInput.value)">
-          <label>
-            Posizione iniziale (FEN)
-            <input #fenInput type="text" [placeholder]="fenInputValue || 'Inserisci FEN'" />
-          </label>
-          <button type="submit">Applica FEN</button>
-          <p *ngIf="fenFeedback" class="fen-feedback" role="status" aria-live="polite">{{ fenFeedback }}</p>
-        </form>
-
-        <form class="fen-controls" (submit)="onPgnSubmit($event, pgnInput.value)">
-          <label>
-            Carica posizione da PGN
-            <textarea
-              #pgnInput
-              rows="4"
-              placeholder="Incolla una partita PGN: verrà caricata la posizione finale"
-            ></textarea>
-          </label>
-          <button type="submit">Applica PGN</button>
-          <p *ngIf="pgnFeedback" class="fen-feedback" role="status" aria-live="polite">{{ pgnFeedback }}</p>
-        </form>
-
-        <div class="actions">
-          <button type="button" (click)="analyze.emit()">Analizza</button>
-          <button type="button" (click)="reset.emit()">Reimposta</button>
-        </div>
-      </section>
-      </app-bottom-sheet>
-    </ng-container>
-  </ng-container>
-
-  <ng-template #puzzleModeInfo>
-    <section class="puzzle-status">
-      <div class="puzzle-status-toolbar">
-        <!-- <p class="section-tag">Modalità Puzzle</p> -->
-        <p class="puzzle-status-message" role="status" aria-live="polite" [title]="puzzleMessage || ''">{{ puzzleMessage || 'Trova la continuazione corretta del PGN.' }}</p>
-        <div class="puzzle-status-actions">
-          <button
-            type="button"
-            class="puzzle-assist compact-action icon-action"
-            aria-label="Salta mossa"
-            title="Salta mossa"
-            [disabled]="!showPuzzleSkipMove"
-            (click)="skipPuzzleMove.emit()"
-          >
-            <app-icon name="skip-move"></app-icon>
-          </button>
-          <button
-            type="button"
-            class="puzzle-assist compact-action icon-action"
-            aria-label="Mostra suggerimento"
-            title="Suggerimento"
-            [disabled]="!showPuzzleHint"
-            (click)="hintPuzzleMove.emit()"
-          >
-            <app-icon name="hint"></app-icon>
-          </button>
-          <button
-            *ngIf="showBlindfoldControl"
-            type="button"
-            class="blindfold-reveal compact-action icon-action"
-            aria-label="Mostra i pezzi e marca il tentativo come assistito"
-            [disabled]="!canRevealBlindfold"
-            title="Mostra pezzi (tentativo assistito)"
-            (click)="revealBlindfoldPieces.emit()"
-          >
-            <app-icon name="eye"></app-icon>
-          </button>
-          <button
-            type="button"
-            class="surrender compact-action icon-action"
-            aria-label="Arrenditi"
-            title="Arrenditi"
-            [disabled]="!showSurrender"
-            (click)="surrenderPuzzle.emit()"
-          >
-            <app-icon name="surrender"></app-icon>
-          </button>
-          <button
-            *ngIf="showBatchDrillInfo"
-            type="button"
-            class="toggle batch-shuffle-button icon-action"
-            title="Rimescola set corrente (Shuffle)"
-            aria-label="Rimescola set corrente"
-            (click)="shuffleBatch.emit()"
-          >
-            <app-icon name="shuffle"></app-icon>
-          </button>
-          <button
-            *ngIf="showWoodpeckerInfo"
-            type="button"
-            class="toggle woodpecker-detail-button icon-action"
-            aria-label="Mostra dettagli ciclo Woodpecker"
-            (click)="openWoodpeckerInfoModal($event)"
-          >
-            <app-icon name="info"></app-icon>
-          </button>
-        </div>
-      </div>
-      <div *ngIf="showBatchDrillInfo" class="batch-drill-status">
-        <span class="batch-drill-badge">{{ batchDrillProgressLabel }}</span>
-      </div>
-      <div *ngIf="showWoodpeckerInfo" class="woodpecker-status">
-        <p class="woodpecker-summary">{{ woodpeckerProgressLabel }}</p>
-      </div>
-    </section>
-  </ng-template>
-  </section>
-
-  <div class="woodpecker-modal-backdrop" *ngIf="isWoodpeckerInfoModalOpen" (click)="closeWoodpeckerInfoModal()">
-    <section
-      #woodpeckerDialog
-      class="woodpecker-modal"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-labelledby]="instanceId + '-woodpecker-dialog-title'"
-      tabindex="-1"
-      (keydown)="onDialogKeydown($event, woodpeckerDialog)"
-      (click)="$event.stopPropagation()"
-    >
-      <header>
-        <h3 [id]="instanceId + '-woodpecker-dialog-title'">Dettagli ciclo Woodpecker</h3>
-        <button autofocus type="button" class="woodpecker-modal-close" aria-label="Chiudi dettagli" (click)="closeWoodpeckerInfoModal()">
-          <app-icon name="close"></app-icon>
-        </button>
-      </header>
-      <div class="woodpecker-modal-content">
-        <p>{{ woodpeckerCycleLabel }}</p>
-        <p>{{ woodpeckerProgressLabel }}</p>
-        <p>{{ woodpeckerDayLabel }}</p>
-        <p>{{ woodpeckerCalendarLabel }}</p>
-        <p>{{ woodpeckerTargetLabel }}</p>
-      </div>
-    </section>
-  </div>
-
-  <div class="bookmark-modal-backdrop" *ngIf="isBookmarkModalOpen" (click)="closeBookmarkModal()">
-    <section
-      #bookmarkDialog
-      class="bookmark-modal"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-labelledby]="instanceId + '-bookmark-dialog-title'"
-      tabindex="-1"
-      (keydown)="onDialogKeydown($event, bookmarkDialog)"
-      (click)="$event.stopPropagation()"
-    >
-      <header>
-        <h3 [id]="instanceId + '-bookmark-dialog-title'">Salva bookmark posizione</h3>
-        <button type="button" class="bookmark-modal-close" aria-label="Chiudi bookmark" (click)="closeBookmarkModal()">
-          <app-icon name="close"></app-icon>
-        </button>
-      </header>
-
-      <form class="bookmark-form" (submit)="onSaveBookmark($event, bookmarkTitleInput, bookmarkNoteInput)">
-        <label>
-          Titolo
-          <input #bookmarkTitleInput autofocus type="text" maxlength="80" placeholder="Es. Finale di torri interessante" />
-        </label>
-
-        <label>
-          Nota breve
-          <textarea #bookmarkNoteInput rows="3" maxlength="220" placeholder="Cosa vuoi ricordare di questa posizione?"></textarea>
-        </label>
-
-        <div class="bookmark-modal-actions">
-          <button type="button" class="toggle" (click)="closeBookmarkModal()">Annulla</button>
-          <button type="submit">Salva posizione corrente</button>
-        </div>
-      </form>
-    </section>
-  </div>
-
-  <section class="analysis-moves-region" *ngIf="showMoveArea">
-  <section class="move-list" *ngIf="showMoveList && moves.length > 0">
-    <h2>Mosse giocate</h2>
-    <ol class="move-rows" [style.max-height.px]="moveListMaxHeight > 0 ? moveListMaxHeight : null">
-      <li class="move-row" *ngFor="let row of moveRows()">
-        <span class="move-number">{{ row.moveNumber }}.</span>
-        <div class="move-pair">
-          <button
-            *ngIf="row.white as white"
-            type="button"
-            class="history-move-button"
-            [class.played]="isMovePlayed(white.index)"
-            [class.active]="isMoveActive(white.index)"
-            (click)="jumpToMove(white.index + 1)"
-          >
-            {{ white.text }}
-          </button>
-
-          <button
-            *ngIf="row.black as black"
-            type="button"
-            class="history-move-button"
-            [class.played]="isMovePlayed(black.index)"
-            [class.active]="isMoveActive(black.index)"
-            (click)="jumpToMove(black.index + 1)"
-          >
-            {{ black.text }}
-          </button>
-        </div>
-      </li>
-    </ol>
-  </section>
-
-  <section class="pgn-comment-panel" *ngIf="showMoveArea && showPgnComment && pgnComment">
-    <section class="pgn-comment">
-      <h3>Commento PGN</h3>
-      <p>{{ pgnComment }}</p>
-    </section>
-  </section>
-
-  <div class="history-nav-shell" *ngIf="showMoveArea">
-    <div class="history-nav">
-      <!-- <div class="history-nav-context" *ngIf="moves.length > 0">
-        <span class="history-nav-kicker">Navigazione</span>
-        <strong>Mossa {{ moveCursor }}/{{ moves.length }}</strong>
-      </div> -->
-
-      <div class="history-step-actions" role="group" aria-label="Navigazione mosse">
-        <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
-          <app-icon name="first"></app-icon>
-        </button>
-        <button
-          type="button"
-          class="history-icon-button"
-          [disabled]="!canGoBack"
-          aria-label="Mossa precedente"
-          (click)="previousMove.emit()"
-        >
-          <app-icon name="previous"></app-icon>
-        </button>
-        <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
-          <app-icon name="next"></app-icon>
-        </button>
-        <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
-          <app-icon name="last"></app-icon>
-        </button>
-      </div>
-
-      <div class="history-utility-actions" role="group" aria-label="Azioni posizione">
-        <button
-          type="button"
-          class="position-action-button"
-          aria-label="Salva la posizione nei bookmark"
-          (click)="openBookmarkModal($event)"
-        >
-          <app-icon name="bookmark"></app-icon>
-        </button>
-
-        <button
-          type="button"
-          class="quick-menu-trigger"
-          [attr.aria-label]="isQuickMenuOpen ? 'Chiudi azioni rapide' : 'Apri azioni rapide'"
-          [attr.aria-expanded]="isQuickMenuOpen"
-          [attr.aria-controls]="instanceId + '-quick-menu'"
-          (click)="toggleQuickMenu()"
-        >
-          <app-icon name="more"></app-icon>
-        </button>
-      </div>
     </div>
+  }
 
-    <section [id]="instanceId + '-quick-menu'" class="quick-menu" *ngIf="isQuickMenuOpen">
-      <p class="quick-menu-title">Azioni rapide</p>
+  @if (isBookmarkModalOpen) {
+    <div class="bookmark-modal-backdrop" (click)="closeBookmarkModal()">
+      <section
+        #bookmarkDialog
+        class="bookmark-modal"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-labelledby]="instanceId + '-bookmark-dialog-title'"
+        tabindex="-1"
+        (keydown)="onDialogKeydown($event, bookmarkDialog)"
+        (click)="$event.stopPropagation()"
+        >
+        <header>
+          <h3 [id]="instanceId + '-bookmark-dialog-title'">Salva bookmark posizione</h3>
+          <button type="button" class="bookmark-modal-close" aria-label="Chiudi bookmark" (click)="closeBookmarkModal()">
+            <app-icon name="close"></app-icon>
+          </button>
+        </header>
+        <form class="bookmark-form" (submit)="onSaveBookmark($event, bookmarkTitleInput, bookmarkNoteInput)">
+          <label>
+            Titolo
+            <input #bookmarkTitleInput autofocus type="text" maxlength="80" placeholder="Es. Finale di torri interessante" />
+          </label>
+          <label>
+            Nota breve
+            <textarea #bookmarkNoteInput rows="3" maxlength="220" placeholder="Cosa vuoi ricordare di questa posizione?"></textarea>
+          </label>
+          <div class="bookmark-modal-actions">
+            <button type="button" class="toggle" (click)="closeBookmarkModal()">Annulla</button>
+            <button type="submit">Salva posizione corrente</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
 
-      <label class="quick-option" [class.disabled]="hideEngine">
-        <input
-          type="checkbox"
-          [checked]="showBestMoveArrow"
-          [disabled]="hideEngine"
-          (change)="onBestMoveArrowChange($event)"
-        />
-        Mostra freccia best move
-      </label>
-
-      <label class="quick-option">
-        <input type="checkbox" [checked]="!showEvalBar" (change)="onHideEvalBarChange($event)" />
-        Nascondi eval bar
-      </label>
-
-      <button type="button" class="quick-action" (click)="copyFenRequested.emit()">
-        <app-icon name="copy"></app-icon>
-        Copia FEN corrente
-      </button>
-
-      <button type="button" class="quick-action" (click)="onRotateBoardFromQuickMenu()">
-        <app-icon name="rotate"></app-icon>
-        Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
-      </button>
-
-      <label *ngIf="showPuzzlePlayerColor" class="puzzle-player-color">
-        <span>
-          Gioca con
-          <small>Cambiarlo fa ripartire il puzzle</small>
-        </span>
-        <select [value]="puzzlePlayerColor" (change)="onPuzzlePlayerColorChange($event)">
-          <option value="auto">Auto</option>
-          <option value="white">Bianco</option>
-          <option value="black">Nero</option>
-        </select>
-      </label>
+  @if (showMoveArea) {
+    <section class="analysis-moves-region">
+      @if (showMoveList && moves.length > 0) {
+        <section class="move-list">
+          <h2>Mosse giocate</h2>
+          <ol class="move-rows" [style.max-height.px]="moveListMaxHeight > 0 ? moveListMaxHeight : null">
+            @for (row of moveRows(); track row.moveNumber) {
+              <li class="move-row">
+                <span class="move-number">{{ row.moveNumber }}.</span>
+                <div class="move-pair">
+                  @if (row.white; as white) {
+                    <button
+                      type="button"
+                      class="history-move-button"
+                      [class.played]="isMovePlayed(white.index)"
+                      [class.active]="isMoveActive(white.index)"
+                      (click)="jumpToMove(white.index + 1)"
+                      >
+                      {{ white.text }}
+                    </button>
+                  }
+                  @if (row.black; as black) {
+                    <button
+                      type="button"
+                      class="history-move-button"
+                      [class.played]="isMovePlayed(black.index)"
+                      [class.active]="isMoveActive(black.index)"
+                      (click)="jumpToMove(black.index + 1)"
+                      >
+                      {{ black.text }}
+                    </button>
+                  }
+                </div>
+              </li>
+            }
+          </ol>
+        </section>
+      }
+      @if (showMoveArea && showPgnComment && pgnComment) {
+        <section class="pgn-comment-panel">
+          <section class="pgn-comment">
+            <h3>Commento PGN</h3>
+            <p>{{ pgnComment }}</p>
+          </section>
+        </section>
+      }
+      @if (showMoveArea) {
+        <div class="history-nav-shell">
+          <div class="history-nav">
+            <!-- <div class="history-nav-context" *ngIf="moves.length > 0">
+            <span class="history-nav-kicker">Navigazione</span>
+            <strong>Mossa {{ moveCursor }}/{{ moves.length }}</strong>
+          </div> -->
+          <div class="history-step-actions" role="group" aria-label="Navigazione mosse">
+            <button type="button" class="history-icon-button" [disabled]="!canGoBack" aria-label="Prima mossa" (click)="firstMove.emit()">
+              <app-icon name="first"></app-icon>
+            </button>
+            <button
+              type="button"
+              class="history-icon-button"
+              [disabled]="!canGoBack"
+              aria-label="Mossa precedente"
+              (click)="previousMove.emit()"
+              >
+              <app-icon name="previous"></app-icon>
+            </button>
+            <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Mossa successiva" (click)="nextMove.emit()">
+              <app-icon name="next"></app-icon>
+            </button>
+            <button type="button" class="history-icon-button" [disabled]="!canGoForward" aria-label="Ultima mossa" (click)="lastMove.emit()">
+              <app-icon name="last"></app-icon>
+            </button>
+          </div>
+          <div class="history-utility-actions" role="group" aria-label="Azioni posizione">
+            <button
+              type="button"
+              class="position-action-button"
+              aria-label="Salva la posizione nei bookmark"
+              (click)="openBookmarkModal($event)"
+              >
+              <app-icon name="bookmark"></app-icon>
+            </button>
+            <button
+              type="button"
+              class="quick-menu-trigger"
+              [attr.aria-label]="isQuickMenuOpen ? 'Chiudi azioni rapide' : 'Apri azioni rapide'"
+              [attr.aria-expanded]="isQuickMenuOpen"
+              [attr.aria-controls]="instanceId + '-quick-menu'"
+              (click)="toggleQuickMenu()"
+              >
+              <app-icon name="more"></app-icon>
+            </button>
+          </div>
+        </div>
+        @if (isQuickMenuOpen) {
+          <section [id]="instanceId + '-quick-menu'" class="quick-menu">
+            <p class="quick-menu-title">Azioni rapide</p>
+            <label class="quick-option" [class.disabled]="hideEngine">
+              <input
+                type="checkbox"
+                [checked]="showBestMoveArrow"
+                [disabled]="hideEngine"
+                (change)="onBestMoveArrowChange($event)"
+                />
+                Mostra freccia best move
+              </label>
+              <label class="quick-option">
+                <input type="checkbox" [checked]="!showEvalBar" (change)="onHideEvalBarChange($event)" />
+                Nascondi eval bar
+              </label>
+              <button type="button" class="quick-action" (click)="copyFenRequested.emit()">
+                <app-icon name="copy"></app-icon>
+                Copia FEN corrente
+              </button>
+              <button type="button" class="quick-action" (click)="onRotateBoardFromQuickMenu()">
+                <app-icon name="rotate"></app-icon>
+                Ruota scacchiera ({{ boardOrientation === 'white' ? 'bianco in basso' : 'nero in basso' }})
+              </button>
+              @if (showPuzzlePlayerColor) {
+                <label class="puzzle-player-color">
+                  <span>
+                    Gioca con
+                    <small>Cambiarlo fa ripartire il puzzle</small>
+                  </span>
+                  <select [value]="puzzlePlayerColor" (change)="onPuzzlePlayerColorChange($event)">
+                    <option value="auto">Auto</option>
+                    <option value="white">Bianco</option>
+                    <option value="black">Nero</option>
+                  </select>
+                </label>
+              }
+            </section>
+          }
+        </div>
+      }
+      @if (showLibraryGameNavigation) {
+        <div class="library-game-nav">
+          <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
+          <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
+        </div>
+      }
     </section>
-  </div>
-
-  <div class="library-game-nav" *ngIf="showLibraryGameNavigation">
-    <button type="button" [disabled]="!canGoPreviousGame" (click)="previousGame.emit()">Partita precedente</button>
-    <button type="button" [disabled]="!canGoNextGame" (click)="nextGame.emit()">Partita successiva</button>
-  </div>
-  </section>
+  }
 
 </aside>

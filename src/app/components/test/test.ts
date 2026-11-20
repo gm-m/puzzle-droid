@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chess } from 'chess.js';
@@ -44,7 +43,7 @@ type AppView = 'analysis' | 'library' | 'settings';
 
 @Component({
   selector: 'app-chess-workspace',
-  imports: [CommonModule, ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent, AppIconComponent, AppToastComponent],
+  imports: [ChessBoardComponent, EvalBarComponent, AnalysisPanelComponent, LibraryPanelComponent, SettingsPanelComponent, AppIconComponent, AppToastComponent],
   templateUrl: './test.html',
   styleUrl: './test.scss',
 })

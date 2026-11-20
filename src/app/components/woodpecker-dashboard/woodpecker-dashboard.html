@@ -1,5 +1,5 @@
 <main id="main-content" class="dashboard" tabindex="-1">
-  <ng-container *ngIf="data() as vm; else emptyState">
+  @if (data(); as vm) {
     <header class="dash-title">
       <h1 class="ui-display">{{ vm.pgnName }}</h1>
       <div class="cycle-badges">
@@ -8,7 +8,6 @@
         <span class="risk-pill" [ngClass]="riskClass(vm.deadlineRisk)">Rischio {{ vm.deadlineRisk }}</span>
       </div>
     </header>
-
     <div class="segmented-control dashboard-tabs" role="tablist" aria-label="Statistiche Woodpecker" #tabList>
       @for (tab of tabs; track tab.id; let index = $index) {
         <button type="button" role="tab"
@@ -19,249 +18,264 @@
           (click)="activeTab.set(tab.id)"
           (keydown)="onTabKeydown($event, index, tabList)">
           {{ tab.label }}@if (tab.id === 'review' && vm.hardSetQueue.length) {
-            <span> · {{ vm.hardSetQueue.length }}</span>
+          <span> · {{ vm.hardSetQueue.length }}</span>
+        }
+      </button>
+    }
+  </div>
+  <div id="woodpecker-panel-overview" role="tabpanel" aria-labelledby="woodpecker-tab-overview"
+    tabindex="0" [hidden]="activeTab() !== 'overview'">
+    <div class="tab-content">
+      @let completed = vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow;
+      @let total = vm.currentCyclePuzzles.length;
+      <section class="progress-card ui-card" aria-label="Progresso del ciclo">
+        <div class="progress-ring" [style.--progress]="total ? completed / total * 100 + '%' : '0%'"
+          [class.has-progress]="completed > 0">
+          <div class="progress-ring-label">
+            <strong>{{ completed }}<small>/{{ total }}</small></strong>
+            <span>completati</span>
+          </div>
+        </div>
+        <dl class="cycle-metrics">
+          <div><dt>Accuracy</dt><dd>{{ vm.accuracyPercent }}%</dd></div>
+          <div><dt>Tempo medio</dt><dd>{{ vm.averageSolveTimeSeconds }}s</dd></div>
+          <div><dt>Streak</dt><dd>{{ vm.currentStreak }}</dd></div>
+        </dl>
+      </section>
+      <section class="status-overview ui-card">
+        <div class="section-heading">
+          <h2>Stato puzzle</h2>
+          <span class="games-count">ciclo attuale</span>
+        </div>
+        <div class="status-seg" aria-hidden="true">
+          @for (status of statuses; track status.id) {
+            @if (vm.currentCycleStatusCounts[status.id] > 0) {
+              <i [class]="'seg-' + status.id" [style.flex-grow]="vm.currentCycleStatusCounts[status.id]"></i>
+            }
           }
-        </button>
-      }
-    </div>
-
-    <div id="woodpecker-panel-overview" role="tabpanel" aria-labelledby="woodpecker-tab-overview"
-      tabindex="0" [hidden]="activeTab() !== 'overview'">
-      <div class="tab-content">
-        @let completed = vm.currentCycleStatusCounts.solved + vm.currentCycleStatusCounts.slow;
-        @let total = vm.currentCyclePuzzles.length;
-        <section class="progress-card ui-card" aria-label="Progresso del ciclo">
-          <div class="progress-ring" [style.--progress]="total ? completed / total * 100 + '%' : '0%'"
-            [class.has-progress]="completed > 0">
-            <div class="progress-ring-label">
-              <strong>{{ completed }}<small>/{{ total }}</small></strong>
-              <span>completati</span>
-            </div>
+        </div>
+        <ul class="status-legend">
+          @for (status of statuses; track status.id) {
+            <li>
+              <i [class]="'dot seg-' + status.id" aria-hidden="true"></i>
+              {{ status.label }} <b>{{ vm.currentCycleStatusCounts[status.id] }}</b>
+            </li>
+          }
+        </ul>
+      </section>
+      <section class="trend ui-card">
+        @let points = trend();
+        @let today = points[points.length - 1];
+        <div class="section-heading trend-heading">
+          <h2>Ultimi 14 giorni</h2>
+          <div class="segmented-control trend-scope" role="group" aria-label="Ambito del grafico">
+            <button type="button" [attr.aria-pressed]="trendScope() === 'pgn'" (click)="trendScope.set('pgn')">PGN</button>
+            <button type="button" [attr.aria-pressed]="trendScope() === 'global'" (click)="trendScope.set('global')">Globale</button>
           </div>
-          <dl class="cycle-metrics">
-            <div><dt>Accuracy</dt><dd>{{ vm.accuracyPercent }}%</dd></div>
-            <div><dt>Tempo medio</dt><dd>{{ vm.averageSolveTimeSeconds }}s</dd></div>
-            <div><dt>Streak</dt><dd>{{ vm.currentStreak }}</dd></div>
-          </dl>
-        </section>
-
-        <section class="status-overview ui-card">
-          <div class="section-heading">
-            <h2>Stato puzzle</h2>
-            <span class="games-count">ciclo attuale</span>
-          </div>
-          <div class="status-seg" aria-hidden="true">
-            @for (status of statuses; track status.id) {
-              @if (vm.currentCycleStatusCounts[status.id] > 0) {
-                <i [class]="'seg-' + status.id" [style.flex-grow]="vm.currentCycleStatusCounts[status.id]"></i>
-              }
-            }
-          </div>
-          <ul class="status-legend">
-            @for (status of statuses; track status.id) {
-              <li>
-                <i [class]="'dot seg-' + status.id" aria-hidden="true"></i>
-                {{ status.label }} <b>{{ vm.currentCycleStatusCounts[status.id] }}</b>
-              </li>
-            }
-          </ul>
-        </section>
-
-        <section class="trend ui-card">
-          @let points = trend();
-          @let today = points[points.length - 1];
-          <div class="section-heading trend-heading">
-            <h2>Ultimi 14 giorni</h2>
-            <div class="segmented-control trend-scope" role="group" aria-label="Ambito del grafico">
-              <button type="button" [attr.aria-pressed]="trendScope() === 'pgn'" (click)="trendScope.set('pgn')">PGN</button>
-              <button type="button" [attr.aria-pressed]="trendScope() === 'global'" (click)="trendScope.set('global')">Globale</button>
-            </div>
-          </div>
-          <ul class="trend-bars" [attr.aria-label]="trendScope() === 'pgn' ? 'Accuracy giornaliera del PGN' : 'Accuracy giornaliera globale'">
-            <li class="trend-col" *ngFor="let point of points; trackBy: trackByPoint" [title]="trendTitle(point)">
+        </div>
+        <ul class="trend-bars" [attr.aria-label]="trendScope() === 'pgn' ? 'Accuracy giornaliera del PGN' : 'Accuracy giornaliera globale'">
+          @for (point of points; track trackByPoint($index, point)) {
+            <li class="trend-col" [title]="trendTitle(point)">
               <span class="sr-only">{{ trendTitle(point) }}</span>
               <i [class.no-attempts]="point.attempts === 0" [style.height.%]="point.accuracy" aria-hidden="true"></i>
             </li>
-          </ul>
-          <div class="trend-caption">
-            <span>{{ trendDay(points[0].label) }}</span>
-            <span>{{ today.attempts ? 'Accuracy · oggi ' + today.accuracy + '%' : 'Oggi · nessun tentativo' }}</span>
-            <span>{{ trendDay(today.label) }}</span>
-          </div>
-        </section>
-      </div>
+          }
+        </ul>
+        <div class="trend-caption">
+          <span>{{ trendDay(points[0].label) }}</span>
+          <span>{{ today.attempts ? 'Accuracy · oggi ' + today.accuracy + '%' : 'Oggi · nessun tentativo' }}</span>
+          <span>{{ trendDay(today.label) }}</span>
+        </div>
+      </section>
     </div>
-
-    <div id="woodpecker-panel-review" role="tabpanel" aria-labelledby="woodpecker-tab-review"
-      tabindex="0" [hidden]="activeTab() !== 'review'">
-      <div class="tab-content">
+  </div>
+  <div id="woodpecker-panel-review" role="tabpanel" aria-labelledby="woodpecker-tab-review"
+    tabindex="0" [hidden]="activeTab() !== 'review'">
+    <div class="tab-content">
+      <section class="review">
+        <div class="section-heading">
+          <h2>Da ripassare</h2>
+          <span class="games-count">{{ vm.hardSetQueue.length }}</span>
+        </div>
+        @if (vm.hardSetQueue.length > 0) {
+          <div class="review-list">
+            @for (puzzle of vm.hardSetQueue; track trackByHardSet($index, puzzle)) {
+              <button type="button" class="review-row ui-card"
+                (click)="openFailedPuzzle(vm, puzzle.puzzleIndex)">
+                <span class="review-n">{{ puzzle.puzzleIndex + 1 }}</span>
+                <span class="review-copy">
+                  <strong>Puzzle {{ puzzle.puzzleIndex + 1 }}</strong>
+                  <small>Scade {{ formatDueDate(puzzle.dueAt) }} · {{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip · {{ puzzle.averageSolveTimeSeconds }}s medi</small>
+                  @if (puzzle.reasons.length) {
+                    <small class="reason-list">{{ puzzle.reasons.join(' · ') }}</small>
+                  }
+                </span>
+                <app-status-badge [tone]="statusTone(puzzle.status)">{{ statusLabel(puzzle.status) }}</app-status-badge>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="empty-message">Coda di ripasso vuota: nessun puzzle in review SRS al momento.</p>
+        }
+      </section>
+      @if (vm.failedPuzzles.length > 0) {
         <section class="review">
-          <div class="section-heading">
-            <h2>Da ripassare</h2>
-            <span class="games-count">{{ vm.hardSetQueue.length }}</span>
-          </div>
-
-          <div class="review-list" *ngIf="vm.hardSetQueue.length > 0; else noHardSetQueue">
-            <button type="button" class="review-row ui-card"
-              *ngFor="let puzzle of vm.hardSetQueue; trackBy: trackByHardSet"
-              (click)="openFailedPuzzle(vm, puzzle.puzzleIndex)">
-              <span class="review-n">{{ puzzle.puzzleIndex + 1 }}</span>
-              <span class="review-copy">
-                <strong>Puzzle {{ puzzle.puzzleIndex + 1 }}</strong>
-                <small>Scade {{ formatDueDate(puzzle.dueAt) }} · {{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip · {{ puzzle.averageSolveTimeSeconds }}s medi</small>
-                <small class="reason-list" *ngIf="puzzle.reasons.length">{{ puzzle.reasons.join(' · ') }}</small>
-              </span>
-              <app-status-badge [tone]="statusTone(puzzle.status)">{{ statusLabel(puzzle.status) }}</app-status-badge>
-            </button>
-          </div>
-          <ng-template #noHardSetQueue>
-            <p class="empty-message">Coda di ripasso vuota: nessun puzzle in review SRS al momento.</p>
-          </ng-template>
-        </section>
-        <section class="review" *ngIf="vm.failedPuzzles.length > 0">
           <div class="section-heading">
             <h2>Puzzle critici del ciclo</h2>
             <span class="games-count">{{ vm.failedPuzzles.length }}</span>
           </div>
           <div class="review-list">
-            <button type="button" class="review-row ui-card"
-              *ngFor="let failed of vm.failedPuzzles; trackBy: trackByFailedPuzzle"
-              (click)="openFailedPuzzle(vm, failed.puzzleIndex)">
-              <span class="review-n">{{ failed.puzzleIndex + 1 }}</span>
-              <span class="review-copy">
-                <strong>Puzzle {{ failed.puzzleIndex + 1 }}</strong>
-                <small>{{ failed.wrongAttempts }} errori · {{ failed.skippedAttempts }} skip · {{ failed.averageSolveTimeSeconds }}s medi · ultimo {{ formatDate(failed.lastAttemptAt) }}</small>
-              </span>
-              <app-icon name="chevron-right" class="review-chevron"></app-icon>
-            </button>
+            @for (failed of vm.failedPuzzles; track trackByFailedPuzzle($index, failed)) {
+              <button type="button" class="review-row ui-card"
+                (click)="openFailedPuzzle(vm, failed.puzzleIndex)">
+                <span class="review-n">{{ failed.puzzleIndex + 1 }}</span>
+                <span class="review-copy">
+                  <strong>Puzzle {{ failed.puzzleIndex + 1 }}</strong>
+                  <small>{{ failed.wrongAttempts }} errori · {{ failed.skippedAttempts }} skip · {{ failed.averageSolveTimeSeconds }}s medi · ultimo {{ formatDate(failed.lastAttemptAt) }}</small>
+                </span>
+                <app-icon name="chevron-right" class="review-chevron"></app-icon>
+              </button>
+            }
           </div>
         </section>
-      </div>
+      }
     </div>
-
-    <div id="woodpecker-panel-cycles" role="tabpanel" aria-labelledby="woodpecker-tab-cycles"
-      tabindex="0" [hidden]="activeTab() !== 'cycles'">
-      <div class="tab-content">
-        <section class="cycles">
-          <div class="section-heading">
-            <h2>Cicli</h2>
-          </div>
-
-          <div class="cycle-list" *ngIf="vm.cycleTimeline.length > 0; else noTimeline">
-            <article class="cycle-card ui-card" *ngFor="let cycle of vm.cycleTimeline; trackBy: trackByCycle">
-              <header>
-                <div>
-                  <h3>Ciclo {{ cycle.cycle }}</h3>
-                  <p>{{ formatDate(cycle.startedAt) }} → {{ formatDate(cycle.completedAt) }}</p>
-                </div>
-                <span class="risk-pill" [ngClass]="riskClass(cycle.deadlineRisk)">{{ cycle.deadlineRisk }}</span>
-              </header>
-
-              <div class="progress-track">
-                <span class="progress-fill" [style.width.%]="cycle.progressPercent"></span>
-              </div>
-
-              <div class="timeline-summary-grid">
-                <p>{{ cycle.solvedCount }}/{{ cycle.gameCount }} · {{ cycle.progressPercent }}%</p>
-                <p>Acc {{ cycle.accuracyPercent }}% · Err {{ cycle.wrongAttempts }} · Skip {{ cycle.skippedAttempts }}</p>
-                <p>Tot {{ cycle.totalSolveTimeMs / 1000 | number: '1.0-1' }}s · Media {{ cycle.averageSolveTimeMs / 1000 | number: '1.0-1' }}s</p>
-              </div>
-
-              <div class="cycle-delta-row" *ngIf="cycle.deltaFromPrevious as delta">
-                <span class="delta-pill" [ngClass]="deltaClass(delta.accuracyPercent)">Δ acc {{ formatDeltaPercent(delta.accuracyPercent) }}</span>
-                <span class="delta-pill" [ngClass]="deltaClass(delta.totalSolveTimeMs, true)">Δ tempo {{ formatDeltaSeconds(delta.totalSolveTimeMs) }}</span>
-                <span class="delta-pill" [ngClass]="deltaClass(delta.wrongAttempts, true)">Δ err {{ delta.wrongAttempts > 0 ? '+' : '' }}{{ delta.wrongAttempts }}</span>
-                <span class="delta-pill" [ngClass]="deltaClass(delta.skippedAttempts, true)">Δ skip {{ delta.skippedAttempts > 0 ? '+' : '' }}{{ delta.skippedAttempts }}</span>
-              </div>
-
-              <details class="timeline-disclosure">
-                <summary>Dettagli round</summary>
-                <div class="timeline-metrics">
+  </div>
+  <div id="woodpecker-panel-cycles" role="tabpanel" aria-labelledby="woodpecker-tab-cycles"
+    tabindex="0" [hidden]="activeTab() !== 'cycles'">
+    <div class="tab-content">
+      <section class="cycles">
+        <div class="section-heading">
+          <h2>Cicli</h2>
+        </div>
+        @if (vm.cycleTimeline.length > 0) {
+          <div class="cycle-list">
+            @for (cycle of vm.cycleTimeline; track trackByCycle($index, cycle)) {
+              <article class="cycle-card ui-card">
+                <header>
                   <div>
-                    <p class="timeline-subtitle">Puzzle più lenti</p>
-                    <ul class="mini-list" *ngIf="cycle.slowestPuzzles.length > 0; else noSlowCyclePuzzles">
-                      <li *ngFor="let puzzle of cycle.slowestPuzzles; trackBy: trackByPuzzleSummary">
-                        <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
-                        <strong>{{ puzzle.lastElapsedSeconds }}s</strong>
-                      </li>
-                    </ul>
-                    <ng-template #noSlowCyclePuzzles>
-                      <p class="empty-message compact">Nessun dato tempi.</p>
-                    </ng-template>
+                    <h3>Ciclo {{ cycle.cycle }}</h3>
+                    <p>{{ formatDate(cycle.startedAt) }} → {{ formatDate(cycle.completedAt) }}</p>
                   </div>
-
-                  <div>
-                    <p class="timeline-subtitle">Puzzle più sbagliati</p>
-                    <ul class="mini-list" *ngIf="cycle.hardestPuzzles.length > 0; else noHardCyclePuzzles">
-                      <li *ngFor="let puzzle of cycle.hardestPuzzles; trackBy: trackByPuzzleSummary">
-                        <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
-                        <strong>{{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip</strong>
-                      </li>
-                    </ul>
-                    <ng-template #noHardCyclePuzzles>
-                      <p class="empty-message compact">Nessun puzzle critico nel ciclo.</p>
-                    </ng-template>
-                  </div>
+                  <span class="risk-pill" [ngClass]="riskClass(cycle.deadlineRisk)">{{ cycle.deadlineRisk }}</span>
+                </header>
+                <div class="progress-track">
+                  <span class="progress-fill" [style.width.%]="cycle.progressPercent"></span>
                 </div>
-              </details>
-            </article>
+                <div class="timeline-summary-grid">
+                  <p>{{ cycle.solvedCount }}/{{ cycle.gameCount }} · {{ cycle.progressPercent }}%</p>
+                  <p>Acc {{ cycle.accuracyPercent }}% · Err {{ cycle.wrongAttempts }} · Skip {{ cycle.skippedAttempts }}</p>
+                  <p>Tot {{ cycle.totalSolveTimeMs / 1000 | number: '1.0-1' }}s · Media {{ cycle.averageSolveTimeMs / 1000 | number: '1.0-1' }}s</p>
+                </div>
+                @if (cycle.deltaFromPrevious; as delta) {
+                  <div class="cycle-delta-row">
+                    <span class="delta-pill" [ngClass]="deltaClass(delta.accuracyPercent)">Δ acc {{ formatDeltaPercent(delta.accuracyPercent) }}</span>
+                    <span class="delta-pill" [ngClass]="deltaClass(delta.totalSolveTimeMs, true)">Δ tempo {{ formatDeltaSeconds(delta.totalSolveTimeMs) }}</span>
+                    <span class="delta-pill" [ngClass]="deltaClass(delta.wrongAttempts, true)">Δ err {{ delta.wrongAttempts > 0 ? '+' : '' }}{{ delta.wrongAttempts }}</span>
+                    <span class="delta-pill" [ngClass]="deltaClass(delta.skippedAttempts, true)">Δ skip {{ delta.skippedAttempts > 0 ? '+' : '' }}{{ delta.skippedAttempts }}</span>
+                  </div>
+                }
+                <details class="timeline-disclosure">
+                  <summary>Dettagli round</summary>
+                  <div class="timeline-metrics">
+                    <div>
+                      <p class="timeline-subtitle">Puzzle più lenti</p>
+                      @if (cycle.slowestPuzzles.length > 0) {
+                        <ul class="mini-list">
+                          @for (puzzle of cycle.slowestPuzzles; track trackByPuzzleSummary($index, puzzle)) {
+                            <li>
+                              <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
+                              <strong>{{ puzzle.lastElapsedSeconds }}s</strong>
+                            </li>
+                          }
+                        </ul>
+                      } @else {
+                        <p class="empty-message compact">Nessun dato tempi.</p>
+                      }
+                    </div>
+                    <div>
+                      <p class="timeline-subtitle">Puzzle più sbagliati</p>
+                      @if (cycle.hardestPuzzles.length > 0) {
+                        <ul class="mini-list">
+                          @for (puzzle of cycle.hardestPuzzles; track trackByPuzzleSummary($index, puzzle)) {
+                            <li>
+                              <span>Puzzle {{ puzzle.puzzleIndex + 1 }}</span>
+                              <strong>{{ puzzle.wrongAttempts }} err · {{ puzzle.skippedAttempts }} skip</strong>
+                            </li>
+                          }
+                        </ul>
+                      } @else {
+                        <p class="empty-message compact">Nessun puzzle critico nel ciclo.</p>
+                      }
+                    </div>
+                  </div>
+                </details>
+              </article>
+            }
           </div>
-          <ng-template #noTimeline>
-            <p class="empty-message">Nessun ciclo registrato per questo PGN.</p>
-          </ng-template>
-        </section>
-        <details class="cycle-detail ui-card">
-          <summary>
-            <span>Dettaglio puzzle del ciclo</span>
-            <span class="games-count">{{ vm.currentCyclePuzzles.length }}</span>
-          </summary>
-          <div class="cycle-puzzle-list" *ngIf="vm.currentCyclePuzzles.length > 0; else noCyclePuzzles">
-            <article class="cycle-puzzle-row" *ngFor="let puzzle of vm.currentCyclePuzzles; trackBy: trackByPuzzleSummary">
-              <div class="cycle-puzzle-primary">
-                <strong>Puzzle {{ puzzle.puzzleIndex + 1 }}</strong>
-                <app-status-badge [tone]="statusTone(puzzle.status)">{{ statusLabel(puzzle.status) }}</app-status-badge>
-              </div>
-              <div class="cycle-puzzle-meta">
-                <p>Tentativi {{ puzzle.attempts }} · Errori {{ puzzle.wrongAttempts }} · Skip {{ puzzle.skippedAttempts }}</p>
-                <p>Ultimo {{ puzzle.lastElapsedSeconds }}s · Media {{ puzzle.averageSolveTimeSeconds }}s</p>
-                <p>Ultimo tentativo {{ formatDate(puzzle.lastAttemptAt) }} · Scade {{ formatDueDate(puzzle.dueAt) }}</p>
-              </div>
-            </article>
+        } @else {
+          <p class="empty-message">Nessun ciclo registrato per questo PGN.</p>
+        }
+      </section>
+      <details class="cycle-detail ui-card">
+        <summary>
+          <span>Dettaglio puzzle del ciclo</span>
+          <span class="games-count">{{ vm.currentCyclePuzzles.length }}</span>
+        </summary>
+        @if (vm.currentCyclePuzzles.length > 0) {
+          <div class="cycle-puzzle-list">
+            @for (puzzle of vm.currentCyclePuzzles; track trackByPuzzleSummary($index, puzzle)) {
+              <article class="cycle-puzzle-row">
+                <div class="cycle-puzzle-primary">
+                  <strong>Puzzle {{ puzzle.puzzleIndex + 1 }}</strong>
+                  <app-status-badge [tone]="statusTone(puzzle.status)">{{ statusLabel(puzzle.status) }}</app-status-badge>
+                </div>
+                <div class="cycle-puzzle-meta">
+                  <p>Tentativi {{ puzzle.attempts }} · Errori {{ puzzle.wrongAttempts }} · Skip {{ puzzle.skippedAttempts }}</p>
+                  <p>Ultimo {{ puzzle.lastElapsedSeconds }}s · Media {{ puzzle.averageSolveTimeSeconds }}s</p>
+                  <p>Ultimo tentativo {{ formatDate(puzzle.lastAttemptAt) }} · Scade {{ formatDueDate(puzzle.dueAt) }}</p>
+                </div>
+              </article>
+            }
           </div>
-        </details>
-        <ng-template #noCyclePuzzles>
+        } @else {
           <p class="empty-message">Avvia un ciclo Woodpecker per vedere lo stato puzzle per puzzle.</p>
-        </ng-template>
-      </div>
+        }
+      </details>
     </div>
-
-    <button type="button" class="resume-button" *ngIf="vm.hasResumeSession && vm.resumePuzzleIndex !== null"
+  </div>
+  @if (vm.hasResumeSession && vm.resumePuzzleIndex !== null) {
+    <button type="button" class="resume-button"
       [attr.aria-label]="'Riprendi dal puzzle ' + (vm.resumePuzzleIndex + 1)"
       (click)="resumeWoodpecker(vm)">
       <app-icon name="play"></app-icon>
       Riprendi
     </button>
-  </ng-container>
-
-  <ng-template #emptyState>
-    <div class="dash-title">
-      <p class="ui-kicker">WOODPECKER</p>
-      <h1 class="ui-display">Dashboard</h1>
-    </div>
-    <section class="empty-box">
-      <span class="empty-glyph" aria-hidden="true">♞</span>
-      <app-empty-state
-        title="Nessun dato Woodpecker"
-        description="Apri un PGN in modalità puzzle con Woodpecker e risolvi qualche esercizio per generare le statistiche."
-      ></app-empty-state>
-      <div class="pgn-links" *ngIf="availablePgns().length > 0">
-        <a class="pgn-link ui-card" *ngFor="let pgn of availablePgns(); trackBy: trackByPgn"
-          [routerLink]="['/woodpecker-dashboard', pgn.pgnId]">
-          <span class="file-glyph" aria-hidden="true">♞</span>
-          <strong>{{ pgn.pgnName }}</strong>
-          <app-icon name="chevron-right"></app-icon>
-        </a>
+  }
+} @else {
+  <div class="dash-title">
+    <p class="ui-kicker">WOODPECKER</p>
+    <h1 class="ui-display">Dashboard</h1>
+  </div>
+  <section class="empty-box">
+    <span class="empty-glyph" aria-hidden="true">♞</span>
+    <app-empty-state
+      title="Nessun dato Woodpecker"
+      description="Apri un PGN in modalità puzzle con Woodpecker e risolvi qualche esercizio per generare le statistiche."
+    ></app-empty-state>
+    @if (availablePgns().length > 0) {
+      <div class="pgn-links">
+        @for (pgn of availablePgns(); track trackByPgn($index, pgn)) {
+          <a class="pgn-link ui-card"
+            [routerLink]="['/woodpecker-dashboard', pgn.pgnId]">
+            <span class="file-glyph" aria-hidden="true">♞</span>
+            <strong>{{ pgn.pgnName }}</strong>
+            <app-icon name="chevron-right"></app-icon>
+          </a>
+        }
       </div>
-    </section>
-  </ng-template>
+    }
+  </section>
+}
+
 </main>

@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { SettingsService } from '../../services/settings.service';
 import { AppSettings } from '../../models/settings.models';
 import { WoodpeckerAnalyticsService } from '../../services/woodpecker-analytics.service';
@@ -8,7 +7,7 @@ import { AppDialogComponent } from '../ui/app-dialog/app-dialog';
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [CommonModule, AppDialogComponent],
+  imports: [AppDialogComponent],
   templateUrl: './settings-panel.html',
   styleUrl: './settings-panel.scss'
 })
