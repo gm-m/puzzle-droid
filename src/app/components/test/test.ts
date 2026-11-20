@@ -2673,7 +2673,8 @@ export class ChessWorkspaceComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private markPuzzleAttemptStart(): void {
-    this.puzzleAttemptStartedAt = Date.now();
+    // An automatic reply can return control to the player within the same attempt.
+    this.puzzleAttemptStartedAt ??= Date.now();
   }
 
   private updatePuzzleClock(startedAt: number): void {

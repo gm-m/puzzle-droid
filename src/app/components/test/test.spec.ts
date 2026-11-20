@@ -217,6 +217,37 @@ describe('ChessWorkspaceComponent', () => {
       expect(component.puzzleMessage()).toBe('Puzzle avviato. Fai la prima mossa corretta.');
     });
 
+    it('should record the full Woodpecker attempt across an automatic reply and time the retry separately', () => {
+      jasmine.clock().mockDate();
+      const selection = buildSelection({ woodpeckerEnabled: true, fullUciHistory: ['e2e4', 'e7e5', 'g1f3'] });
+      component.libraryItems.set([{
+        id: selection.itemId,
+        name: 'Woodpecker',
+        pgn: '1. e4 e5 2. Nf3 *',
+        mode: 'puzzle',
+        games: [{
+          id: selection.gameId,
+          initialFen: selection.initialFen,
+          uciMoves: selection.fullUciHistory,
+          positions: [],
+        }],
+      }]);
+      const recordAttempt = TestBed.inject(WoodpeckerAnalyticsService).recordAttempt as jasmine.Spy;
+      component.onLibraryGameSelected(selection);
+
+      jasmine.clock().tick(8000);
+      component.onBoardMove({ from: 'e2', to: 'e4' });
+      jasmine.clock().tick(2700);
+      component.onBoardMove({ from: 'd2', to: 'd4' });
+      jasmine.clock().tick(3000);
+      component.onBoardMove({ from: 'g1', to: 'f3' });
+
+      expect(recordAttempt.calls.allArgs()).toEqual([
+        [jasmine.objectContaining({ correct: false, elapsedMs: 10700 })],
+        [jasmine.objectContaining({ correct: true, elapsedMs: 3000 })],
+      ]);
+    });
+
     it('should hide navigation in a puzzle and cancel the pending move when closing it', () => {
       const shell = TestBed.inject(ShellLayoutService);
       component.activeView.set('library');
