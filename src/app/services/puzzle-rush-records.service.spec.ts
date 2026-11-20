@@ -1,7 +1,12 @@
+import { vi } from 'vitest';
 import { PuzzleRushRecordsService } from './puzzle-rush-records.service';
 import type { RushRunSummary } from '../models/puzzle-rush.models';
 
 describe('PuzzleRushRecordsService', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   let stored: Record<string, string>;
   const run = (score: number, overrides: Partial<RushRunSummary> = {}): RushRunSummary => ({
     collectionId: 'pgn-1',
@@ -16,8 +21,8 @@ describe('PuzzleRushRecordsService', () => {
 
   beforeEach(() => {
     stored = {};
-    spyOn(window.localStorage, 'getItem').and.callFake((key: string) => stored[key] ?? null);
-    spyOn(window.localStorage, 'setItem').and.callFake((key: string, value: string) => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => stored[key] ?? null);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key: string, value: string) => {
       stored[key] = value;
     });
   });
@@ -26,7 +31,7 @@ describe('PuzzleRushRecordsService', () => {
     const service = new PuzzleRushRecordsService();
 
     expect(service.recordRun(run(5))).toEqual({ isNewBest: true, previousBest: null });
-    expect(service.recordRun(run(3)).isNewBest).toBeFalse();
+    expect(service.recordRun(run(3)).isNewBest).toBe(false);
     expect(service.recordRun(run(8))).toEqual({ isNewBest: true, previousBest: { score: 5, at: 1_005 } });
     service.recordRun(run(2, { mode: 'survival' }));
 
@@ -39,7 +44,7 @@ describe('PuzzleRushRecordsService', () => {
   it('should not record a zero score as a best', () => {
     const service = new PuzzleRushRecordsService();
 
-    expect(service.recordRun(run(0)).isNewBest).toBeFalse();
+    expect(service.recordRun(run(0)).isNewBest).toBe(false);
     expect(service.best('pgn-1', 'blitz3')).toBeNull();
   });
 

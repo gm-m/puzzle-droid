@@ -1,17 +1,18 @@
+import { vi, type Mock } from 'vitest';
 import { StockfishService } from './stockfish.service';
 
 describe('StockfishService', () => {
   const blackToMoveFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
   let service: StockfishService;
   let posted: string[];
-  let listener: jasmine.Spy;
+  let listener: Mock;
   const receive = (message: string) =>
     (service as unknown as { handleEngineMessage(message: string): void }).handleEngineMessage(message);
 
   beforeEach(() => {
     service = new StockfishService();
     posted = [];
-    listener = jasmine.createSpy('listener');
+    listener = vi.fn().mockName('listener');
     service.setListener(listener);
     (service as unknown as { engine: Pick<Worker, 'postMessage'> }).engine = {
       postMessage: (message: string) => posted.push(message),

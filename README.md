@@ -68,23 +68,18 @@ To enable the hosted site on GitHub:
 
 The workflow in `.github/workflows/deploy-gh-pages.yml` will publish the Angular build to `gh-pages` after each push to `main` or `master`, and it also creates a `404.html` fallback so Angular routes continue to work on GitHub Pages.
 
-## Running unit tests
+## Running tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+The unit tests run on Vitest with jsdom. The end-to-end tests use Vitest and Playwright's Chromium. Install Chromium after installing the npm dependencies.
 
 ```bash
-ng e2e
+npx playwright install chromium
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+- `npm test` runs the unit tests through Angular CLI.
+- `npm run test:ci` runs the unit tests once. Add `-- --code-coverage` for an HTML report and a terminal summary.
+- `npm run e2e` builds the app and runs the end-to-end suite in headless Chromium. Vitest starts and stops the preview server.
+- `npm run e2e:headed` shows the browser, and `npm run e2e:debug` opens the Playwright Inspector.
 
 ## Additional Resources
 

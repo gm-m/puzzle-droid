@@ -1,6 +1,11 @@
+import { vi } from 'vitest';
 import { PgnParser } from './pgn-parser';
 
 describe('PgnParser', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   let parser: PgnParser;
   const parse = (pgn: string) => parser.parsePgnGames(pgn, 'item');
 
@@ -42,7 +47,7 @@ describe('PgnParser', () => {
   });
 
   it('should defer move parsing until positions are accessed and estimate the ply count', () => {
-    const loadSpy = spyOn(parser, 'loadPgnWithFallback').and.callThrough();
+    const loadSpy = vi.spyOn(parser, 'loadPgnWithFallback');
     const [game] = parse('[Event "Lazy"]\n\n1. e4 {ok} e5 (1... c5 2. Nf3) 2. Nf3 $1 Nc6 3. O-O-O?? 1-0');
 
     expect(game.event).toBe('Lazy');

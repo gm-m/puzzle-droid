@@ -1,15 +1,9 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { IDBFactory } from 'fake-indexeddb';
+import { vi } from 'vitest';
 
 import { LEGACY_LIBRARY_STORAGE_KEY, LibraryStorageService, type PersistedLibraryItem } from './library-storage.service';
-
-const deleteDatabase = () =>
-  new Promise<void>((resolve) => {
-    const request = indexedDB.deleteDatabase('puzzle-droid');
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
 
 const item = (id: string, createdAt: number): PersistedLibraryItem => ({
   id,
@@ -26,10 +20,12 @@ describe('LibraryStorageService', () => {
     return TestBed.inject(LibraryStorageService);
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', new IDBFactory());
     localStorage.removeItem(LEGACY_LIBRARY_STORAGE_KEY);
-    await deleteDatabase();
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('should migrate legacy localStorage items preserving order and remove the legacy key', async () => {
     localStorage.setItem(

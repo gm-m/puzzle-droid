@@ -1,9 +1,14 @@
+import { vi } from 'vitest';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { LibraryPanelComponent } from './library-panel';
 
 describe('LibraryPanelComponent', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   let component: LibraryPanelComponent;
   let fixture: ComponentFixture<LibraryPanelComponent>;
 
@@ -16,7 +21,7 @@ describe('LibraryPanelComponent', () => {
 
     fixture = TestBed.createComponent(LibraryPanelComponent);
     component = fixture.componentInstance;
-    component.positionBookmarks = [
+    fixture.componentRef.setInput('positionBookmarks', [
       {
         id: 'bookmark-1',
         title: 'Posizione uno',
@@ -24,7 +29,7 @@ describe('LibraryPanelComponent', () => {
         fen: '4k3/8/8/8/8/8/8/4K3 w - - 0 1',
         createdAt: 1700000000000,
       },
-    ];
+    ]);
     fixture.detectChanges();
   });
 
@@ -48,7 +53,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should emit bookmark selection when opening a bookmark', () => {
-    spyOn(component.positionBookmarkSelected, 'emit');
+    vi.spyOn(component.positionBookmarkSelected, 'emit').mockImplementation(() => {});
 
     component.onOpenBookmark('bookmark-1');
 
@@ -56,7 +61,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should emit bookmark update and leave edit mode', () => {
-    spyOn(component.positionBookmarkUpdated, 'emit');
+    vi.spyOn(component.positionBookmarkUpdated, 'emit').mockImplementation(() => {});
     const titleInput = document.createElement('input');
     const noteInput = document.createElement('textarea');
     titleInput.value = 'Titolo aggiornato';
@@ -74,7 +79,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should emit bookmark deletion after confirmation and clear edit mode', () => {
-    spyOn(component.positionBookmarkDeleted, 'emit');
+    vi.spyOn(component.positionBookmarkDeleted, 'emit').mockImplementation(() => {});
     component.startBookmarkEdit('bookmark-1');
 
     component.deleteBookmark('bookmark-1');
@@ -88,7 +93,7 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should filter bookmarks by title, note or fen and sort them', () => {
-    component.positionBookmarks = [
+    fixture.componentRef.setInput('positionBookmarks', [
       ...component.positionBookmarks,
       {
         id: 'bookmark-2',
@@ -97,7 +102,7 @@ describe('LibraryPanelComponent', () => {
         fen: '8/8/8/8/8/8/8/K6k w - - 0 1',
         createdAt: 1600000000000,
       },
-    ];
+    ]);
 
     component.bookmarkSearch = 'altra';
     component.bookmarkSort = 'title';
@@ -138,7 +143,7 @@ describe('LibraryPanelComponent', () => {
       { id: 'g2', initialFen: '', uciMoves: [], positions: [], plyCount: 40, event: 'Wijk' },
     ];
     const item = { id: 'pgn-multi', name: 'Multi.pgn', pgn: '', mode: 'puzzle' as const, games, event: 'Linares' };
-    component.woodpeckerSessionInfoByItemId = { 'pgn-multi': { hasSession: true, resumePuzzleIndex: 1 } };
+    fixture.componentRef.setInput('woodpeckerSessionInfoByItemId', { 'pgn-multi': { hasSession: true, resumePuzzleIndex: 1 } });
 
     expect(component.cardSummary(item)).toEqual([
       { label: 'Modalità', value: 'Puzzle' },
@@ -156,7 +161,7 @@ describe('LibraryPanelComponent', () => {
       mode: 'view' as const,
       games: Array.from({ length: gameCount }, (_, index) => ({ id: `${id}-${index}`, initialFen: '', uciMoves: [], positions: [] })),
     });
-    component.items = [make('a', 'Zeta.pgn', 1), make('b', 'Alfa.pgn', 3), make('c', 'Beta finali.pgn', 2)];
+    fixture.componentRef.setInput('items', [make('a', 'Zeta.pgn', 1), make('b', 'Alfa.pgn', 3), make('c', 'Beta finali.pgn', 2)]);
 
     expect(component.displayedItems().map((item) => item.id)).toEqual(['a', 'b', 'c']);
 
@@ -171,12 +176,12 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should expose per-puzzle Woodpecker status badges', () => {
-    component.woodpeckerSessionInfoByItemId = {
+    fixture.componentRef.setInput('woodpeckerSessionInfoByItemId', {
       'pgn-1': { hasSession: true, resumePuzzleIndex: 2, puzzleStatuses: ['solved', 'failed', 'unseen'] },
-    };
+    });
 
-    expect(component.hasPuzzleStatuses('pgn-1')).toBeTrue();
-    expect(component.hasPuzzleStatuses('pgn-2')).toBeFalse();
+    expect(component.hasPuzzleStatuses('pgn-1')).toBe(true);
+    expect(component.hasPuzzleStatuses('pgn-2')).toBe(false);
     expect(component.puzzleStatusBadge('pgn-1', 0)).toEqual({ label: 'Risolto', tone: 'success' });
     expect(component.puzzleStatusBadge('pgn-1', 1)).toEqual({ label: 'Sbagliato', tone: 'danger' });
     expect(component.puzzleStatusBadge('pgn-1', 5)).toBeNull();
@@ -184,7 +189,7 @@ describe('LibraryPanelComponent', () => {
 
   it('should confirm before deleting a Woodpecker session', () => {
     const item = { id: 'pgn-1', name: 'Allenamento.pgn', pgn: '', mode: 'puzzle' as const, games: [] };
-    spyOn(component.woodpeckerSessionDeleteRequested, 'emit');
+    vi.spyOn(component.woodpeckerSessionDeleteRequested, 'emit').mockImplementation(() => {});
 
     component.onDeleteWoodpeckerSession(item);
     expect(component.woodpeckerSessionDeleteRequested.emit).not.toHaveBeenCalled();
@@ -214,8 +219,8 @@ describe('LibraryPanelComponent', () => {
   });
 
   it('should expose and emit the per-game puzzle player color', () => {
-    spyOn(component.puzzlePlayerColorChanged, 'emit');
-    component.puzzlePlayerColorByGameId = { 'game-2': 'black' };
+    vi.spyOn(component.puzzlePlayerColorChanged, 'emit').mockImplementation(() => {});
+    fixture.componentRef.setInput('puzzlePlayerColorByGameId', { 'game-2': 'black' });
     const select = document.createElement('select');
     select.innerHTML = '<option value="white">Bianco</option>';
     select.value = 'white';
@@ -285,7 +290,7 @@ describe('LibraryPanelComponent', () => {
     });
 
     it('should debounce the free-text search', () => {
-      jasmine.clock().install();
+      vi.useFakeTimers();
       try {
         const item = makeItem(10);
         const input = document.createElement('input');
@@ -294,10 +299,10 @@ describe('LibraryPanelComponent', () => {
         component.onItemGameFilterInput(item.id, { target: input } as unknown as Event);
         expect(component.filteredGameEntries(item).length).toBe(10);
 
-        jasmine.clock().tick(200);
+        vi.advanceTimersByTime(200);
         expect(component.filteredGameEntries(item).length).toBe(5);
       } finally {
-        jasmine.clock().uninstall();
+        vi.useRealTimers();
       }
     });
   });
@@ -333,9 +338,9 @@ describe('LibraryPanelComponent', () => {
 
       const other = TestBed.createComponent(LibraryPanelComponent).componentInstance;
 
-      expect(other.isPuzzleWoodpecker('pgn-puzzle')).toBeTrue();
-      expect(other.isPuzzleAutoAdvance('pgn-puzzle')).toBeFalse();
-      expect(other.isPuzzleAutoRotate('pgn-puzzle')).toBeTrue();
+      expect(other.isPuzzleWoodpecker('pgn-puzzle')).toBe(true);
+      expect(other.isPuzzleAutoAdvance('pgn-puzzle')).toBe(false);
+      expect(other.isPuzzleAutoRotate('pgn-puzzle')).toBe(true);
     });
 
     it('should keep the batch range within bounds and ordered', () => {
@@ -356,24 +361,24 @@ describe('LibraryPanelComponent', () => {
 
     it('should include the batch config when resuming a session', () => {
       const item = makeItem(20);
-      component.woodpeckerSessionInfoByItemId = { [item.id]: { hasSession: true, resumePuzzleIndex: 6 } };
+      fixture.componentRef.setInput('woodpeckerSessionInfoByItemId', { [item.id]: { hasSession: true, resumePuzzleIndex: 6 } });
       component.onPuzzleBatchEnabledChange(item.id, checkboxEvent(true));
       component.onPuzzleBatchRangeFromChange(item, numberEvent('5'));
-      spyOn(component.resumeRequested, 'emit');
+      vi.spyOn(component.resumeRequested, 'emit').mockImplementation(() => {});
 
       component.onResumeItem(item);
 
       expect(component.resumeRequested.emit).toHaveBeenCalledWith(
-        jasmine.objectContaining({
+        expect.objectContaining({
           puzzleIndex: 6,
-          batchConfig: jasmine.objectContaining({ enabled: true, startIndex: 4, endIndex: 9 }),
+          batchConfig: expect.objectContaining({ enabled: true, startIndex: 4, endIndex: 9 }),
         }),
       );
     });
 
     it('should ask for confirmation before removing an item', () => {
       const item = makeItem(1);
-      spyOn(component.itemRemoved, 'emit');
+      vi.spyOn(component.itemRemoved, 'emit').mockImplementation(() => {});
 
       component.onRemoveItem(item);
       expect(component.itemRemoved.emit).not.toHaveBeenCalled();

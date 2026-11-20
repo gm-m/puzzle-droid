@@ -1,8 +1,10 @@
+import { vi, type Mock } from 'vitest';
 import { ActivatedRoute, convertToParamMap, type ParamMap, Router } from '@angular/router';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { Chess } from 'chess.js';
+import { IDBFactory } from 'fake-indexeddb';
 
 import { ChessWorkspaceComponent } from './test';
 import type { LibraryGameSelection } from '../library-panel/library-panel';
@@ -13,24 +15,30 @@ import { LibraryStorageService } from '../../services/library-storage.service';
 import { ShellLayoutService } from '../../services/shell-layout.service';
 
 describe('ChessWorkspaceComponent', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   let component: ChessWorkspaceComponent;
   let fixture: ComponentFixture<ChessWorkspaceComponent>;
-  let routerNavigateSpy: jasmine.Spy;
-  let routerNavigateByUrlSpy: jasmine.Spy;
-  let evaluateMovesSpy: jasmine.Spy;
+  let routerNavigateSpy: Mock<Router['navigate']>;
+  let routerNavigateByUrlSpy: Mock<Router['navigateByUrl']>;
+  let evaluateMovesSpy: Mock<StockfishService['evaluateMoves']>;
+  let recordAttempt: Mock<WoodpeckerAnalyticsService['recordAttempt']>;
   let settingsValue: Record<string, unknown>;
 
   beforeEach(async () => {
     const routeParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({ view: 'analysis' }));
     const routeQueryParamMap$ = new BehaviorSubject<ParamMap>(convertToParamMap({}));
 
-    evaluateMovesSpy = jasmine.createSpy('evaluateMoves').and.resolveTo(null);
+    evaluateMovesSpy = vi.fn<StockfishService['evaluateMoves']>().mockResolvedValue(null);
     const stockfishMock: Pick<StockfishService, 'setListener' | 'init' | 'analyze' | 'stop' | 'destroy' | 'evaluateMoves'> = {
-      setListener: jasmine.createSpy('setListener'),
-      init: jasmine.createSpy('init'),
-      analyze: jasmine.createSpy('analyze').and.returnValue(true),
-      stop: jasmine.createSpy('stop'),
-      destroy: jasmine.createSpy('destroy'),
+      setListener: vi.fn().mockName('setListener'),
+      init: vi.fn().mockName('init'),
+      analyze: vi.fn().mockName('analyze').mockReturnValue(true),
+      stop: vi.fn().mockName('stop'),
+      destroy: vi.fn().mockName('destroy'),
       evaluateMoves: evaluateMovesSpy,
     };
 
@@ -48,17 +56,18 @@ describe('ChessWorkspaceComponent', () => {
       settings: () => settingsValue,
     };
 
+    recordAttempt = vi.fn<WoodpeckerAnalyticsService['recordAttempt']>();
     const analyticsMock = {
-      recordAttempt: jasmine.createSpy('recordAttempt'),
-      getDashboardData: jasmine.createSpy('getDashboardData').and.returnValue(null),
-      getAvailablePgns: jasmine.createSpy('getAvailablePgns').and.returnValue([]),
-      getPuzzleStatuses: jasmine.createSpy('getPuzzleStatuses').and.returnValue([]),
-      exportBackupBundle: jasmine.createSpy('exportBackupBundle').and.resolveTo('{}'),
-      importBackupBundle: jasmine.createSpy('importBackupBundle').and.resolveTo({ ok: true, message: 'ok' }),
+      recordAttempt,
+      getDashboardData: vi.fn().mockName('getDashboardData').mockReturnValue(null),
+      getAvailablePgns: vi.fn().mockName('getAvailablePgns').mockReturnValue([]),
+      getPuzzleStatuses: vi.fn().mockName('getPuzzleStatuses').mockReturnValue([]),
+      exportBackupBundle: vi.fn().mockName('exportBackupBundle').mockResolvedValue('{}'),
+      importBackupBundle: vi.fn().mockName('importBackupBundle').mockResolvedValue({ ok: true, message: 'ok' }),
     };
 
-    routerNavigateSpy = jasmine.createSpy('navigate').and.resolveTo(true);
-    routerNavigateByUrlSpy = jasmine.createSpy('navigateByUrl').and.resolveTo(true);
+    routerNavigateSpy = vi.fn<Router['navigate']>().mockResolvedValue(true);
+    routerNavigateByUrlSpy = vi.fn<Router['navigateByUrl']>().mockResolvedValue(true);
 
     await TestBed.configureTestingModule({
       imports: [ChessWorkspaceComponent],
@@ -86,9 +95,10 @@ describe('ChessWorkspaceComponent', () => {
       ],
     }).compileComponents();
 
-    spyOn(window.localStorage, 'getItem').and.returnValue(null);
-    spyOn(window.localStorage, 'setItem');
-    spyOn(window, 'fetch').and.resolveTo(new Response(null, { status: 404 }));
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
+    vi.stubGlobal('indexedDB', new IDBFactory());
 
     fixture = TestBed.createComponent(ChessWorkspaceComponent);
     component = fixture.componentInstance;
@@ -171,11 +181,8 @@ describe('ChessWorkspaceComponent', () => {
 
   it('should copy current fen to clipboard and show success toast', async () => {
     component.applyFen('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
-    const writeTextSpy = jasmine.createSpy('writeText').and.resolveTo();
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: writeTextSpy },
-    });
+    const writeTextSpy = vi.fn<Clipboard['writeText']>().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText: writeTextSpy } });
 
     await component.copyCurrentFen();
 
@@ -204,12 +211,12 @@ describe('ChessWorkspaceComponent', () => {
       ...overrides,
     });
 
-    beforeEach(() => jasmine.clock().install());
-    afterEach(() => jasmine.clock().uninstall());
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
 
     it('should let the user play white by default', () => {
       component.onLibraryGameSelected(buildSelection());
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(component.moveCursor()).toBe(0);
       expect(component.turnColor()).toBe('white');
@@ -218,7 +225,6 @@ describe('ChessWorkspaceComponent', () => {
     });
 
     it('should record the full Woodpecker attempt across an automatic reply and time the retry separately', () => {
-      jasmine.clock().mockDate();
       const selection = buildSelection({ woodpeckerEnabled: true, fullUciHistory: ['e2e4', 'e7e5', 'g1f3'] });
       component.libraryItems.set([{
         id: selection.itemId,
@@ -232,19 +238,18 @@ describe('ChessWorkspaceComponent', () => {
           positions: [],
         }],
       }]);
-      const recordAttempt = TestBed.inject(WoodpeckerAnalyticsService).recordAttempt as jasmine.Spy;
       component.onLibraryGameSelected(selection);
 
-      jasmine.clock().tick(8000);
+      vi.advanceTimersByTime(8000);
       component.onBoardMove({ from: 'e2', to: 'e4' });
-      jasmine.clock().tick(2700);
+      vi.advanceTimersByTime(2700);
       component.onBoardMove({ from: 'd2', to: 'd4' });
-      jasmine.clock().tick(3000);
+      vi.advanceTimersByTime(3000);
       component.onBoardMove({ from: 'g1', to: 'f3' });
 
-      expect(recordAttempt.calls.allArgs()).toEqual([
-        [jasmine.objectContaining({ correct: false, elapsedMs: 10700 })],
-        [jasmine.objectContaining({ correct: true, elapsedMs: 3000 })],
+      expect(recordAttempt.mock.calls).toEqual([
+        [expect.objectContaining({ correct: false, elapsedMs: 10700 })],
+        [expect.objectContaining({ correct: true, elapsedMs: 3000 })],
       ]);
     });
 
@@ -255,24 +260,24 @@ describe('ChessWorkspaceComponent', () => {
       component.activeView.set('analysis');
       fixture.detectChanges();
 
-      expect(shell.tabBarVisible()).toBeFalse();
-      expect(component.isPuzzleAutoPlaying()).toBeTrue();
+      expect(shell.tabBarVisible()).toBe(false);
+      expect(component.isPuzzleAutoPlaying()).toBe(true);
       const closeButton: HTMLButtonElement = fixture.nativeElement.querySelector('[aria-label="Chiudi sessione puzzle"]');
       closeButton.click();
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
       fixture.detectChanges();
 
-      expect(component.isPuzzleMode()).toBeFalse();
-      expect(component.isPuzzleAutoPlaying()).toBeFalse();
+      expect(component.isPuzzleMode()).toBe(false);
+      expect(component.isPuzzleAutoPlaying()).toBe(false);
       expect(component.moveCursor()).toBe(0);
-      expect(shell.tabBarVisible()).toBeTrue();
+      expect(shell.tabBarVisible()).toBe(true);
       expect(routerNavigateByUrlSpy).toHaveBeenCalledWith('/library?libraryItem=pgn-1', { replaceUrl: true });
     });
 
     it('should auto-play white moves when the user chooses black', () => {
       component.onLibraryPuzzlePlayerColorChanged({ gameId: 'pgn-1-g1', color: 'black' });
       component.onLibraryGameSelected(buildSelection());
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(component.moveCursor()).toBe(1);
       expect(component.turnColor()).toBe('black');
@@ -280,7 +285,7 @@ describe('ChessWorkspaceComponent', () => {
       expect(component.puzzleMessage()).toBe('Giochi col Nero. Tocca a te.');
 
       component.onBoardMove({ from: 'e7', to: 'e5' });
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(component.moveCursor()).toBe(3);
       expect(component.turnColor()).toBe('black');
@@ -290,7 +295,7 @@ describe('ChessWorkspaceComponent', () => {
     it('should restart the current puzzle with the new color when changed in game', () => {
       component.onLibraryGameSelected(buildSelection());
       component.onBoardMove({ from: 'e2', to: 'e4' });
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
       expect(component.moveCursor()).toBe(2);
 
       component.onPuzzlePlayerColorChanged('black');
@@ -299,7 +304,7 @@ describe('ChessWorkspaceComponent', () => {
       expect(component.moveCursor()).toBe(0);
       expect(component.boardOrientation()).toBe('black');
 
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(component.moveCursor()).toBe(1);
       expect(component.turnColor()).toBe('black');
@@ -309,7 +314,7 @@ describe('ChessWorkspaceComponent', () => {
     it('should ignore the auto first move option when the user chooses the side to move', () => {
       component.onLibraryPuzzlePlayerColorChanged({ gameId: 'pgn-1-g1', color: 'white' });
       component.onLibraryGameSelected(buildSelection({ autoPlayFirstMove: true, autoRotateBoardOnTurn: false }));
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
 
       expect(component.moveCursor()).toBe(0);
       expect(component.boardOrientation()).toBe('white');
@@ -370,26 +375,26 @@ describe('ChessWorkspaceComponent', () => {
 
     it('should not count an engine-equivalent alternative as a mistake', async () => {
       settingsValue['puzzleEngineCheck'] = true;
-      evaluateMovesSpy.and.resolveTo([
+      evaluateMovesSpy.mockResolvedValue([
         { multipv: 1, depth: 12, score: { type: 'cp', value: 35 }, pv: ['e2e4', 'e7e5'] },
         { multipv: 2, depth: 12, score: { type: 'cp', value: 30 }, pv: ['d2d4', 'd7d5'] },
       ]);
       component.onLibraryGameSelected(buildSelection(new Chess().fen(), ['e2e4', 'e7e5']));
 
       component.onBoardMove({ from: 'd2', to: 'd4' });
-      expect(component.isPuzzleAutoPlaying()).toBeTrue();
+      expect(component.isPuzzleAutoPlaying()).toBe(true);
       await new Promise((resolve) => setTimeout(resolve));
 
       expect(evaluateMovesSpy).toHaveBeenCalledWith(new Chess().fen(), ['e2e4', 'd2d4'], 12);
-      expect(component.isPuzzleAutoPlaying()).toBeFalse();
+      expect(component.isPuzzleAutoPlaying()).toBe(false);
       expect(component.moveCursor()).toBe(0);
-      expect(component.batchHasMistake()).toBeFalse();
+      expect(component.batchHasMistake()).toBe(false);
       expect(component.puzzleMessage()).toContain('Buona mossa');
     });
 
     it('should reject an alternative the engine considers clearly worse', async () => {
       settingsValue['puzzleEngineCheck'] = true;
-      evaluateMovesSpy.and.resolveTo([
+      evaluateMovesSpy.mockResolvedValue([
         { multipv: 1, depth: 12, score: { type: 'cp', value: 35 }, pv: ['e2e4'] },
         { multipv: 2, depth: 12, score: { type: 'cp', value: -150 }, pv: ['f2f3'] },
       ]);
@@ -399,18 +404,21 @@ describe('ChessWorkspaceComponent', () => {
       await new Promise((resolve) => setTimeout(resolve));
 
       expect(component.moveCursor()).toBe(0);
-      expect(component.batchHasMistake()).toBeTrue();
+      expect(component.batchHasMistake()).toBe(true);
       expect(component.puzzleMessage()).toBe('Mossa sbagliata, riprova.');
     });
   });
 
   it('should reject PGN files whose content is already in the library', async () => {
     const pgn = `[Event "Duplicato ${Date.now()}"]\n\n1. e4 e5 2. Nf3 *`;
-    const transfer = new DataTransfer();
-    transfer.items.add(new File([pgn], 'uno.pgn'));
-    transfer.items.add(new File([pgn], 'due.pgn'));
+    const files = ['uno.pgn', 'due.pgn'].map((name) =>
+      Object.assign(new File([pgn], name), { text: async () => pgn }),
+    );
+    const fileList: FileList = Object.assign(files, {
+      item: (index: number) => files[index] ?? null,
+    });
 
-    await component.onLibraryFilesSelected(transfer.files);
+    await component.onLibraryFilesSelected(fileList);
 
     const results = component.libraryUploadResults();
     expect(results.map((result) => result.status)).toEqual(['success', 'error']);
@@ -425,20 +433,20 @@ describe('ChessWorkspaceComponent', () => {
 
     component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }));
 
-    expect(component.isLibraryGamePickerOpen()).toBeFalse();
+    expect(component.isLibraryGamePickerOpen()).toBe(false);
   });
 
   it('should hide the tab bar while a library item detail is open', () => {
     const shell = TestBed.inject(ShellLayoutService);
 
-    expect(shell.tabBarVisible()).toBeTrue();
+    expect(shell.tabBarVisible()).toBe(true);
 
     component.libraryOpenedItemId.set('pgn-1');
     fixture.detectChanges();
-    expect(shell.tabBarVisible()).toBeFalse();
+    expect(shell.tabBarVisible()).toBe(false);
 
     component.libraryOpenedItemId.set(null);
     fixture.detectChanges();
-    expect(shell.tabBarVisible()).toBeTrue();
+    expect(shell.tabBarVisible()).toBe(true);
   });
 });

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -16,15 +17,19 @@ const PUZZLES_PGN = Array.from({ length: 4 }, (_, index) =>
 ).join('\n\n');
 
 describe('PuzzleRushComponent', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   let fixture: ComponentFixture<PuzzleRushComponent>;
   let component: PuzzleRushComponent;
   let records: PuzzleRushRecordsService;
   let shell: ShellLayoutService;
 
   beforeEach(async () => {
-    spyOn(window.localStorage, 'getItem').and.returnValue(null);
-    spyOn(window.localStorage, 'setItem');
-    spyOn(window, 'fetch').and.resolveTo(new Response(null, { status: 404 }));
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
+    vi.spyOn(window, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
 
     await TestBed.configureTestingModule({
       imports: [PuzzleRushComponent],
@@ -61,11 +66,11 @@ describe('PuzzleRushComponent', () => {
     fixture.detectChanges();
   });
 
-  afterEach(() => jasmine.clock().uninstall());
+  afterEach(() => vi.useRealTimers());
 
   const startRun = () => {
-    jasmine.clock().install();
-    jasmine.clock().mockDate(new Date(2026, 0, 1));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1));
     component.start();
     fixture.detectChanges();
   };
@@ -79,19 +84,19 @@ describe('PuzzleRushComponent', () => {
   it('should score solved puzzles and record the run when the clock runs out', () => {
     startRun();
     expect(component.phase()).toBe('playing');
-    expect(shell.tabBarVisible()).toBeFalse();
+    expect(shell.tabBarVisible()).toBe(false);
     expect(component.remainingMs()).toBe(180_000);
 
     component.onBoardMove({ from: 'a1', to: 'a8' });
     expect(component.score()).toBe(1);
-    jasmine.clock().tick(400);
+    vi.advanceTimersByTime(400);
     component.onBoardMove({ from: 'a1', to: 'a8' });
     expect(component.score()).toBe(2);
 
-    jasmine.clock().tick(180_000);
+    vi.advanceTimersByTime(180_000);
     expect(component.phase()).toBe('finished');
-    expect(shell.tabBarVisible()).toBeTrue();
-    expect(component.summary()).toEqual(jasmine.objectContaining({ score: 2, endReason: 'time', isNewBest: true }));
+    expect(shell.tabBarVisible()).toBe(true);
+    expect(component.summary()).toEqual(expect.objectContaining({ score: 2, endReason: 'time', isNewBest: true }));
     expect(records.best('mates', 'blitz3')?.score).toBe(2);
   });
 
@@ -100,7 +105,7 @@ describe('PuzzleRushComponent', () => {
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       component.onBoardMove({ from: 'g1', to: 'f1' });
-      jasmine.clock().tick(1_000);
+      vi.advanceTimersByTime(1_000);
     }
 
     expect(component.strikes()).toBe(3);
@@ -110,7 +115,7 @@ describe('PuzzleRushComponent', () => {
   });
 
   it('should retry and reveal a missed puzzle without changing the results, then hand it off to Analysis', () => {
-    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     startRun();
     component.onBoardMove({ from: 'g1', to: 'f1' });
     component.stop();
@@ -125,7 +130,7 @@ describe('PuzzleRushComponent', () => {
     expect(reviewPanel.legalDests().get('a1')).toContain('a8');
     reviewPanel.onMove({ from: 'a1', to: 'a8' });
     expect(reviewPanel.message()).toBe('Puzzle risolto!');
-    expect(component.summary()).toEqual(jasmine.objectContaining({ score: 0, mistakes: 1 }));
+    expect(component.summary()).toEqual(expect.objectContaining({ score: 0, mistakes: 1 }));
 
     reviewPanel.showSolution();
     expect(reviewPanel.position().fen).not.toBe(startFen);
@@ -133,7 +138,7 @@ describe('PuzzleRushComponent', () => {
     expect(reviewPanel.position().fen).toBe(startFen);
     reviewPanel.openAnalysis();
     expect(navigate).toHaveBeenCalledWith(['/analysis'], { queryParams: { rushReview: 1 } });
-    expect(TestBed.inject(PuzzleRushReviewService).analysis).toEqual({ fen: startFen, pgn: jasmine.stringMatching(/Ra8#/) });
+    expect(TestBed.inject(PuzzleRushReviewService).analysis).toEqual({ fen: startFen, pgn: expect.stringMatching(/Ra8#/) });
   });
 
   it('should end the run when every puzzle has been played', () => {
@@ -143,10 +148,10 @@ describe('PuzzleRushComponent', () => {
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
       component.onBoardMove({ from: 'a1', to: 'a8' });
-      jasmine.clock().tick(400);
+      vi.advanceTimersByTime(400);
     }
 
-    expect(component.summary()).toEqual(jasmine.objectContaining({ score: 4, endReason: 'exhausted' }));
+    expect(component.summary()).toEqual(expect.objectContaining({ score: 4, endReason: 'exhausted' }));
   });
 
   it('should stop the run on Escape and show the summary', () => {

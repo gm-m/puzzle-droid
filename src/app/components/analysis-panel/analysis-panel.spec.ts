@@ -1,9 +1,14 @@
+import { vi } from 'vitest';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AnalysisPanelComponent } from './analysis-panel';
 
 describe('AnalysisPanelComponent', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   let component: AnalysisPanelComponent;
   let fixture: ComponentFixture<AnalysisPanelComponent>;
 
@@ -28,7 +33,7 @@ describe('AnalysisPanelComponent', () => {
   });
 
   it('should request the library game picker from its visible action', () => {
-    spyOn(component.openLibraryGamePickerRequested, 'emit');
+    vi.spyOn(component.openLibraryGamePickerRequested, 'emit').mockImplementation(() => {});
     const compiled = fixture.nativeElement as HTMLElement;
 
     compiled.querySelector<HTMLButtonElement>('.library-game-picker-trigger')?.click();
@@ -55,7 +60,7 @@ describe('AnalysisPanelComponent', () => {
   });
 
   it('should offer the puzzle player color in the quick menu only in puzzle mode', async () => {
-    spyOn(component.puzzlePlayerColorChanged, 'emit');
+    vi.spyOn(component.puzzlePlayerColorChanged, 'emit').mockImplementation(() => {});
     const compiled = fixture.nativeElement as HTMLElement;
 
     compiled.querySelector<HTMLButtonElement>('.quick-menu-trigger')?.click();

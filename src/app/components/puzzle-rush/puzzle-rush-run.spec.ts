@@ -25,12 +25,12 @@ describe('PuzzleRushRun', () => {
   it('should score a correct solution and accept alternative checkmates', () => {
     const run = new PuzzleRushRun([backRank, { ...backRank, gameIndex: 5 }], { opponentMovesFirst: false, maxStrikes: 3 }, now);
 
-    expect(run.nextPuzzle()).toBeTrue();
+    expect(run.nextPuzzle()).toBe(true);
     expect(run.playerColor).toBe('white');
     clock += 4_000;
     expect(run.playMove({ from: 'a1', to: 'a8' }).kind).toBe('solved');
 
-    expect(run.nextPuzzle()).toBeTrue();
+    expect(run.nextPuzzle()).toBe(true);
     expect(run.playMove({ from: 'c1', to: 'c8' }).kind).toBe('solved');
 
     expect(run.score).toBe(2);
@@ -38,7 +38,7 @@ describe('PuzzleRushRun', () => {
       [0, true, 4_000],
       [5, true, 0],
     ]);
-    expect(run.nextPuzzle()).toBeFalse();
+    expect(run.nextPuzzle()).toBe(false);
   });
 
   it('should play the opponent replies and solve multi-move lines', () => {
@@ -46,10 +46,10 @@ describe('PuzzleRushRun', () => {
     run.nextPuzzle();
 
     expect(run.playMove({ from: 'd2', to: 'd5' }).kind).toBe('correct');
-    expect(run.isOpponentToMove).toBeTrue();
+    expect(run.isOpponentToMove).toBe(true);
     expect(run.playMove({ from: 'd1', to: 'd2' }).kind).toBe('ignored');
     expect(run.playOpponentMove().kind).toBe('correct');
-    expect(run.isOpponentToMove).toBeFalse();
+    expect(run.isOpponentToMove).toBe(false);
     expect(run.playMove({ from: 'd5', to: 'd7' }).kind).toBe('solved');
     expect(run.score).toBe(1);
   });
@@ -60,7 +60,7 @@ describe('PuzzleRushRun', () => {
     run.nextPuzzle();
 
     expect(run.playerColor).toBe('white');
-    expect(run.isOpponentToMove).toBeTrue();
+    expect(run.isOpponentToMove).toBe(true);
     expect(run.playOpponentMove().kind).toBe('correct');
     expect(run.playMove({ from: 'd1', to: 'd2' }).kind).toBe('solved');
   });
@@ -72,18 +72,18 @@ describe('PuzzleRushRun', () => {
     const outcome = run.playMove({ from: 'd2', to: 'd4' });
     expect(outcome).toEqual({ kind: 'failed', expectedSan: 'Rxd5' });
     expect(run.playMove({ from: 'd2', to: 'd5' }).kind).toBe('ignored');
-    expect(run.results[0]).toEqual(jasmine.objectContaining({ solved: false, expectedSan: 'Rxd5' }));
+    expect(run.results[0]).toEqual(expect.objectContaining({ solved: false, expectedSan: 'Rxd5' }));
 
     run.nextPuzzle();
     run.playMove({ from: 'e1', to: 'f1' });
-    expect(run.isOutOfStrikes).toBeTrue();
-    expect(run.nextPuzzle()).toBeFalse();
+    expect(run.isOutOfStrikes).toBe(true);
+    expect(run.nextPuzzle()).toBe(false);
   });
 
   it('should skip puzzles whose line is too short for the chosen format', () => {
     const run = new PuzzleRushRun([backRank, twoMoves], { opponentMovesFirst: true, maxStrikes: 3 }, now);
 
-    expect(run.nextPuzzle()).toBeTrue();
+    expect(run.nextPuzzle()).toBe(true);
     expect(run.current?.gameIndex).toBe(1);
   });
 
